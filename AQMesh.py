@@ -1,0 +1,98 @@
+from datetime import datetime
+import requests as re
+from Manufacturer import Manufacturer
+
+
+class AQMesh(Manufacturer):
+    @property
+    def name(self):
+        """
+        Manufacturer name, as used as a section in the config file.
+        """
+        return "AQMesh"
+
+    @property
+    def clean_data(self):
+        """
+        TODO
+        """
+        pass
+
+    def __init__(self, cfg):
+        """
+        Sets up object with parameters needed to scrape data.
+
+        Args:
+            - cfg: Instance of ConfigParser
+
+        Returns:
+            None
+        """
+        self.username = cfg.get(self.name, "Username")
+        self.password = cfg.get(self.name, "Password")
+        self.auth_url = cfg.get(self.name, "auth_url")
+        self.auth_referer = cfg.get(self.name, "auth_referer")
+        self.data_url = cfg.get(self.name, "data_url")
+        self.data_referer = cfg.get(self.name, "data_referer")
+        self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.averaging_window = cfg.get(self.name, "averaging_window")
+        self.units = cfg.get(self.name, "units")
+        self.data_type = cfg.get(self.name, "data_type")
+        self.timezone = cfg.get(self.name, "timezone")
+
+        # Authentication
+        self.auth_params = {"username": self.username, "password": self.password}
+        self.auth_headers = {"referer": self.auth_referer}
+
+        # Download data
+        self.data_headers = {
+            "content-type": "application/json; charset=UTF-8",
+            "referer": self.data_referer,
+        }
+
+        # Load start and end scraping datetimes
+        start_datetime = cfg.get("Main", "start_time")
+        end_datetime = cfg.get("Main", "end_time")
+
+        self.data_params = {
+            "CRUD": "READ",
+            "Call": "telemetrytable",
+            "UniqueId": "{device}",
+            "Channels": "{device}-AIRPRES-0+{device}-CO2-0+{device}-HUM-0+{device}-NO-0+{device}-NO2-0+{device}-O3-0+{device}-PARTICLE_COUNT-0+{device}-PM1-0+{device}-PM10-0+{device}-PM2.5-0+{device}-PM4-0+{device}-TEMP-0+{device}-TSP-0+{device}-VOLTAGE-0",
+            "Start": start_datetime,
+            "End": end_datetime,
+            "TimeZone": self.timezone,
+            "Average": self.averaging_window,
+            "TimeConvention": "timebeginning",
+            "Units": self.units,
+            "DataType": self.data_type,
+            "ReadingMinValue": "",
+            "ReadingMaxValue": "",
+            "Assignment": "current",
+            "ShowFlags": "true",
+            "ShowScaling": "true",
+            "AdditionalParameters": "",
+        }
+
+        super().__init__(cfg)
+
+    def scrape_device(self, deviceID):
+        """
+        TODO
+        """
+        this_params = self.data_params
+        this_params["UniqueId"] = this_params["UniqueId"].format(device=deviceID)
+        this_params["Channels"] = this_params["Channels"].format(device=deviceID)
+
+        print(this_params)
+
+        # TODO Multiple returns, not ideal
+        result = self.session.get(
+            self.data_url, params=this_params, headers=self.data_headers,
+        )
+        if result.status_code != re.codes["ok"]:
+            print("Error: cannot download data")
+            return None
+        data = result.json()["Data"]
+
+        return data
