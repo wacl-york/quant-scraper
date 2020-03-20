@@ -1,6 +1,4 @@
-  - Get data parsed for:
-    - quantaq
-    - zephyr
+  - Save csv output
   - Write basic unit tests
   - Determine with other team members what the output format should be
   - Move to each device having ownership of their data

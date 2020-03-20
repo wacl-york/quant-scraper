@@ -116,12 +116,11 @@ class Zephyr(Manufacturer):
         #   - hourly average on the hour
         #   - 8 hour average at midnight and 8am and 4pm
         raw_data = raw["data"]
+        raw_data = raw_data["Unaveraged"]
 
         # This data has 2 fields:
         #   slotA and slotB.
         # So far I've never seen slotA populated, but best to check
-        raw_data = raw_data["Unaveraged"]
-
         if raw_data["slotB"] is None:
             print("slotB is empty")
 
@@ -139,21 +138,30 @@ class Zephyr(Manufacturer):
         #                           data: [],
         #                           data_hash: str
         #                          }
-        # The header entries contain metadata, such as label, units, order in
+        # The 'header' entries contain metadata, such as label, units, order in
         # output csv
-        # data is the list of values, and data_hash is just a hash
+        # 'data' is the list of values, and 'data_hash' is just a hash
 
-        # TODO confirm all fields['data'] have same length
-        # TODO Form csv using CSV order
+        # Obtain fields in CSV order
+        measurands = list(parsed_data.keys())
+        measurands.sort(key=lambda x: parsed_data[x]["header"]["CSVOrder"])
 
-        # Each
+        # Check have same number of rows for each field
+        nrows = [len(parsed_data[measurand]["data"]) for measurand in measurands]
+        same_length = len(set(nrows)) == 1
+        if not same_length:
+            print("Fields have differing number of observations: {}".format(nrows))
 
-        print(parsed_data)
-        print(len(parsed_data))
-        print(parsed_data.keys())
-        print(len(parsed_data["humidity"]))
-        print(parsed_data["humidity"].keys())
-        # print(parsed_data['humidity']['data'])
-        print(parsed_data["humidity"]["header"])
+        # Form into CSV. Not most effecient solution but will do for now
+        # Could make into 2D list comp, not very readable but quicker
+        # Or there's probably an internal Python function from itertools or
+        # something that is more efficient
+        clean_data = []
+        for i in range(nrows[0]):
+            row = [parsed_data[col]["data"][i] for col in measurands]
+            clean_data.append(row)
 
-        return "foo"
+        # Add header row
+        clean_data.insert(0, measurands)
+
+        return clean_data

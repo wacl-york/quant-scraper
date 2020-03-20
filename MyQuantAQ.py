@@ -77,4 +77,38 @@ class MyQuantAQ(Manufacturer):
         """
         TODO
         """
-        pass
+        # TODO Can change this to use property getter?
+        # List of dicts, each dict corresponds to a row
+        # The main thing to look out for is that while the dictionary is
+        # primarily in the format measurand: value, the 'geo' index holds a
+        # secondary dict, which contains 'lat' and 'lon'.
+        # There's also some metadata, such as 'url' and 'sn'.
+
+        # I don't want to hardcode the columns to include, as there are some
+        # columns here that are only present in the raw data and not the final
+        # data (i.e. no2_ae and no2_we), and it would be better to have the same
+        # code work for both raw and final data.
+        raw = self._raw_data[deviceID]
+        nrows = len(raw)
+        if nrows < 1:
+            print("No data found")
+            return None
+
+        # Don't need url + sn and will handle geo separately
+        measurands = list(raw[0].keys())
+        measurands.remove("geo")
+        measurands.remove("url")
+        measurands.remove("sn")
+
+        clean_data = []
+        for i in range(nrows):
+            row = [raw[i][measurand] for measurand in measurands]
+            # Manually add lat/lon as in second level of dict
+            row.append(raw[i]["geo"]["lat"])
+            row.append(raw[i]["geo"]["lon"])
+            clean_data.append(row)
+
+        # Add headers
+        clean_data.insert(i, measurands + ["lat", "lon"])
+
+        return clean_data
