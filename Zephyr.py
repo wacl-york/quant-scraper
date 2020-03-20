@@ -1,4 +1,3 @@
-import sys
 from datetime import datetime
 from string import Template
 import requests as re
@@ -52,7 +51,7 @@ class Zephyr(Manufacturer):
         # TODO Debug and see if these parameters (AB/newDef/6) are hardcoded
         raw_data_url = cfg.get(self.name, "data_url")
         self.data_url = Template(
-            raw_data_url + "/$token/$device/$start/$end/AB/newDef/6/JSON/api"
+            raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"
         )
 
         super().__init__(cfg)
@@ -65,7 +64,6 @@ class Zephyr(Manufacturer):
         result = self.session.post(
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
-        print("auth response: " + str(result))
 
         if result.status_code != re.codes["ok"]:
             # TODO convert to log

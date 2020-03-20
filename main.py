@@ -82,17 +82,22 @@ def main():
     args = parse_args()
     # TODO validate config file's existence and format
 
-    config = configparser.ConfigParser()
-    config.read(args.configfilepath)
-    setup_scraping_timeframe(config)
+    cfg = configparser.ConfigParser()
+    cfg.read(args.configfilepath)
+    setup_scraping_timeframe(cfg)
 
     # Load all manufacturers
     manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
     for man_class in manufacturers:
-        manufacturer = man_class(config)
+        manufacturer = man_class(cfg)
         manufacturer.scrape()
         manufacturer.process_data()
-        # manufacturer.save_data()
+        if cfg.getboolean("Main", "save_clean_data"):
+            manufacturer.save_clean_data(
+                cfg.get("Main", "folder_clean_data"),
+                cfg.get("Main", "start_time"),
+                cfg.get("Main", "end_time"),
+            )
 
 
 if __name__ == "__main__":

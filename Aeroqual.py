@@ -98,7 +98,6 @@ class Aeroqual(Manufacturer):
         if result.status_code != re.codes["ok"]:
             print("Error: cannot select device {}".format(deviceID))
             return None
-        print("select instrument response: " + str(result))
 
         result = self.session.post(
             self.data_url, data=self.data_params, headers=self.data_headers
@@ -110,10 +109,7 @@ class Aeroqual(Manufacturer):
                 print("Unable to generate data for selected date range.")
             return None
 
-        print("generate data response: " + str(result))
-
         result = self.session.get(self.dl_url, headers=self.dl_headers)
-        print("download data response: " + str(result))
         if result.status_code != re.codes["ok"]:
             print("Error: cannot download data")
             return None

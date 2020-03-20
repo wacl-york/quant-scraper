@@ -44,7 +44,7 @@ class MyQuantAQ(Manufacturer):
         # This would be more easily saved as a dict as that's how it gets used
         # later, but the quantaq package does some funny dict updating by
         # reference that modifies the dict from my environment
-        raw = Template("timestamp,ge,$start;timestamp,lt,$end")
+        raw = Template("timestamp,ge,${start};timestamp,lt,${end}")
         self.query_string = raw.substitute(start=start_date, end=end_date)
 
         super().__init__(cfg)
@@ -109,6 +109,6 @@ class MyQuantAQ(Manufacturer):
             clean_data.append(row)
 
         # Add headers
-        clean_data.insert(i, measurands + ["lat", "lon"])
+        clean_data.insert(0, measurands + ["lat", "lon"])
 
         return clean_data

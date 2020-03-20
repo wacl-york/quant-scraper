@@ -1,3 +1,4 @@
+from string import Template
 from datetime import datetime
 import requests as re
 from Manufacturer import Manufacturer
@@ -43,17 +44,26 @@ class AQMesh(Manufacturer):
             "referer": self.data_referer,
         }
 
-        # Load start and end scraping datetimes
-        start_datetime = cfg.get("Main", "start_time")
-        end_datetime = cfg.get("Main", "end_time")
+        # Convert start and end times into required format of
+        # YYYY-mm-ddTHH:mm:ss TZ:TZ
+        # Where TZ:TZ is in HH:MM format
+        # Making assumption here that have no timezone!
+        start_str = cfg.get("Main", "start_time")
+        end_str = cfg.get("Main", "end_time")
+        start_dt = datetime.fromisoformat(start_str)
+        end_dt = datetime.fromisoformat(end_str)
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
 
         self.data_params = {
             "CRUD": "READ",
             "Call": "telemetrytable",
-            "UniqueId": "{device}",
-            "Channels": "{device}-AIRPRES-0+{device}-CO2-0+{device}-HUM-0+{device}-NO-0+{device}-NO2-0+{device}-O3-0+{device}-PARTICLE_COUNT-0+{device}-PM1-0+{device}-PM10-0+{device}-PM2.5-0+{device}-PM4-0+{device}-TEMP-0+{device}-TSP-0+{device}-VOLTAGE-0",
-            "Start": start_datetime,
-            "End": end_datetime,
+            "UniqueId": Template("{device}"),
+            "Channels": Template(
+                "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
+            ),
+            "Start": start_fmt,
+            "End": end_fmt,
             "TimeZone": self.timezone,
             "Average": self.averaging_window,
             "TimeConvention": "timebeginning",
@@ -73,13 +83,10 @@ class AQMesh(Manufacturer):
         """
         TODO
         """
-        this_params = self.data_params
-        this_params["UniqueId"] = this_params["UniqueId"].format(device=deviceID)
-        this_params["Channels"] = this_params["Channels"].format(device=deviceID)
+        this_params = self.data_params.copy()
+        this_params["UniqueId"] = this_params["UniqueId"].substitute(device=deviceID)
+        this_params["Channels"] = this_params["Channels"].substitute(device=deviceID)
 
-        print(this_params)
-
-        # TODO Multiple returns, not ideal
         result = self.session.get(
             self.data_url, params=this_params, headers=self.data_headers,
         )
@@ -98,7 +105,7 @@ class AQMesh(Manufacturer):
         raw_data = self._raw_data[deviceID]
 
         # Combine header and data into 1 list
-        header = raw_data["Headers"]
+        header = [h["Header"] for h in raw_data["Headers"]]
         clean_data = raw_data["Rows"]
         clean_data.insert(0, header)
 
