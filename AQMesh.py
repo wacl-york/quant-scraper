@@ -11,13 +11,6 @@ class AQMesh(Manufacturer):
         """
         return "AQMesh"
 
-    @property
-    def clean_data(self):
-        """
-        TODO
-        """
-        pass
-
     def __init__(self, cfg):
         """
         Sets up object with parameters needed to scrape data.
@@ -96,3 +89,17 @@ class AQMesh(Manufacturer):
         data = result.json()["Data"]
 
         return data
+
+    def process_device(self, deviceID):
+        """
+        TODO
+        """
+        # TODO Can change this to use property getter?
+        raw_data = self._raw_data[deviceID]
+
+        # Combine header and data into 1 list
+        header = raw_data["Headers"]
+        clean_data = raw_data["Rows"]
+        clean_data.insert(0, header)
+
+        return clean_data

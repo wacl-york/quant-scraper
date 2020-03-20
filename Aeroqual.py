@@ -1,6 +1,8 @@
+import sys
 from datetime import datetime
 import requests as re
 from Manufacturer import Manufacturer
+import csv
 
 
 class Aeroqual(Manufacturer):
@@ -10,13 +12,6 @@ class Aeroqual(Manufacturer):
         Manufacturer name, as used as a section in the config file.
         """
         return "Aeroqual"
-
-    @property
-    def clean_data(self):
-        """
-        TODO
-        """
-        pass
 
     def __init__(self, cfg):
         """
@@ -37,6 +32,7 @@ class Aeroqual(Manufacturer):
         self.include_journal = cfg.get(self.name, "include_journal")
         self.avg_window = cfg.get(self.name, "averaging_window")
         self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.lines_skip = cfg.getint(self.name, "lines_skip")
 
         # Authentication
         self.auth_params = {
@@ -123,3 +119,22 @@ class Aeroqual(Manufacturer):
             return None
 
         return result.content
+
+    def process_device(self, deviceID):
+        """
+        TODO
+        """
+        # TODO Can change this to use property getter?
+        raw_data = self._raw_data[deviceID]
+        # TODO See if still need this conversion when get data from website
+        # directly rather than from pickle
+        raw_data = raw_data.decode("utf-8")
+
+        # TODO error handle if no raw lines
+        raw_lines = raw_data.split("\r\n")
+        # This data comes with a number of metadata rows that we don't need to
+        # store
+        raw_lines = raw_lines[self.lines_skip :]
+
+        lines = csv.reader(raw_lines, delimiter=",")
+        return [r for r in lines]

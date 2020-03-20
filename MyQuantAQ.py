@@ -13,13 +13,6 @@ class MyQuantAQ(Manufacturer):
         """
         return "QuantAQ"
 
-    @property
-    def clean_data(self):
-        """
-        TODO
-        """
-        pass
-
     def __init__(self, cfg):
         """
         Sets up object with parameters needed to scrape data.
@@ -79,3 +72,9 @@ class MyQuantAQ(Manufacturer):
         #    return None
 
         return data
+
+    def process_device(self, deviceID):
+        """
+        TODO
+        """
+        pass

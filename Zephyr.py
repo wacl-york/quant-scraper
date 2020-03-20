@@ -13,13 +13,6 @@ class Zephyr(Manufacturer):
         """
         return "Zephyr"
 
-    @property
-    def clean_data(self):
-        """
-        TODO
-        """
-        pass
-
     def __init__(self, cfg):
         """
         Sets up object with parameters needed to scrape data.
@@ -102,3 +95,65 @@ class Zephyr(Manufacturer):
         data = result.json()
 
         return data
+
+    def process_device(self, deviceID):
+        """
+        TODO
+        """
+        # TODO Can change this to use property getter?
+        # Has 4 fields:
+        #   - errorDesc: Potentially useful for error handling, will keep a note
+        #   of it. So far has just had None
+        #   - data: Payload of interest
+        #   - queryInfo: query params, not useful except potentially debugging
+        #   - info: Looks like info for webpage, as has HMTL markup
+        raw = self._raw_data[deviceID]
+
+        # data has 5 fields for different averaging strategies:
+        #   - unaveraged (what I assume we want)
+        #   - 15 mins on quarter hours
+        #   - daily average at midnight
+        #   - hourly average on the hour
+        #   - 8 hour average at midnight and 8am and 4pm
+        raw_data = raw["data"]
+
+        # This data has 2 fields:
+        #   slotA and slotB.
+        # So far I've never seen slotA populated, but best to check
+        raw_data = raw_data["Unaveraged"]
+
+        if raw_data["slotB"] is None:
+            print("slotB is empty")
+
+            if raw_data["slotA"] is None:
+                print("slotA is also empty")
+            else:
+                print("slotA has data so will pull it")
+                parsed_data = raw_data["slotA"]
+        else:
+            parsed_data = raw_data["slotB"]
+
+        # Parsed data is now a dictionary:
+        # parsed_data= {measurand: {
+        #                           header: [],
+        #                           data: [],
+        #                           data_hash: str
+        #                          }
+        # The header entries contain metadata, such as label, units, order in
+        # output csv
+        # data is the list of values, and data_hash is just a hash
+
+        # TODO confirm all fields['data'] have same length
+        # TODO Form csv using CSV order
+
+        # Each
+
+        print(parsed_data)
+        print(len(parsed_data))
+        print(parsed_data.keys())
+        print(len(parsed_data["humidity"]))
+        print(parsed_data["humidity"].keys())
+        # print(parsed_data['humidity']['data'])
+        print(parsed_data["humidity"]["header"])
+
+        return "foo"

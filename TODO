@@ -1,11 +1,9 @@
   - Get data parsed for:
-    - Aeroqual
-    - aqmesh
     - quantaq
     - zephyr
   - Write basic unit tests
-  - Clean up config file
   - Determine with other team members what the output format should be
   - Move to each device having ownership of their data
-  - Add pre-commit hook to use Black
   - Add logging
+  - Update README
+  - Add GitHub project management functionality

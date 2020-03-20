@@ -10,12 +10,19 @@ class Manufacturer(ABC):
         """
         pass
 
-    @abstractproperty
+    @property
     def clean_data(self):
         """
         TODO
         """
-        pass
+        return self._raw_data
+
+    @clean_data.setter
+    def clean_data(self, devID, value):
+        """
+        TODO
+        """
+        self._clean_data[devID] = value
 
     @property
     def raw_data(self):
@@ -32,6 +39,19 @@ class Manufacturer(ABC):
         self._raw_data[devID] = value
 
     @abstractmethod
+    def scrape_device(self, deviceID):
+        """
+        TODO
+        """
+        pass
+
+    @abstractmethod
+    def process_device(self, deviceID):
+        """
+        TODO
+        """
+        pass
+
     def __init__(self, cfg):
         """
         Sets up object with parameters needed to scrape data.
@@ -43,8 +63,15 @@ class Manufacturer(ABC):
             None
         """
         self._raw_data = {}
+        self._clean_data = {}
         self.connect()
 
+    # TODO Should this be super implementation, or just copy the exact same
+    # method for both the Aeroqual and AQMesh subclasses? These 2 manufacturers
+    # use this method, but the other 2 have their own instance. Given that would
+    # need to have session, auth_headers, auth_params, auth_url as all abstract
+    # attrs, maybe should just make an abstract connect() method and copy paste
+    # this implementation twice
     def connect(self):
         """
         TODO
@@ -68,9 +95,12 @@ class Manufacturer(ABC):
         for devid in self.device_ids:
             self.raw_data[devid] = self.scrape_device(devid)
 
-    @abstractmethod
-    def scrape_device(self, deviceID):
+    def process_data(self):
         """
         TODO
         """
-        pass
+        for devid in self.device_ids:
+            self.clean_data[devid] = self.process_device(devid)
+
+
+# TODO Need to document device_ids parameter as abstract

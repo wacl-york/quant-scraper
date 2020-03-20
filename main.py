@@ -8,6 +8,7 @@
     the previous day.  This behaviour can be changed in the config.ini file, which is also where credentials are stored.
 """
 
+import pickle
 import os
 import sys
 import argparse
@@ -78,23 +79,52 @@ def main():
         config["Main"]["end_time"] = datetime.combine(yesterday, time.max).isoformat()
 
     # Load all manufacturers
-    aeroqual = Aeroqual(config)
-    aeroqual.scrape()
-    # print(aeroqual.raw_data)
-
-    aqmesh = AQMesh(config)
-    aqmesh.scrape()
-    # print(aqmesh.raw_data)
-
-    zephyr = Zephyr(config)
-    zephyr.scrape()
-    # print(zephyr.raw_data)
-
-    myquantaq = MyQuantAQ(config)
-    myquantaq.scrape()
-    # print(myquantaq.raw_data)
+    # manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
+    # for manufacturer in manufacturers:
+    #    _instance = manufacturer(config)
+    #    _instance.scrape()
+    #    print(_instance.scrape())
 
     # TODO implement Manufacturer.clean() method
+    # aeroqual = Aeroqual(config)
+
+    # Save raw data locally for testing process data method
+    # aeroqual.scrape()
+    # with open('aeroqual_raw.pickle', 'wb') as f:
+    #    pickle.dump(aeroqual._raw_data, f)
+
+    # with open('aeroqual_raw.pickle', 'rb') as f:
+    #    aeroqual._raw_data = pickle.load(f)
+    # aeroqual.process_data()
+
+    # aqmesh = AQMesh(config)
+
+    # aqmesh.scrape()
+    # with open('aqmesh_raw.pickle', 'wb') as f:
+    #    pickle.dump(aqmesh._raw_data, f)
+
+    # with open('aqmesh_raw.pickle', 'rb') as f:
+    #    aqmesh._raw_data = pickle.load(f)
+    # aqmesh.process_data()
+
+    zephyr = Zephyr(config)
+
+    # zephyr.scrape()
+    # with open('zephyr_raw.pickle', 'wb') as f:
+    #    pickle.dump(zephyr._raw_data, f)
+
+    with open("zephyr_raw.pickle", "rb") as f:
+        zephyr._raw_data = pickle.load(f)
+    zephyr.process_data()
+
+    # myquantaq = MyQuantAQ(config)
+    # myquantaq.scrape()
+    # with open('myquantaq_raw.pickle', 'wb') as f:
+    #    pickle.dump(myquantaq._raw_data, f)
+
+    # with open('myquantaq_raw.pickle', 'rb') as f:
+    #    myquantaq._raw_data = pickle.load(f)
+    # myquantaq.process_data()
 
 
 if __name__ == "__main__":
