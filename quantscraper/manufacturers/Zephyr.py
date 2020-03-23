@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from string import Template
 import requests as re
-from Manufacturer import Manufacturer
+from quantscraper.manufacturers.Manufacturer import Manufacturer
 
 
 class Zephyr(Manufacturer):

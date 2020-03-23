@@ -12,12 +12,11 @@ import logging
 import argparse
 import configparser
 from datetime import date, timedelta, datetime, time
-import quantaq
 
-from Aeroqual import Aeroqual
-from AQMesh import AQMesh
-from Zephyr import Zephyr
-from MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.Aeroqual import Aeroqual
+from quantscraper.manufacturers.AQMesh import AQMesh
+from quantscraper.manufacturers.Zephyr import Zephyr
+from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
 
 
 def parse_args():

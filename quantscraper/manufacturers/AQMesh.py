@@ -2,7 +2,7 @@ import logging
 from string import Template
 from datetime import datetime
 import requests as re
-from Manufacturer import Manufacturer
+from quantscraper.manufacturers.Manufacturer import Manufacturer
 
 
 class AQMesh(Manufacturer):

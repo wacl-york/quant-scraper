@@ -2,7 +2,7 @@ import logging
 import sys
 from datetime import datetime, timedelta
 from string import Template
-from Manufacturer import Manufacturer
+from quantscraper.manufacturers.Manufacturer import Manufacturer
 import quantaq
 
 # Need to avoid namespace issues with quantaq package
