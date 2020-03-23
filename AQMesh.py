@@ -18,38 +18,34 @@ class AQMesh(Manufacturer):
         Returns:
             None
         """
-        self.username = cfg.get(self.name, "Username")
-        self.password = cfg.get(self.name, "Password")
         self.auth_url = cfg.get(self.name, "auth_url")
-        self.auth_referer = cfg.get(self.name, "auth_referer")
         self.data_url = cfg.get(self.name, "data_url")
-        self.data_referer = cfg.get(self.name, "data_referer")
         self.device_ids = cfg.get(self.name, "devices").split(",")
-        self.averaging_window = cfg.get(self.name, "averaging_window")
-        self.units = cfg.get(self.name, "units")
-        self.data_type = cfg.get(self.name, "data_type")
-        self.timezone = cfg.get(self.name, "timezone")
 
         # Authentication
-        self.auth_params = {"username": self.username, "password": self.password}
-        self.auth_headers = {"referer": self.auth_referer}
+        self.auth_params = {
+            "username": cfg.get(self.name, "Username"),
+            "password": cfg.get(self.name, "Password"),
+        }
+        self.auth_headers = {"referer": cfg.get(self.name, "auth_referer")}
 
         # Download data
         self.data_headers = {
             "content-type": "application/json; charset=UTF-8",
-            "referer": self.data_referer,
+            "referer": cfg.get(self.name, "data_referer"),
         }
 
         # Convert start and end times into required format of
         # YYYY-mm-ddTHH:mm:ss TZ:TZ
         # Where TZ:TZ is in HH:MM format
         # Making assumption here that have no timezone!
+        timezone = cfg.get(self.name, "timezone")
         start_str = cfg.get("Main", "start_time")
         end_str = cfg.get("Main", "end_time")
         start_dt = datetime.fromisoformat(start_str)
         end_dt = datetime.fromisoformat(end_str)
-        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
-        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
 
         self.data_params = {
             "CRUD": "READ",
@@ -60,11 +56,11 @@ class AQMesh(Manufacturer):
             ),
             "Start": start_fmt,
             "End": end_fmt,
-            "TimeZone": self.timezone,
-            "Average": self.averaging_window,
+            "TimeZone": timezone,
+            "Average": cfg.get(self.name, "averaging_window"),
             "TimeConvention": "timebeginning",
-            "Units": self.units,
-            "DataType": self.data_type,
+            "Units": cfg.get(self.name, "units"),
+            "DataType": cfg.get(self.name, "data_type"),
             "ReadingMinValue": "",
             "ReadingMaxValue": "",
             "Assignment": "current",
@@ -74,6 +70,23 @@ class AQMesh(Manufacturer):
         }
 
         super().__init__(cfg)
+
+    def connect(self):
+        """
+        TODO
+        """
+        self.session = re.Session()
+        result = self.session.post(
+            self.auth_url, data=self.auth_params, headers=self.auth_headers
+        )
+        # TODO How should error handling be done? Not enough to just pass False up,
+        # as want to log information about why error occurred. Should this be
+        # done in here, or in main script?
+        if result.status_code != re.codes["ok"]:
+            logging.error("Error: cannot connect.")
+            return False
+        else:
+            return True
 
     def scrape_device(self, deviceID):
         """

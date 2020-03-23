@@ -64,9 +64,6 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
-        logging.info("Attempting to connect...")
-        self.connect()
-        logging.info("Connection established")
 
     # TODO Should this be super implementation, or just copy the exact same
     # method for both the Aeroqual and AQMesh subclasses? These 2 manufacturers
@@ -74,6 +71,7 @@ class Manufacturer(ABC):
     # need to have session, auth_headers, auth_params, auth_url as all abstract
     # attrs, maybe should just make an abstract connect() method and copy paste
     # this implementation twice
+    @abstractmethod
     def connect(self):
         """
         TODO

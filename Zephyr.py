@@ -18,19 +18,16 @@ class Zephyr(Manufacturer):
         Returns:
             None
         """
-        self.username = cfg.get(self.name, "username")
-        self.password = cfg.get(self.name, "password")
         self.auth_url = cfg.get(self.name, "auth_url")
-        self.auth_referer = cfg.get(self.name, "auth_referer")
         self.device_ids = cfg.get(self.name, "devices").split(",")
 
         # Authentication
         self.auth_params = {
-            "username": self.username,
-            "password": self.password,
+            "username": cfg.get(self.name, "username"),
+            "password": cfg.get(self.name, "password"),
             "grant_type": "password",
         }
-        self.auth_headers = {"referer": self.auth_referer}
+        self.auth_headers = {"referer": cfg.get(self.name, "auth_referer")}
 
         # Download data
         self.data_headers = {"content-type": "application/json; charset=UTF-8"}
@@ -44,7 +41,6 @@ class Zephyr(Manufacturer):
         self.start_date = start_date
         self.end_date = end_date
 
-        # TODO Debug and see if these parameters (AB/newDef/6) are hardcoded
         raw_data_url = cfg.get(self.name, "data_url")
         self.data_url = Template(
             raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"

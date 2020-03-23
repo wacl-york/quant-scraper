@@ -127,10 +127,19 @@ def main():
     for man_class in manufacturers:
         logging.info("Manufacturer: {}".format(man_class.name))
         manufacturer = man_class(cfg)
+
+        logging.info("Attempting to connect...")
+        if manufacturer.connect():
+            logging.info("Connection established")
+        else:
+            logging.warning("Cannot establish connection to {}.".format(man_class.name))
+            continue
+
         logging.info("Scraping all devices.")
         manufacturer.scrape()
         logging.info("Parsing raw data into CSV.")
         manufacturer.parse_to_csv()
+
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")
             manufacturer.save_clean_data(

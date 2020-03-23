@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 import requests as re
 from Manufacturer import Manufacturer
+from string import Template
 import csv
 
 
@@ -19,21 +20,17 @@ class Aeroqual(Manufacturer):
         Returns:
             None
         """
-        self.username = cfg.get(self.name, "Username")
-        self.password = cfg.get(self.name, "Password")
         self.auth_url = cfg.get(self.name, "auth_url")
         self.select_device_url = cfg.get(self.name, "select_device_url")
         self.data_url = cfg.get(self.name, "data_url")
         self.dl_url = cfg.get(self.name, "dl_url")
-        self.include_journal = cfg.get(self.name, "include_journal")
-        self.avg_window = cfg.get(self.name, "averaging_window")
         self.device_ids = cfg.get(self.name, "devices").split(",")
         self.lines_skip = cfg.getint(self.name, "lines_skip")
 
         # Authentication
         self.auth_params = {
-            "Username": self.username,
-            "Password": self.password,
+            "Username": cfg.get(self.name, "Username"),
+            "Password": cfg.get(self.name, "Password"),
             "RememberMe": "true",
         }
         self.auth_headers = {
@@ -47,7 +44,9 @@ class Aeroqual(Manufacturer):
             "connection": "keep-alive",
             "content-type": "application/json",
         }
-        self.select_device_string = "serialNumber={device},o=York University,dc=root"
+        self.select_device_string = Template(
+            "serialNumber=${device},o=York University,dc=root"
+        )
 
         # Generate data
         self.data_headers = {
@@ -61,23 +60,39 @@ class Aeroqual(Manufacturer):
         end_datetime = cfg.get("Main", "end_time")
         end_datetime = datetime.fromisoformat(end_datetime)
 
-        # Can't get any more granular with Aeroqual than date.
-        # Convert these limits to dates then, doesn't matter as
-        # Aeroqual treats limits as inclusive
+        # Can't specify times for scraping window, just dates.
+        # Will just convert datetime to date and doesn't matter too much since
+        # Aeroqual treats limits as inclusive, so will scrape too much data
         # Needs to be in US format MM/DD/YYYY
         start_date = start_datetime.strftime("%m/%d/%Y")
         end_date = end_datetime.strftime("%m/%d/%Y")
 
         self.data_params = {
             "Period": "{} to {}".format(start_date, end_date),
-            "AvgMinutes": self.avg_window,
-            "IncludeJournal": self.include_journal,
+            "AvgMinutes": cfg.get(self.name, "averaging_window"),
+            "IncludeJournal": cfg.get(self.name, "include_journal"),
         }
 
         # Download data
         self.dl_headers = {"content-type": "text/csv"}
 
         super().__init__(cfg)
+
+    # TODO Ditto issue with AQMesh about whose responsibility it is to log this
+    # error
+    def connect(self):
+        """
+        TODO
+        """
+        self.session = re.Session()
+        result = self.session.post(
+            self.auth_url, data=self.auth_params, headers=self.auth_headers
+        )
+        if result.status_code != re.codes["ok"]:
+            logging.error("Error: cannot connect.")
+            return False
+        else:
+            return True
 
     def scrape_device(self, deviceID):
         """
@@ -88,7 +103,7 @@ class Aeroqual(Manufacturer):
 
         result = self.session.post(
             self.select_device_url,
-            json=[self.select_device_string.format(device=deviceID)],
+            json=[self.select_device_string.substitute(device=deviceID)],
             headers=self.select_device_headers,
         )
         if result.status_code != re.codes["ok"]:
