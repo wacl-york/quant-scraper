@@ -1,6 +1,7 @@
+  - Save raw data
   - Write basic unit tests
   - Determine with other team members what the output format should be
   - Move to each device having ownership of their data
   - Add logging
-  - Update README
   - Add GitHub project management functionality
+  - Use Python packaging structure
