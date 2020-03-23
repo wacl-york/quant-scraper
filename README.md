@@ -47,7 +47,7 @@ It can also be installed through `pip`.
 
 # Running the scraper
 
-The scraper can be run through the `main.py` script.
+The scraper can be run through the `bin/quantscrape.py` script.
 This takes one obligatory argument: the location of an INI file containing configuration parameters for the scraping, including:
 
   - website credentials
@@ -59,7 +59,7 @@ An example configuration file is provided: `example.ini`, which shows the format
 
 The scraper is run by issuing the following command:
 
-`python main.py example.ini`
+`quantscrape example.ini`
 
 A log will be displayed on `stdout`, which can be redirected to a file for long-term logging.
 
