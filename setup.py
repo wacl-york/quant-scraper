@@ -17,11 +17,10 @@ setup(
     scripts=["bin/quantscrape.py"],
     install_requires=[
         "requests",
-        # TODO Do libraries required by other packages (i.e. quantaq requiring
-        # numpy + pandas) need to be specified here, or do they get handled
-        # correctly?
+        "pandas",
+        "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
     ],
-    dependency_links=["https://github.com/quant-aq/py-quantaq.git"],
+    # dependency_links=["https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0"],
     include_package_data=True,
     license="MIT",
     packages=["quantscraper"],
