@@ -1,17 +1,14 @@
 import csv
 import os
+import logging
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
 
 
 class Manufacturer(ABC):
-    @abstractproperty
-    def name(self):
-        """
-        Manufacturer name, as used as a section in the config file.
-        """
-        pass
+    # Unsure how to force Name as an abstract class property.
+    # Can only get it working as an instance attribute
 
     @property
     def clean_data(self):
@@ -67,7 +64,9 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
+        logging.info("Attempting to connect...")
         self.connect()
+        logging.info("Connection established")
 
     # TODO Should this be super implementation, or just copy the exact same
     # method for both the Aeroqual and AQMesh subclasses? These 2 manufacturers
@@ -84,8 +83,7 @@ class Manufacturer(ABC):
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
         if result.status_code != re.codes["ok"]:
-            # TODO convert to log
-            print("Error: cannot connect")
+            logging.error("Error: cannot connect.")
             return False
         else:
             return True
@@ -95,17 +93,27 @@ class Manufacturer(ABC):
         TODO
         """
         for devid in self.device_ids:
+            logging.info("Attempting to scrape data for device {}...".format(devid))
             self.raw_data[devid] = self.scrape_device(devid)
+            logging.info("Scrape successful.")
 
-    def process_data(self):
+    def parse_to_csv(self):
         """
         TODO
         """
         for devid in self.device_ids:
             if self.raw_data[devid] is None:
-                print("No available raw data for device {}.".format(devid))
+                logging.warning("No available raw data for device {}.".format(devid))
                 continue
+            logging.info(
+                "Attempting to parse data into CSV for device {}...".format(devid)
+            )
             self.clean_data[devid] = self.process_device(devid)
+            logging.info(
+                "Parse successful. {} samples have been recorded.".format(
+                    len(self.clean_data[devid])
+                )
+            )
 
     def save_clean_data(self, folder, start_time, end_time):
         """
@@ -129,7 +137,9 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            print("Folder {} doesn't exist, cannot save clean data.".format(folder))
+            logging.error(
+                "Folder {} doesn't exist, cannot save clean data.".format(folder)
+            )
         else:
             filename = Template("${man}_${device}_${start}_${end}.csv")
             for devid in self.device_ids:
@@ -139,12 +149,16 @@ class Manufacturer(ABC):
 
                 data = self.clean_data[devid]
                 if data is None:
-                    print("No clean data to save for device {}.".format(devid))
+                    logging.warning(
+                        "No clean data to save for device {}.".format(devid)
+                    )
                     continue
 
                 # TODO Add more error handling (what exceptions to look out
                 # for?)
-                with open(os.path.join(folder, fn), "w") as outfile:
+                full_path = os.path.join(folder, fn)
+                logging.info("Saving data to file: {}".format(full_path))
+                with open(full_path, "w") as outfile:
                     writer = csv.writer(outfile, delimiter=",")
                     writer.writerows(data)
 

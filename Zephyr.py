@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from string import Template
 import requests as re
@@ -5,12 +6,7 @@ from Manufacturer import Manufacturer
 
 
 class Zephyr(Manufacturer):
-    @property
-    def name(self):
-        """
-        Manufacturer name, as used as a section in the config file.
-        """
-        return "Zephyr"
+    name = "Zephyr"
 
     def __init__(self, cfg):
         """
@@ -66,8 +62,7 @@ class Zephyr(Manufacturer):
         )
 
         if result.status_code != re.codes["ok"]:
-            # TODO convert to log
-            print("Error: cannot connect")
+            logging.error("Error: cannot connect")
             return False
         else:
             self.api_token = result.json()["access_token"]
@@ -88,7 +83,7 @@ class Zephyr(Manufacturer):
         # TODO Multiple returns, not ideal
         result = self.session.get(this_url, headers=self.data_headers,)
         if result.status_code != re.codes["ok"]:
-            print("Error: cannot download data")
+            logging.error("Error: cannot download data")
             return None
         data = result.json()
 
@@ -120,12 +115,12 @@ class Zephyr(Manufacturer):
         #   slotA and slotB.
         # So far I've never seen slotA populated, but best to check
         if raw_data["slotB"] is None:
-            print("slotB is empty")
+            logging.warning("slotB is empty")
 
             if raw_data["slotA"] is None:
-                print("slotA is also empty")
+                logging.warning("slotA is also empty")
             else:
-                print("slotA has data so will pull it")
+                logging.info("slotA has data so will pull it")
                 parsed_data = raw_data["slotA"]
         else:
             parsed_data = raw_data["slotB"]
@@ -148,7 +143,9 @@ class Zephyr(Manufacturer):
         nrows = [len(parsed_data[measurand]["data"]) for measurand in measurands]
         same_length = len(set(nrows)) == 1
         if not same_length:
-            print("Fields have differing number of observations: {}".format(nrows))
+            logging.error(
+                "Fields have differing number of observations: {}".format(nrows)
+            )
 
         # Form into CSV. Not most effecient solution but will do for now
         # Could make into 2D list comp, not very readable but quicker

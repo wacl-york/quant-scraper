@@ -1,3 +1,4 @@
+import logging
 import sys
 from datetime import datetime
 import requests as re
@@ -6,12 +7,7 @@ import csv
 
 
 class Aeroqual(Manufacturer):
-    @property
-    def name(self):
-        """
-        Manufacturer name, as used as a section in the config file.
-        """
-        return "Aeroqual"
+    name = "Aeroqual"
 
     def __init__(self, cfg):
         """
@@ -96,7 +92,7 @@ class Aeroqual(Manufacturer):
             headers=self.select_device_headers,
         )
         if result.status_code != re.codes["ok"]:
-            print("Error: cannot select device {}".format(deviceID))
+            logging.error("Error: cannot select device {}".format(deviceID))
             return None
 
         result = self.session.post(
@@ -104,14 +100,14 @@ class Aeroqual(Manufacturer):
         )
         if result.status_code != re.codes["ok"]:
             if result.status_code == re.codes["no_content"]:
-                print("No data available for selected date range.")
+                logging.info("No data available for selected date range.")
             else:
-                print("Unable to generate data for selected date range.")
+                logging.error("Unable to generate data for selected date range.")
             return None
 
         result = self.session.get(self.dl_url, headers=self.dl_headers)
         if result.status_code != re.codes["ok"]:
-            print("Error: cannot download data")
+            logging.error("Error: cannot download data")
             return None
 
         return result.content

@@ -1,3 +1,4 @@
+import logging
 from string import Template
 from datetime import datetime
 import requests as re
@@ -5,12 +6,7 @@ from Manufacturer import Manufacturer
 
 
 class AQMesh(Manufacturer):
-    @property
-    def name(self):
-        """
-        Manufacturer name, as used as a section in the config file.
-        """
-        return "AQMesh"
+    name = "AQMesh"
 
     def __init__(self, cfg):
         """
@@ -91,7 +87,7 @@ class AQMesh(Manufacturer):
             self.data_url, params=this_params, headers=self.data_headers,
         )
         if result.status_code != re.codes["ok"]:
-            print("Error: cannot download data")
+            logging.error("Error: cannot download data")
             return None
         data = result.json()["Data"]
 

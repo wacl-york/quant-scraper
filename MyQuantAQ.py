@@ -1,3 +1,4 @@
+import logging
 import sys
 from datetime import datetime, timedelta
 from string import Template
@@ -6,12 +7,7 @@ import quantaq
 
 # Need to avoid namespace issues with quantaq package
 class MyQuantAQ(Manufacturer):
-    @property
-    def name(self):
-        """
-        Manufacturer name, as used as a section in the config file.
-        """
-        return "QuantAQ"
+    name = "QuantAQ"
 
     def __init__(self, cfg):
         """
@@ -91,7 +87,7 @@ class MyQuantAQ(Manufacturer):
         raw = self._raw_data[deviceID]
         nrows = len(raw)
         if nrows < 1:
-            print("No data found")
+            logging.warning("No data found")
             return None
 
         # Don't need url + sn and will handle geo separately

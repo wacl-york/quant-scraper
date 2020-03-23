@@ -8,7 +8,7 @@
     the previous day.  This behaviour can be changed in the config.ini file, which is also where credentials are stored.
 """
 
-import sys
+import logging
 import argparse
 import configparser
 from datetime import date, timedelta, datetime, time
@@ -67,6 +67,39 @@ def setup_scraping_timeframe(cfg):
         cfg["Main"]["end_time"] = datetime.combine(yesterday, time.max).isoformat()
 
 
+def setup_loggers(logfn):
+    """
+    Configures loggers.
+
+    By default, the error log is printed to standard out,
+    although it can be saved to file in addition.
+
+    Args:
+        logfn: File to save log to. If None then doesn't write log to file.
+
+    Returns:
+        None. the logger is accessed by the global module `logging`.
+    """
+    rootLogger = logging.getLogger()
+    rootLogger.setLevel(logging.INFO)
+    logFmt = logging.Formatter(
+        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
+    cliLogger = logging.StreamHandler()
+    cliLogger.setFormatter(logFmt)
+    rootLogger.addHandler(cliLogger)
+
+    if not logfn is None:
+        if os.path.isfile(logfn):
+            logging.error(
+                ("Log file {} already exists. " "Halting execution.").format(logfn)
+            )
+            sys.exit()
+        fileLogger = logging.FileHandler(logfn)
+        fileLogger.setFormatter(logFmt)
+        rootLogger.addHandler(fileLogger)
+
+
 def main():
     """
     Entry point into the script.
@@ -77,6 +110,9 @@ def main():
     Returns:
         None.
     """
+    # Setup logging
+    # TODO For now just log to stdout
+    setup_loggers(None)
 
     # Parse config file
     args = parse_args()
@@ -89,10 +125,14 @@ def main():
     # Load all manufacturers
     manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
     for man_class in manufacturers:
+        logging.info("Manufacturer: {}".format(man_class.name))
         manufacturer = man_class(cfg)
+        logging.info("Scraping all devices.")
         manufacturer.scrape()
-        manufacturer.process_data()
+        logging.info("Parsing raw data into CSV.")
+        manufacturer.parse_to_csv()
         if cfg.getboolean("Main", "save_clean_data"):
+            logging.info("Saving clean CSV data to file.")
             manufacturer.save_clean_data(
                 cfg.get("Main", "folder_clean_data"),
                 cfg.get("Main", "start_time"),
