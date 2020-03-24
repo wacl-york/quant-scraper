@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def readme():
@@ -14,15 +14,14 @@ setup(
     url="https://github.com/wacl-york/QUANTscraper",
     author="Stuart Lacy",
     author_email="stuart.lacy@york.ac.uk",
-    scripts=["bin/quantscrape.py"],
+    entry_points={"console_scripts": ["quantscrape = quantscraper.cli:main",],},
     install_requires=[
         "requests",
         "pandas",
         "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
     ],
-    # dependency_links=["https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0"],
     include_package_data=True,
     license="MIT",
-    packages=["quantscraper"],
+    packages=find_packages(include=["quantscraper", "quantscraper.*"]),
     zip_safe=False,
 )

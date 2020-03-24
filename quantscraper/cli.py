@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-    main.py
-    ~~~~~~~
+    cli.py
+    ~~~~~~
 
     Main scraper script that collects data from each of the four manufacturers.
     By default it obtains all data from midnight to the following midnight of
