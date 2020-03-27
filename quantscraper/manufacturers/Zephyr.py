@@ -57,12 +57,11 @@ class Zephyr(Manufacturer):
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
 
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect")
-            return False
-        else:
+        if result.status_code == re.codes["ok"]:
             self.api_token = result.json()["access_token"]
-            return True
+        else:
+            self.api_token = None
+        result.raise_for_status()
 
     def scrape_device(self, deviceID):
         """

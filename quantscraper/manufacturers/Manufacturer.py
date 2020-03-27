@@ -65,26 +65,11 @@ class Manufacturer(ABC):
         self._raw_data = {}
         self._clean_data = {}
 
-    # TODO Should this be super implementation, or just copy the exact same
-    # method for both the Aeroqual and AQMesh subclasses? These 2 manufacturers
-    # use this method, but the other 2 have their own instance. Given that would
-    # need to have session, auth_headers, auth_params, auth_url as all abstract
-    # attrs, maybe should just make an abstract connect() method and copy paste
-    # this implementation twice
     @abstractmethod
     def connect(self):
         """
         TODO
         """
-        self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
 
     def scrape(self):
         """

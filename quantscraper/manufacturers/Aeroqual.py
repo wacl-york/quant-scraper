@@ -78,8 +78,6 @@ class Aeroqual(Manufacturer):
 
         super().__init__(cfg)
 
-    # TODO Ditto issue with AQMesh about whose responsibility it is to log this
-    # error
     def connect(self):
         """
         TODO
@@ -88,11 +86,7 @@ class Aeroqual(Manufacturer):
         result = self.session.post(
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
+        result.raise_for_status()
 
     def scrape_device(self, deviceID):
         """

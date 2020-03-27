@@ -79,14 +79,7 @@ class AQMesh(Manufacturer):
         result = self.session.post(
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
-        # TODO How should error handling be done? Not enough to just pass False up,
-        # as want to log information about why error occurred. Should this be
-        # done in here, or in main script?
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
+        result.raise_for_status()
 
     def scrape_device(self, deviceID):
         """

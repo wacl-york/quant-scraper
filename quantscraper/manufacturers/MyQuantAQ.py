@@ -50,8 +50,13 @@ class MyQuantAQ(Manufacturer):
         Overrides super method as not using requests.
         """
         self.api_obj = quantaq.QuantAQ(self.api_token)
-        # TODO Error handle
-        return True
+        # Test connection by running basic query
+        try:
+            self.api_obj.get_account()
+        except quantaq.baseapi.DataReadError as ex:
+            raise quantaq.baseapi.DataReadError(
+                "Could not connect to quantaq API."
+            ).with_traceback(ex.__traceback__)
 
     def scrape_device(self, deviceID):
         """
