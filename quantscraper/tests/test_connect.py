@@ -13,6 +13,7 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+from quantscraper.utils import LoginError
 
 # TODO Are these unit tests sufficient? Just test that error is thrown for
 # specific HTTP error codes.
@@ -28,7 +29,12 @@ class TestAeroqual(unittest.TestCase):
     aeroqual = Aeroqual.Aeroqual(cfg)
 
     def _mock_response(
-        self, status=200, content="CONTENT", json_data=None, raise_for_status=None
+        self,
+        status=200,
+        content="CONTENT",
+        json_data=None,
+        raise_for_status=None,
+        text=None,
     ):
         """
            Helper function to build mock response. Taken from:
@@ -42,6 +48,7 @@ class TestAeroqual(unittest.TestCase):
         # set status code and content
         mock_resp.status_code = status
         mock_resp.content = content
+        mock_resp.text = text
         # add json data if provided
         if json_data is not None:
             mock_resp.json = Mock(return_value=json_data)
@@ -50,7 +57,7 @@ class TestAeroqual(unittest.TestCase):
 
     # Mock a status code return of 200
     def test_success(self):
-        resp = self._mock_response()
+        resp = self._mock_response(text="Foo")
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
             try:
@@ -107,6 +114,15 @@ class TestAeroqual(unittest.TestCase):
             with self.assertRaises(HTTPError):
                 res = self.aeroqual.connect()
 
+    def test_login_failure(self):
+        cfg2 = configparser.ConfigParser()
+        cfg2.read("example.ini")
+        cfg2.set("Aeroqual", "Username", "foo")
+        cfg2.set("Aeroqual", "Password", "foo")
+        aeroqual = Aeroqual.Aeroqual(cfg2)
+        with self.assertRaises(LoginError):
+            aeroqual.connect()
+
 
 class TestAQMesh(unittest.TestCase):
 
@@ -117,7 +133,12 @@ class TestAQMesh(unittest.TestCase):
     aqmesh = AQMesh.AQMesh(cfg)
 
     def _mock_response(
-        self, status=200, content="CONTENT", json_data=None, raise_for_status=None
+        self,
+        status=200,
+        content="CONTENT",
+        json_data=None,
+        raise_for_status=None,
+        text=None,
     ):
         """
            Helper function to build mock response. Taken from:
@@ -131,6 +152,7 @@ class TestAQMesh(unittest.TestCase):
         # set status code and content
         mock_resp.status_code = status
         mock_resp.content = content
+        mock_resp.text = text
         # add json data if provided
         if json_data is not None:
             mock_resp.json = Mock(return_value=json_data)
@@ -139,7 +161,7 @@ class TestAQMesh(unittest.TestCase):
 
     # Mock a status code return of 200
     def test_success(self):
-        resp = self._mock_response()
+        resp = self._mock_response(text="foo")
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
             try:
@@ -196,8 +218,22 @@ class TestAQMesh(unittest.TestCase):
             with self.assertRaises(HTTPError):
                 res = self.aqmesh.connect()
 
+    def test_login_failure(self):
+        cfg2 = configparser.ConfigParser()
+        cfg2.read("example.ini")
+        cfg2.set("AQMesh", "Username", "foo")
+        cfg2.set("AQMesh", "Password", "foo")
+        aqmesh = AQMesh.AQMesh(cfg2)
+        with self.assertRaises(LoginError):
+            aqmesh.connect()
+
 
 class TestZephyr(unittest.TestCase):
+
+    # Ideally would test for authentication issues, but the Zephyr API returns
+    # an access token no matter what username/password combination is provided,
+    # so credential errors are only identified downstream when attempting to
+    # pull data using the generated access token.
 
     # TODO Should config be mocked too, or is it fair enough to use the example
     # config that is bundled with the source code?
@@ -205,7 +241,12 @@ class TestZephyr(unittest.TestCase):
     cfg.read("example.ini")
 
     def _mock_response(
-        self, status=200, content="CONTENT", json_data=None, raise_for_status=None
+        self,
+        status=200,
+        content="CONTENT",
+        json_data=None,
+        raise_for_status=None,
+        text=None,
     ):
         """
            Helper function to build mock response. Taken from:
@@ -220,6 +261,7 @@ class TestZephyr(unittest.TestCase):
         # set status code and content
         mock_resp.status_code = status
         mock_resp.content = content
+        mock_resp.text = text
         # add json data if provided
         if json_data is not None:
             mock_resp.json = Mock(return_value=json_data)
@@ -229,7 +271,7 @@ class TestZephyr(unittest.TestCase):
     # Mock a status code return of 200
     def test_success(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(json_data={"access_token": "foo"})
+        resp = self._mock_response(json_data={"access_token": "foo"}, text="foo")
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
             try:
@@ -299,12 +341,19 @@ class TestZephyr(unittest.TestCase):
 
 
 class TestMyQuantAQ(unittest.TestCase):
-    # TODO What tests should go here? Cannot test HTTP errors as using API that
-    # wraps up the URLs so shouldn't call wrong ones
+    # Cannot test HTTP errors as quantaq API should do this for us
     # Could pass in fake API token and check that error raised... can't really
     # test opposite can I? I.e. is it safe/appropriate to pass in correct
     # token and test that it is logged in correctly?
-    pass
+
+    def test_error_incorrect_token(self):
+
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        cfg.set("QuantAQ", "api_token", "foo")
+        myquantaq = MyQuantAQ.MyQuantAQ(cfg)
+        with self.assertRaises(LoginError):
+            res = myquantaq.connect()
 
 
 # TODO Test only called once

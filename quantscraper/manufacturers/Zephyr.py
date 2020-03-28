@@ -1,8 +1,10 @@
 import logging
 from datetime import datetime
 from string import Template
+from bs4 import BeautifulSoup
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError
 
 
 class Zephyr(Manufacturer):
@@ -56,12 +58,13 @@ class Zephyr(Manufacturer):
         result = self.session.post(
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
-
-        if result.status_code == re.codes["ok"]:
-            self.api_token = result.json()["access_token"]
-        else:
-            self.api_token = None
         result.raise_for_status()
+        # Set api_token if above didn't raise HTTPError at any non-200 status
+        self.api_token = result.json()["access_token"]
+        # Would typically like to confirm authentication here, but this post
+        # request returns an access token for _any_ username/password
+        # combination. Only find out later when try to pull data if credentials
+        # are incorrect.
 
     def scrape_device(self, deviceID):
         """

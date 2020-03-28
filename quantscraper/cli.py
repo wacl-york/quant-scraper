@@ -16,6 +16,7 @@ import requests as re
 import quantaq
 import traceback
 
+from quantscraper.utils import LoginError
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
@@ -125,8 +126,7 @@ def main():
     setup_scraping_timeframe(cfg)
 
     # Load all manufacturers
-    # manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
-    manufacturers = [Aeroqual]
+    manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
     for man_class in manufacturers:
         logging.info("Manufacturer: {}".format(man_class.name))
         manufacturer = man_class(cfg)
@@ -135,12 +135,14 @@ def main():
             logging.info("Attempting to connect...")
             manufacturer.connect()
             logging.info("Connection established")
-        except (re.exceptions.HTTPError, quantaq.baseapi.DataReadError) as ex:
-            logging.warning("Cannot establish connection to {}.".format(man_class.name))
+        except (
+            re.exceptions.HTTPError,
+            LoginError,
+            quantaq.baseapi.DataReadError,
+        ) as ex:
+            logging.error("Cannot establish connection to {}.".format(man_class.name))
             logging.error(traceback.format_exc())
             continue
-
-        continue
 
         logging.info("Scraping all devices.")
         manufacturer.scrape()

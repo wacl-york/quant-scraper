@@ -76,3 +76,9 @@ In addition to these packages, there is a [Python wrapper](https://github.com/qu
 Finally, the [`Black` formatter](https://github.com/psf/black) is used in development as a pre-commit hook to ensure consistent formatting across source files. 
 It can also be installed through `pip`.
 
+## Testing
+
+All unit tests can be run using the following command:
+
+`coverage run -m unittest discover -s quantscraper/tests -b`
+

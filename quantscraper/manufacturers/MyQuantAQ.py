@@ -3,6 +3,7 @@ import sys
 from datetime import datetime, timedelta
 from string import Template
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError
 import quantaq
 
 # Need to avoid namespace issues with quantaq package
@@ -54,9 +55,9 @@ class MyQuantAQ(Manufacturer):
         try:
             self.api_obj.get_account()
         except quantaq.baseapi.DataReadError as ex:
-            raise quantaq.baseapi.DataReadError(
-                "Could not connect to quantaq API."
-            ).with_traceback(ex.__traceback__)
+            raise LoginError("Could not connect to quantaq API.").with_traceback(
+                ex.__traceback__
+            )
 
     def scrape_device(self, deviceID):
         """

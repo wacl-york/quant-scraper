@@ -3,8 +3,10 @@ import sys
 from datetime import datetime
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError
 from string import Template
 import csv
+from bs4 import BeautifulSoup
 
 
 class Aeroqual(Manufacturer):
@@ -87,6 +89,12 @@ class Aeroqual(Manufacturer):
             self.auth_url, data=self.auth_params, headers=self.auth_headers
         )
         result.raise_for_status()
+        # Check for authentication
+        soup = BeautifulSoup(result.text, features="html.parser")
+        login_div = soup.find(id="loginContent")
+        if login_div is not None:
+            self.session.close()
+            raise LoginError("Login failed")
 
     def scrape_device(self, deviceID):
         """
