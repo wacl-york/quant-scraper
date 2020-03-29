@@ -3,7 +3,7 @@ from string import Template
 from datetime import datetime
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError
+from quantscraper.utils import LoginError, DataDownloadError
 from bs4 import BeautifulSoup
 
 
@@ -78,10 +78,15 @@ class AQMesh(Manufacturer):
         TODO
         """
         self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        result.raise_for_status()
+
+        try:
+            result = self.session.post(
+                self.auth_url, data=self.auth_params, headers=self.auth_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
+
         # Check for authentication
         soup = BeautifulSoup(result.text, features="html.parser")
         login_div = soup.find(id="loginBox")
@@ -97,14 +102,17 @@ class AQMesh(Manufacturer):
         this_params["UniqueId"] = this_params["UniqueId"].substitute(device=deviceID)
         this_params["Channels"] = this_params["Channels"].substitute(device=deviceID)
 
-        result = self.session.get(
-            self.data_url, params=this_params, headers=self.data_headers,
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot download data")
-            return None
-        data = result.json()["Data"]
+        try:
+            result = self.session.get(
+                self.data_url, params=this_params, headers=self.data_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download data.\n{}".format(str(ex))
+            ) from None
 
+        data = result.json()["Data"]
         return data
 
     def process_device(self, deviceID):

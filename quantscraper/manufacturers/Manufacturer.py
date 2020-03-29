@@ -1,9 +1,11 @@
 import csv
 import os
 import logging
+import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
+from quantscraper.utils import DataDownloadError
 
 
 class Manufacturer(ABC):
@@ -75,10 +77,17 @@ class Manufacturer(ABC):
         """
         TODO
         """
+        # TODO Should this code be here, or should it be in the CLI script, so
+        # that all logging is run in once place?
         for devid in self.device_ids:
-            logging.info("Attempting to scrape data for device {}...".format(devid))
-            self.raw_data[devid] = self.scrape_device(devid)
-            logging.info("Scrape successful.")
+            try:
+                logging.info("Attempting to scrape data for device {}...".format(devid))
+                self.raw_data[devid] = self.scrape_device(devid)
+                logging.info("Scrape successful.")
+            except DataDownloadError as ex:
+                logging.error("Unable to download data for device {}.".format(devid))
+                logging.error(traceback.format_exc())
+                self.raw_data[devid] = None
 
     def parse_to_csv(self):
         """

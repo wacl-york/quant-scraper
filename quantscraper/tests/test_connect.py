@@ -16,14 +16,16 @@ import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import LoginError
 
 # TODO Are these unit tests sufficient? Just test that error is thrown for
-# specific HTTP error codes.
-# Add dummy authentication problems and test for them
+# specific HTTP error codes and that login attempts with incorrect credentials
+# will fail.
+# Haven't checked for login with correct credentials, but would that be a
+# security risk?
+
+# TODO Should config be mocked too, or is it fair enough to use the example
+# config that is bundled with the source code?
 
 
 class TestAeroqual(unittest.TestCase):
-
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
     aeroqual = Aeroqual.Aeroqual(cfg)
@@ -75,7 +77,7 @@ class TestAeroqual(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Unauthorised
@@ -84,7 +86,7 @@ class TestAeroqual(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Forbidden
@@ -93,7 +95,7 @@ class TestAeroqual(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Not found
@@ -102,7 +104,7 @@ class TestAeroqual(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # timeout
@@ -111,7 +113,7 @@ class TestAeroqual(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     def test_login_failure(self):
@@ -125,9 +127,6 @@ class TestAeroqual(unittest.TestCase):
 
 
 class TestAQMesh(unittest.TestCase):
-
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
     aqmesh = AQMesh.AQMesh(cfg)
@@ -179,7 +178,7 @@ class TestAQMesh(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Unauthorised
@@ -188,7 +187,7 @@ class TestAQMesh(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Forbidden
@@ -197,7 +196,7 @@ class TestAQMesh(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Not found
@@ -206,7 +205,7 @@ class TestAQMesh(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # timeout
@@ -215,7 +214,7 @@ class TestAQMesh(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     def test_login_failure(self):
@@ -229,14 +228,11 @@ class TestAQMesh(unittest.TestCase):
 
 
 class TestZephyr(unittest.TestCase):
-
     # Ideally would test for authentication issues, but the Zephyr API returns
     # an access token no matter what username/password combination is provided,
     # so credential errors are only identified downstream when attempting to
     # pull data using the generated access token.
 
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
@@ -291,7 +287,7 @@ class TestZephyr(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
 
@@ -302,7 +298,7 @@ class TestZephyr(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
 
@@ -313,7 +309,7 @@ class TestZephyr(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
 
@@ -324,7 +320,7 @@ class TestZephyr(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
 
@@ -335,7 +331,7 @@ class TestZephyr(unittest.TestCase):
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = resp
-            with self.assertRaises(HTTPError):
+            with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
 

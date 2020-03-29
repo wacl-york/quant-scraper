@@ -1,10 +1,11 @@
+import sys
 import logging
 from datetime import datetime
 from string import Template
 from bs4 import BeautifulSoup
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError
+from quantscraper.utils import LoginError, DataDownloadError
 
 
 class Zephyr(Manufacturer):
@@ -48,6 +49,9 @@ class Zephyr(Manufacturer):
             raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"
         )
 
+        # This field gets set in self.connect()
+        self.api_token = None
+
         super().__init__(cfg)
 
     def connect(self):
@@ -55,10 +59,15 @@ class Zephyr(Manufacturer):
         Overrides super method as needs to obtain API token
         """
         self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        result.raise_for_status()
+
+        try:
+            result = self.session.post(
+                self.auth_url, data=self.auth_params, headers=self.auth_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise LoginError("HTTP error when logging in.\n{}".format(ex)) from None
+
         # Set api_token if above didn't raise HTTPError at any non-200 status
         self.api_token = result.json()["access_token"]
         # Would typically like to confirm authentication here, but this post
@@ -70,21 +79,21 @@ class Zephyr(Manufacturer):
         """
         TODO
         """
-        # TODO Replace ALL format calls with substitute where allowing user
-        # input
         this_url = self.data_url.substitute(
             device=deviceID,
             token=self.api_token,
             start=self.start_date,
             end=self.end_date,
         )
-        # TODO Multiple returns, not ideal
-        result = self.session.get(this_url, headers=self.data_headers,)
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot download data")
-            return None
-        data = result.json()
+        try:
+            result = self.session.get(this_url, headers=self.data_headers,)
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download data.\n{}".format(str(ex))
+            ) from None
 
+        data = result.json()
         return data
 
     def process_device(self, deviceID):

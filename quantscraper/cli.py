@@ -135,16 +135,16 @@ def main():
             logging.info("Attempting to connect...")
             manufacturer.connect()
             logging.info("Connection established")
-        except (
-            re.exceptions.HTTPError,
-            LoginError,
-            quantaq.baseapi.DataReadError,
-        ) as ex:
+        except LoginError:
             logging.error("Cannot establish connection to {}.".format(man_class.name))
             logging.error(traceback.format_exc())
             continue
 
         logging.info("Scraping all devices.")
+        # TODO Scrape function just iterates through all devices and calls
+        # .scrape_device().
+        # Should this be instead be run from here, rather than Manufacturer?
+        # Particularly since it handles error logging
         manufacturer.scrape()
         logging.info("Parsing raw data into CSV.")
         manufacturer.parse_to_csv()
