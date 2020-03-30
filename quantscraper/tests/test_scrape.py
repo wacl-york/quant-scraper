@@ -16,6 +16,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import DataDownloadError
+from quantscraper.tests.test_utils import build_mock_response
 
 # Want to test that:
 #   - Any HTTP errors are raised
@@ -40,37 +41,11 @@ class TestAeroqual(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        return mock_resp
-
     def test_200_success(self):
         # Mock 200 response on both posts and get
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        mock_posts = [self._mock_response(status=200), self._mock_response(status=200)]
-        mock_get = self._mock_response(status=200)
+        mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
+        mock_get = build_mock_response(status=200)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -83,8 +58,8 @@ class TestAeroqual(unittest.TestCase):
     def test_retrieves_content(self):
         # Now test that actually download the content we expected
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        mock_posts = [self._mock_response(status=200), self._mock_response(status=200)]
-        mock_get = self._mock_response(status=200, content="DummyData")
+        mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
+        mock_get = build_mock_response(status=200, content="DummyData")
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -98,10 +73,10 @@ class TestAeroqual(unittest.TestCase):
     def test_select_device_failure_400(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         mock_posts = [
-            self._mock_response(status=400, raise_for_status=HTTPError()),
-            self._mock_response(status=200),
+            build_mock_response(status=400, raise_for_status=HTTPError()),
+            build_mock_response(status=200),
         ]
-        mock_get = self._mock_response(status=200)
+        mock_get = build_mock_response(status=200)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -113,10 +88,10 @@ class TestAeroqual(unittest.TestCase):
     def test_select_device_failure_404(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         mock_posts = [
-            self._mock_response(status=404, raise_for_status=HTTPError()),
-            self._mock_response(status=200),
+            build_mock_response(status=404, raise_for_status=HTTPError()),
+            build_mock_response(status=200),
         ]
-        mock_get = self._mock_response(status=200)
+        mock_get = build_mock_response(status=200)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -127,10 +102,10 @@ class TestAeroqual(unittest.TestCase):
     def test_generate_data_failure_400(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         mock_posts = [
-            self._mock_response(status=200),
-            self._mock_response(status=400, raise_for_status=HTTPError()),
+            build_mock_response(status=200),
+            build_mock_response(status=400, raise_for_status=HTTPError()),
         ]
-        mock_get = self._mock_response(status=200)
+        mock_get = build_mock_response(status=200)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -141,10 +116,10 @@ class TestAeroqual(unittest.TestCase):
     def test_generate_data_failure_404(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         mock_posts = [
-            self._mock_response(status=200),
-            self._mock_response(status=404, raise_for_status=HTTPError()),
+            build_mock_response(status=200),
+            build_mock_response(status=404, raise_for_status=HTTPError()),
         ]
-        mock_get = self._mock_response(status=200)
+        mock_get = build_mock_response(status=200)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -154,8 +129,8 @@ class TestAeroqual(unittest.TestCase):
 
     def test_download_data_failure_400(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        mock_posts = [self._mock_response(status=200), self._mock_response(status=200)]
-        mock_get = self._mock_response(status=400, raise_for_status=HTTPError())
+        mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
+        mock_get = build_mock_response(status=400, raise_for_status=HTTPError())
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -165,8 +140,8 @@ class TestAeroqual(unittest.TestCase):
 
     def test_download_data_failure_404(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        mock_posts = [self._mock_response(status=200), self._mock_response(status=200)]
-        mock_get = self._mock_response(status=400, raise_for_status=HTTPError())
+        mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
+        mock_get = build_mock_response(status=400, raise_for_status=HTTPError())
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -185,35 +160,9 @@ class TestAQMesh(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        return mock_resp
-
     def test_success(self):
         aqmesh = AQMesh.AQMesh(self.cfg)
-        mock_get_resp = self._mock_response(
+        mock_get_resp = build_mock_response(
             status=200, json_data={"Foo": "Bar", "Data": [1, 2, 3]}
         )
         mock_get = Mock(return_value=mock_get_resp)
@@ -239,7 +188,7 @@ class TestAQMesh(unittest.TestCase):
     # conditions
     def test_400(self):
         aqmesh = AQMesh.AQMesh(self.cfg)
-        mock_get_resp = self._mock_response(status=400, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=400, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         aqmesh.session = session_return
@@ -249,7 +198,7 @@ class TestAQMesh(unittest.TestCase):
 
     def test_404(self):
         aqmesh = AQMesh.AQMesh(self.cfg)
-        mock_get_resp = self._mock_response(status=404, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         aqmesh.session = session_return
@@ -259,7 +208,7 @@ class TestAQMesh(unittest.TestCase):
 
     def test_403(self):
         aqmesh = AQMesh.AQMesh(self.cfg)
-        mock_get_resp = self._mock_response(status=403, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         aqmesh.session = session_return
@@ -269,7 +218,7 @@ class TestAQMesh(unittest.TestCase):
 
     def test_403(self):
         aqmesh = AQMesh.AQMesh(self.cfg)
-        mock_get_resp = self._mock_response(status=401, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         aqmesh.session = session_return
@@ -286,35 +235,9 @@ class TestZephyr(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        return mock_resp
-
     def test_success(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        mock_get_resp = self._mock_response(
+        mock_get_resp = build_mock_response(
             status=200, json_data={"CO2": [1, 2, 3], "NO": [4, 5, 6]}
         )
         mock_get = Mock(return_value=mock_get_resp)
@@ -341,7 +264,7 @@ class TestZephyr(unittest.TestCase):
     # conditions
     def test_400(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        mock_get_resp = self._mock_response(status=400, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=400, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         zephyr.session = session_return
@@ -351,7 +274,7 @@ class TestZephyr(unittest.TestCase):
 
     def test_404(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        mock_get_resp = self._mock_response(status=404, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         zephyr.session = session_return
@@ -361,7 +284,7 @@ class TestZephyr(unittest.TestCase):
 
     def test_403(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        mock_get_resp = self._mock_response(status=403, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         zephyr.session = session_return
@@ -371,7 +294,7 @@ class TestZephyr(unittest.TestCase):
 
     def test_403(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        mock_get_resp = self._mock_response(status=401, raise_for_status=HTTPError())
+        mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         zephyr.session = session_return

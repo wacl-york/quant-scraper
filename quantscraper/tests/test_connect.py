@@ -7,14 +7,15 @@
 
 import unittest
 import configparser
-from unittest.mock import patch, MagicMock, Mock
-from requests.exceptions import Timeout, HTTPError
+from unittest.mock import patch, Mock
+from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import LoginError
+from quantscraper.tests.test_utils import build_mock_response
 
 # TODO Are these unit tests sufficient? Just test that error is thrown for
 # specific HTTP error codes and that login attempts with incorrect credentials
@@ -31,38 +32,11 @@ class TestAeroqual(unittest.TestCase):
     cfg.read("example.ini")
     aeroqual = Aeroqual.Aeroqual(cfg)
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        mock_post = Mock(post=Mock(return_value=mock_resp))
-        return mock_post
-
     # Mock a status code return of 200
     def test_success(self):
-        resp = self._mock_response(text="Foo")
+        resp = build_mock_response(text="Foo")
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             try:
                 self.aeroqual.connect()
             except:
@@ -74,46 +48,46 @@ class TestAeroqual(unittest.TestCase):
 
     # Bad request
     def test_400(self):
-        resp = self._mock_response(status=400, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=400, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Unauthorised
     def test_401(self):
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Forbidden
     def test_403(self):
-        resp = self._mock_response(status=403, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=403, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # Not found
     def test_404(self):
-        resp = self._mock_response(status=404, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=404, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
     # timeout
     def test_408(self):
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
 
@@ -123,38 +97,11 @@ class TestAQMesh(unittest.TestCase):
     cfg.read("example.ini")
     aqmesh = AQMesh.AQMesh(cfg)
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        mock_post = Mock(post=Mock(return_value=mock_resp))
-        return mock_post
-
     # Mock a status code return of 200
     def test_success(self):
-        resp = self._mock_response(text="foo")
+        resp = build_mock_response(text="foo")
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             try:
                 self.aqmesh.connect()
             except:
@@ -166,46 +113,46 @@ class TestAQMesh(unittest.TestCase):
 
     # Bad request
     def test_400(self):
-        resp = self._mock_response(status=400, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=400, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Unauthorised
     def test_401(self):
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Forbidden
     def test_403(self):
-        resp = self._mock_response(status=403, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=403, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # Not found
     def test_404(self):
-        resp = self._mock_response(status=404, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=404, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
     # timeout
     def test_408(self):
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
@@ -219,40 +166,12 @@ class TestZephyr(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    def _mock_response(
-        self,
-        status=200,
-        content="CONTENT",
-        json_data=None,
-        raise_for_status=None,
-        text=None,
-    ):
-        """
-           Helper function to build mock response. Taken from:
-           https://gist.github.com/evansde77/45467f5a7af84d2a2d34f3fcb357449c
-           """
-        zephyr = Zephyr.Zephyr(self.cfg)
-        mock_resp = Mock()
-        # mock raise_for_status call w/optional error
-        if raise_for_status is not None:
-            mock_resp.raise_for_status = Mock()
-            mock_resp.raise_for_status.side_effect = raise_for_status
-        # set status code and content
-        mock_resp.status_code = status
-        mock_resp.content = content
-        mock_resp.text = text
-        # add json data if provided
-        if json_data is not None:
-            mock_resp.json = Mock(return_value=json_data)
-        mock_post = Mock(post=Mock(return_value=mock_resp))
-        return mock_post
-
     # Mock a status code return of 200
     def test_success(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(json_data={"access_token": "foo"}, text="foo")
+        resp = build_mock_response(json_data={"access_token": "foo"}, text="foo")
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             try:
                 zephyr.connect()
             except:
@@ -266,10 +185,10 @@ class TestZephyr(unittest.TestCase):
     # Bad request
     def test_400(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(status=400, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=400, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
@@ -277,10 +196,10 @@ class TestZephyr(unittest.TestCase):
     # Unauthorised
     def test_401(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
@@ -288,10 +207,10 @@ class TestZephyr(unittest.TestCase):
     # Forbidden
     def test_403(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(status=403, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=403, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
@@ -299,10 +218,10 @@ class TestZephyr(unittest.TestCase):
     # Not found
     def test_404(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(status=404, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=404, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
@@ -310,10 +229,10 @@ class TestZephyr(unittest.TestCase):
     # timeout
     def test_408(self):
         zephyr = Zephyr.Zephyr(self.cfg)
-        resp = self._mock_response(status=401, raise_for_status=HTTPError(""))
+        resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = resp
+            mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
                 res = zephyr.connect()
             self.assertIsNone(zephyr.api_token)
