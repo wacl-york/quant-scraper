@@ -4,7 +4,7 @@ import csv
 import requests as re
 from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Aeroqual(Manufacturer):
@@ -137,15 +137,37 @@ class Aeroqual(Manufacturer):
         """
         TODO
         """
-        # TODO See if still need this conversion when get data from website
-        # directly rather than from pickle
+        # Raw data comes in as a byte-string
         raw_data = raw_data.decode("utf-8")
 
-        # TODO error handle if no raw lines
+        # Split into rows and run basic validation
         raw_lines = raw_data.split("\r\n")
-        # This data comes with a number of metadata rows that we don't need to
-        # store
-        raw_lines = raw_lines[self.lines_skip :]
 
-        lines = csv.reader(raw_lines, delimiter=",")
-        return [r for r in lines]
+        if len(raw_lines) < self.lines_skip:
+            raise DataParseError(
+                "Fewer lines ({}) available than expected number of headers ({})".format(
+                    len(raw_lines), self.lines_skip
+                )
+            )
+
+        header_removed = raw_lines[self.lines_skip :]
+        if len(header_removed) == 0:
+            raise DataParseError("Have no rows of data available.")
+
+        # Parse into CSV. reader returns generator so turn into list
+        data = csv.reader(header_removed, delimiter=",")
+        data = [row for row in data]
+
+        # Check have consistent number of columns.
+        # Only test have > 1 column as unsure what would be expected number, but
+        # can be fairly sure that just 1 column is a sign something's gone wrong
+        ncols = [len(row) for row in data]
+        unique_ncols = set(ncols)
+        if len(unique_ncols) > 1:
+            raise DataParseError(
+                "Rows have differing number of columns: {}.".format(unique_ncols)
+            )
+        if ncols[0] == 1:
+            raise DataParseError("Rows only have 1 column.")
+
+        return data

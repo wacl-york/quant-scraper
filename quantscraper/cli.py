@@ -146,7 +146,11 @@ def main():
         # Should this be instead be run from here, rather than Manufacturer?
         # Particularly since it handles error logging
         manufacturer.scrape()
-        logging.info("Parsing raw data into CSV.")
+
+        # TODO Ditto above issue about whether the iterating through each device
+        # should be run here rather than from Manufacturer, so that only have 1
+        # place that is logging.
+        logging.info("Processing raw data into validated cleaned data.")
         manufacturer.process()
 
         if cfg.getboolean("Main", "save_clean_data"):

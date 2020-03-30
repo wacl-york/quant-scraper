@@ -3,7 +3,7 @@ from string import Template
 from datetime import datetime
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 from bs4 import BeautifulSoup
 
 
@@ -122,6 +122,19 @@ class AQMesh(Manufacturer):
         # Combine header and data into 1 list
         header = [h["Header"] for h in raw_data["Headers"]]
         clean_data = raw_data["Rows"]
+
+        # Check have consistent number of columns
+        ncols = [len(row) for row in clean_data]
+        if len(set(ncols)) > 1:
+            raise DataParseError("Have differing number of columns: {}".format(ncols))
+
+        if ncols[0] != len(header):
+            raise DataParseError(
+                "Have differing number of columns ({}) to headers ({})".format(
+                    ncols[0], len(header)
+                )
+            )
+
         clean_data.insert(0, header)
 
         return clean_data

@@ -8,7 +8,7 @@
 import unittest
 import configparser
 from string import Template
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock, Mock, call
 from requests.exceptions import Timeout, HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
@@ -396,12 +396,26 @@ class TestMyQuantAQ(unittest.TestCase):
         myquantaq.api_obj = mock_api_obj
         try:
             res = myquantaq.scrape_device("foo")
-            self.assertEqual(res, {"CO2": [1, 2, 3], "NO2": [4, 5, 6]})
-            mock_get_data.assert_called_once_with(
-                sn="foo",
-                final_data=myquantaq.final_data,
-                params=dict(filter=myquantaq.query_string),
+            self.assertEqual(
+                res,
+                {
+                    "raw": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
+                    "final": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
+                },
             )
+            exp_calls = [
+                call(
+                    sn="foo",
+                    final_data=False,
+                    params=dict(filter=myquantaq.query_string),
+                ),
+                call(
+                    sn="foo",
+                    final_data=True,
+                    params=dict(filter=myquantaq.query_string),
+                ),
+            ]
+            self.assertEqual(mock_get_data.mock_calls, exp_calls)
         except:
             self.fail("Connect raised exception with status code 200")
 

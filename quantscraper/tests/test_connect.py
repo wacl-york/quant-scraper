@@ -209,15 +209,6 @@ class TestAQMesh(unittest.TestCase):
             with self.assertRaises(LoginError):
                 res = self.aqmesh.connect()
 
-    def test_login_failure(self):
-        cfg2 = configparser.ConfigParser()
-        cfg2.read("example.ini")
-        cfg2.set("AQMesh", "Username", "foo")
-        cfg2.set("AQMesh", "Password", "foo")
-        aqmesh = AQMesh.AQMesh(cfg2)
-        with self.assertRaises(LoginError):
-            aqmesh.connect()
-
 
 class TestZephyr(unittest.TestCase):
     # Ideally would test for authentication issues, but the Zephyr API returns

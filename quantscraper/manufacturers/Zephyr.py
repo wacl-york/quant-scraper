@@ -5,7 +5,7 @@ from string import Template
 from bs4 import BeautifulSoup
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Zephyr(Manufacturer):
@@ -23,6 +23,8 @@ class Zephyr(Manufacturer):
         """
         self.auth_url = cfg.get(self.name, "auth_url")
         self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.averaging_window = cfg.get(self.name, "averaging_window")
+        self.slot = cfg.get(self.name, "slot")
 
         # Authentication
         self.auth_params = {
@@ -100,6 +102,7 @@ class Zephyr(Manufacturer):
         """
         TODO
         """
+        # TODO Is it appropriate to log from this method?
         # Input raw data has 4 fields:
         #   - errorDesc: Potentially useful for error handling, will keep a note
         #   of it. So far has just had None
@@ -114,21 +117,37 @@ class Zephyr(Manufacturer):
         #   - hourly average on the hour
         #   - 8 hour average at midnight and 8am and 4pm
         raw_data = raw_data["data"]
-        raw_data = raw_data["Unaveraged"]
+        raw_data = raw_data[self.averaging_window]
 
         # This data has 2 fields:
         #   slotA and slotB.
         # So far I've never seen slotA populated, but best to check
-        if raw_data["slotB"] is None:
-            logging.warning("slotB is empty")
+        try:
+            parsed_data = raw_data[self.slot]
+            if parsed_data is None:
+                raise KeyError
+        except KeyError:
+            logging.warning("Chosen slot '{}' is empty".format(self.slot))
+            # See if have data in another slot
+            slot_keys = list(raw_data.keys())
+            if self.slot in slot_keys:
+                slot_keys.remove(self.slot)
 
-            if raw_data["slotA"] is None:
-                logging.warning("slotA is also empty")
-            else:
-                logging.info("slotA has data so will pull it")
-                parsed_data = raw_data["slotA"]
-        else:
-            parsed_data = raw_data["slotB"]
+            if len(slot_keys) == 1:
+                logging.info(
+                    "There is one other slot, can see if it has data: {}".format(
+                        slot_keys
+                    )
+                )
+
+                remaining_slot = slot_keys[0]
+
+                if raw_data[remaining_slot] is None:
+                    logging.warning("{} is also empty.".format(remaining_slot))
+                    raise DataParseError("No data available in any slots.")
+                else:
+                    logging.info("{} has data so will pull it.".format(remaining_slot))
+                    parsed_data = raw_data[remaining_slot]
 
         # Parsed data is now a dictionary:
         # parsed_data= {measurand: {
@@ -146,9 +165,8 @@ class Zephyr(Manufacturer):
 
         # Check have same number of rows for each field
         nrows = [len(parsed_data[measurand]["data"]) for measurand in measurands]
-        same_length = len(set(nrows)) == 1
-        if not same_length:
-            logging.error(
+        if not len(set(nrows)) == 1:
+            raise DataParseError(
                 "Fields have differing number of observations: {}".format(nrows)
             )
 
