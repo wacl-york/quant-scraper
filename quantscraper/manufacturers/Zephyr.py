@@ -96,18 +96,16 @@ class Zephyr(Manufacturer):
         data = result.json()
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        # Has 4 fields:
+        # Input raw data has 4 fields:
         #   - errorDesc: Potentially useful for error handling, will keep a note
         #   of it. So far has just had None
         #   - data: Payload of interest
         #   - queryInfo: query params, not useful except potentially debugging
         #   - info: Looks like info for webpage, as has HMTL markup
-        raw = self._raw_data[deviceID]
 
         # data has 5 fields for different averaging strategies:
         #   - unaveraged (what I assume we want)
@@ -115,7 +113,7 @@ class Zephyr(Manufacturer):
         #   - daily average at midnight
         #   - hourly average on the hour
         #   - 8 hour average at midnight and 8am and 4pm
-        raw_data = raw["data"]
+        raw_data = raw_data["data"]
         raw_data = raw_data["Unaveraged"]
 
         # This data has 2 fields:

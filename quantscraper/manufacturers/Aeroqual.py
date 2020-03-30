@@ -133,12 +133,10 @@ class Aeroqual(Manufacturer):
 
         return result.content
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        raw_data = self._raw_data[deviceID]
         # TODO See if still need this conversion when get data from website
         # directly rather than from pickle
         raw_data = raw_data.decode("utf-8")

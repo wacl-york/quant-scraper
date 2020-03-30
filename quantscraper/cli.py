@@ -147,7 +147,7 @@ def main():
         # Particularly since it handles error logging
         manufacturer.scrape()
         logging.info("Parsing raw data into CSV.")
-        manufacturer.parse_to_csv()
+        manufacturer.process()
 
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")

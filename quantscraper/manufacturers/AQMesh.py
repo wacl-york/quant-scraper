@@ -115,13 +115,10 @@ class AQMesh(Manufacturer):
         data = result.json()["Data"]
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        raw_data = self._raw_data[deviceID]
-
         # Combine header and data into 1 list
         header = [h["Header"] for h in raw_data["Headers"]]
         clean_data = raw_data["Rows"]

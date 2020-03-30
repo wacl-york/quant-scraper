@@ -76,12 +76,11 @@ class MyQuantAQ(Manufacturer):
 
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        # List of dicts, each dict corresponds to a row
+        # Raw data in format of list of dicts, each dict corresponds to a row
         # The main thing to look out for is that while the dictionary is
         # primarily in the format measurand: value, the 'geo' index holds a
         # secondary dict, which contains 'lat' and 'lon'.
@@ -91,24 +90,23 @@ class MyQuantAQ(Manufacturer):
         # columns here that are only present in the raw data and not the final
         # data (i.e. no2_ae and no2_we), and it would be better to have the same
         # code work for both raw and final data.
-        raw = self._raw_data[deviceID]
-        nrows = len(raw)
+        nrows = len(raw_data)
         if nrows < 1:
             logging.warning("No data found")
             return None
 
         # Don't need url + sn and will handle geo separately
-        measurands = list(raw[0].keys())
+        measurands = list(raw_data[0].keys())
         measurands.remove("geo")
         measurands.remove("url")
         measurands.remove("sn")
 
         clean_data = []
         for i in range(nrows):
-            row = [raw[i][measurand] for measurand in measurands]
+            row = [raw_data[i][measurand] for measurand in measurands]
             # Manually add lat/lon as in second level of dict
-            row.append(raw[i]["geo"]["lat"])
-            row.append(raw[i]["geo"]["lon"])
+            row.append(raw_data[i]["geo"]["lat"])
+            row.append(raw_data[i]["geo"]["lon"])
             clean_data.append(row)
 
         # Add headers

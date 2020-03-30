@@ -48,7 +48,7 @@ class Manufacturer(ABC):
         pass
 
     @abstractmethod
-    def process_device(self, deviceID):
+    def parse_to_csv(self, rawdata):
         """
         TODO
         """
@@ -89,20 +89,31 @@ class Manufacturer(ABC):
                 logging.error(traceback.format_exc())
                 self.raw_data[devid] = None
 
-    def parse_to_csv(self):
+    # TODO Better name?! preprocess? process_data?
+    def process(self):
         """
         TODO
         """
+        # TODO Like with scrape(), should this code below be handled in the CLI
+        # script? Is it fair for Manufacturer (a library class) to access
+        # logger?
         for devid in self.device_ids:
+            logging.info("Cleaning data from device {}...".format(devid))
             if self.raw_data[devid] is None:
-                logging.warning("No available raw data for device {}.".format(devid))
+                logging.warning("No available raw data")
                 continue
-            logging.info(
-                "Attempting to parse data into CSV for device {}...".format(devid)
-            )
-            self.clean_data[devid] = self.process_device(devid)
+            logging.info("Attempting to parse data into CSV")
+            self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
             logging.info(
                 "Parse successful. {} samples have been recorded.".format(
+                    len(self.clean_data[devid])
+                )
+            )
+            logging.info("SV for device {}...".format(devid))
+            # TODO Implement! And change interface to accept raw data
+            # self.clean_data[devid] = self.validate_data(self.clean_data[devid])
+            logging.info(
+                "Validation successful. There are {} samples with no errors.".format(
                     len(self.clean_data[devid])
                 )
             )
