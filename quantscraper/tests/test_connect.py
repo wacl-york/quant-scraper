@@ -9,6 +9,7 @@ import unittest
 import configparser
 from unittest.mock import patch, MagicMock, Mock
 from requests.exceptions import Timeout, HTTPError
+from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
@@ -115,15 +116,6 @@ class TestAeroqual(unittest.TestCase):
             mock_session.return_value = resp
             with self.assertRaises(LoginError):
                 res = self.aeroqual.connect()
-
-    def test_login_failure(self):
-        cfg2 = configparser.ConfigParser()
-        cfg2.read("example.ini")
-        cfg2.set("Aeroqual", "Username", "foo")
-        cfg2.set("Aeroqual", "Password", "foo")
-        aeroqual = Aeroqual.Aeroqual(cfg2)
-        with self.assertRaises(LoginError):
-            aeroqual.connect()
 
 
 class TestAQMesh(unittest.TestCase):
@@ -338,16 +330,20 @@ class TestZephyr(unittest.TestCase):
 
 class TestMyQuantAQ(unittest.TestCase):
     # Cannot test HTTP errors as quantaq API should do this for us
-    # Could pass in fake API token and check that error raised... can't really
-    # test opposite can I? I.e. is it safe/appropriate to pass in correct
-    # token and test that it is logged in correctly?
+    # Don't want to do any actual IO, so instead will just mock the
+    # quantaq.get_account() method raising an error, an indication that the
+    # login has failed
 
-    def test_error_incorrect_token(self):
-
+    def test_login_failure(self):
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
         cfg.set("QuantAQ", "api_token", "foo")
         myquantaq = MyQuantAQ.MyQuantAQ(cfg)
+        with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
+            # give mock api a mock return value, that raises DataReadError when
+            # .get_account() is called
+            mock_instance = Mock(get_account=Mock(side_effect=DataReadError))
+            mock_api.return_value = mock_instance
         with self.assertRaises(LoginError):
             res = myquantaq.connect()
 

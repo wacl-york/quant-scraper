@@ -52,7 +52,7 @@ class AQMesh(Manufacturer):
         self.data_params = {
             "CRUD": "READ",
             "Call": "telemetrytable",
-            "UniqueId": Template("{device}"),
+            "UniqueId": Template("${device}"),
             "Channels": Template(
                 "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
             ),

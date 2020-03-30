@@ -69,7 +69,7 @@ class MyQuantAQ(Manufacturer):
                 final_data=self.final_data,
                 params=dict(filter=self.query_string),
             )
-        except quantaq.DataReadError as ex:
+        except quantaq.baseapi.DataReadError as ex:
             raise DataDownloadError(
                 "Cannot read data from QuantAQ's website:\n{}".format(ex)
             ) from None
