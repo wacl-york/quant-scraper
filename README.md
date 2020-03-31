@@ -56,6 +56,8 @@ The development environment can be replicated by creating a new `conda` environm
 `conda env create -f environment.yml`
 
 This will create a `conda` environment called `QUANTscraper` and install all the dependencies.
+If it fails to install all dependencies then it should create an empty environment called `QUANTscraper`, which can be activated as below with the remaining dependencies installed as per the `Manual` instructions below.
+
 Use this environment by entering
 
 `conda activate QUANTscraper`
@@ -68,6 +70,7 @@ The scraper runs on Python 3.7 or higher, and requires a number of packages to b
   - `pandas`
   - `numpy`
   - `requests`
+  - `bs4`
 
 In addition to these packages, there is a [Python wrapper](https://github.com/quant-aq/py-quantaq) for accessing QuantAQ's API, which can be installed from GitHub using the following command:
 
