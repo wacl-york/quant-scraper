@@ -41,6 +41,18 @@ class TestAeroqual(unittest.TestCase):
         res = aeroqual.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
+    def test_empty_string(self):
+        # If have empty value (2 consecutive commas) then should get empty
+        # string in output CSV data.
+        # Have removed 2, 4, and 9
+        aeroqual = Aeroqual.Aeroqual(self.cfg)
+        raw_data = str.encode(
+            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
+        )
+        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+        res = aeroqual.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
     def test_fewer_lines_headers(self):
         # What happens if have fewer lines available than headers to skip?
         self.cfg.set("Aeroqual", "lines_skip", "6")
@@ -59,9 +71,11 @@ class TestAeroqual(unittest.TestCase):
         with self.assertRaises(DataParseError):
             aeroqual.parse_to_csv(raw_data)
 
-    def test_unequal_columns(self):
+    def test_missing_data(self):
         # Expect error to be thrown if have unbalanced columns
         # Have set third row to only have 2 values (7 & 8)
+        # This is an error as have no way of knowing if this missing value is
+        # from NO2, CO2, or O3
         self.cfg.set("Aeroqual", "lines_skip", "6")
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = str.encode(
@@ -112,6 +126,23 @@ class TestAQMesh(unittest.TestCase):
         res = aqmesh.parse_to_csv(raw_combined)
         self.assertEqual(res, exp)
 
+    def test_empty_string(self):
+        # If have empty strings but commas still present then should be
+        # parsable.
+        # Have removed 2, 4, and 9
+        aqmesh = AQMesh.AQMesh(self.cfg)
+        raw_headers = [
+            {"Header": "NO2", "Unit": "ug/m3"},
+            {"Header": "CO2", "Unit": "ug/m3"},
+            {"Header": "O3", "Unit": "ug/m3"},
+        ]
+        raw_data = [["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+        raw_combined = dict(Headers=raw_headers, Rows=raw_data)
+
+        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+        res = aqmesh.parse_to_csv(raw_combined)
+        self.assertEqual(res, exp)
+
     def test_unbalanced_headers_and_rows(self):
         # What happens if there are a different number of headers to rows
         # Have 2 headers but 3 columns
@@ -126,9 +157,11 @@ class TestAQMesh(unittest.TestCase):
         with self.assertRaises(DataParseError):
             aqmesh.parse_to_csv(raw_combined)
 
-    def test_unbalanced_rows(self):
+    def test_missing_data(self):
         # What happens if there are a different number of columns?
         # Second row only has 2 columns
+        # This should throw an error as have no way of knowing which value is
+        # missing. Is it NO2, or CO2 or O3? Cannot tell so need to alert user
         aqmesh = AQMesh.AQMesh(self.cfg)
         raw_headers = [
             {"Header": "NO2", "Unit": "ug/m3"},
@@ -225,11 +258,45 @@ class TestZephyr(unittest.TestCase):
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
         res = zephyr.parse_to_csv(raw)
         self.assertEqual(res, exp)
-
-    def test_unbalanced_data(self):
+        
+    def test_empty_strings(self):
+        # Test with empty strings
+        # Have removed 2, 4, 9
         zephyr = Zephyr.Zephyr(self.cfg)
 
+        # Put data in non-selected slot A, code should be able to recognise this
+        raw = {
+            "foo": "bar",
+            "data": {
+                "5mins": "foo",
+                "Unaveraged": {
+                    "slotA": {
+                        "CO2": {
+                            "header": {"CSVOrder": 1, "foo": "bar"},
+                            "data": ["", "5", "8"],
+                        },
+                        "O3": {
+                            "header": {"CSVOrder": 2, "foo": "bar"},
+                            "data": ["3", "6", ""],
+                        },
+                        "NO2": {
+                            "header": {"CSVOrder": 0, "foo": "bar"},
+                            "data": ["1", "", "7"],
+                        },
+                    }
+                },
+            },
+        }
+
+        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+        res = zephyr.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_missing_data(self):
+        zephyr = Zephyr.Zephyr(self.cfg)
         # O3 has 1 fewer observation
+        # This is an error as we aren't sure which timepoint is missing, and so
+        # cannot even add a 'missing data' flag for this observation.
         raw = {
             "foo": "bar",
             "data": {
@@ -305,8 +372,13 @@ class TestQuantAQ(unittest.TestCase):
         res = myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
-    def test_unequal_columns(self):
-        # Have removed CO2's second observation
+    def test_missing_data(self):
+        # Have removed CO2's second observation and O3's third
+        # Now, unlike the other 3 manufacturers, we can handle this missingness
+        # as each observation is directly tied to a timepoint.
+        # So if a measurand isn't available for a particular timepoint, then we
+        # can encode this.
+        # I'll use an empty string to denote missingness
         myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
 
         raw_data = {
@@ -322,14 +394,52 @@ class TestQuantAQ(unittest.TestCase):
                 {
                     "NO2": "7",
                     "CO2": "8",
-                    "O3": "9",
                     "geo": {"lat": "7.5", "lon": "8.5"},
                 },
             ],
         }
 
-        with self.assertRaises(DataParseError):
-            myquantaq.parse_to_csv(raw_data)
+        exp = [
+            ["NO2", "CO2", "O3", "lat", "lon"],
+            ["1", "2", "3", "3.5", "4.5"],
+            ["4", "", "6", "5.5", "6.5"],
+            ["7", "8", "", "7.5", "8.5"],
+        ]
+        res = myquantaq.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_empty_string(self):
+        # Can check parsing works when data contains empty strings
+        # This will produce the same output as if the data was available but an
+        # empty string, might want to differentiate between the 2 later on
+        myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
+
+        raw_data = {
+            "raw": "foo",
+            "final": [
+                {
+                    "NO2": "1",
+                    "CO2": "",
+                    "O3": "3",
+                    "geo": {"lat": "", "lon": "4.5"},
+                },
+                {"NO2": "4", "O3": "6", "geo": {"lat": "5.5", "lon": "6.5"}},
+                {
+                    "NO2": "7",
+                    "CO2": "",
+                    "geo": {"lat": "7.5", "lon": ""},
+                },
+            ],
+        }
+
+        exp = [
+            ["NO2", "CO2", "O3", "lat", "lon"],
+            ["1", "", "3", "", "4.5"],
+            ["4", "", "6", "5.5", "6.5"],
+            ["7", "", "", "7.5", ""],
+        ]
+        res = myquantaq.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
 
 
 if __name__ == "__main__":

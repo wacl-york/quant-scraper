@@ -116,13 +116,15 @@ class MyQuantAQ(Manufacturer):
         # I.e. see if any dicts exist in data, and if so then expand them
         clean_data = []
         for i in range(nrows):
-            try:
-                row = [raw_data[i][measurand] for measurand in measurands]
-            except KeyError:
-                # TODO This should just return empty value, let QA check handle
-                # whether this is an error or not
-                raise DataParseError("Missing value.")
-            # Manually add lat/lon as in second level of dict
+            row = []
+            for measurand in measurands:
+                try:
+                    value = raw_data[i][measurand]
+                except KeyError:
+                    # TODO Currently use empty string to denote missingness,
+                    # should we use a custom error code to help later debugging?
+                    value = ""
+                row.append(value)
             row.append(raw_data[i]["geo"]["lat"])
             row.append(raw_data[i]["geo"]["lon"])
             clean_data.append(row)
