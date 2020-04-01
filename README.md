@@ -1,3 +1,5 @@
+![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=master)
+
 # QUANTscraper
 
 Scrapes data from the websites of air quality instrumentation system manufacturers for the QUANT project.
