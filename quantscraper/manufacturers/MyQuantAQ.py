@@ -3,6 +3,7 @@ import sys
 from datetime import datetime, timedelta
 from string import Template
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 import quantaq
 
 # Need to avoid namespace issues with quantaq package
@@ -50,31 +51,43 @@ class MyQuantAQ(Manufacturer):
         Overrides super method as not using requests.
         """
         self.api_obj = quantaq.QuantAQ(self.api_token)
-        # TODO Error handle
-        return True
+        # Test connection by running basic query
+        try:
+            self.api_obj.get_account()
+        except quantaq.baseapi.DataReadError as ex:
+            raise LoginError(
+                "Could not connect to quantaq API.\n{}".format(ex)
+            ) from None
 
     def scrape_device(self, deviceID):
         """
         TODO
         """
-        # try:
-        data = self.api_obj.get_data(
-            sn=deviceID,
-            final_data=self.final_data,
-            params=dict(filter=self.query_string),
-        )
-        # except quantaq.DataReadError:
-        #    print("Cannot read data from QuantAQ's website")
-        #    return None
+        try:
+            raw = self.api_obj.get_data(
+                sn=deviceID, final_data=False, params=dict(filter=self.query_string),
+            )
+        except quantaq.baseapi.DataReadError as ex:
+            raise DataDownloadError(
+                "Cannot read data from QuantAQ's website:\n{}".format(ex)
+            ) from None
+        try:
+            final = self.api_obj.get_data(
+                sn=deviceID, final_data=True, params=dict(filter=self.query_string),
+            )
+        except quantaq.baseapi.DataReadError as ex:
+            raise DataDownloadError(
+                "Cannot read data from QuantAQ's website:\n{}".format(ex)
+            ) from None
 
+        data = {"raw": raw, "final": final}
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        # List of dicts, each dict corresponds to a row
+        # Raw data in format of list of dicts, each dict corresponds to a row
         # The main thing to look out for is that while the dictionary is
         # primarily in the format measurand: value, the 'geo' index holds a
         # secondary dict, which contains 'lat' and 'lon'.
@@ -84,24 +97,36 @@ class MyQuantAQ(Manufacturer):
         # columns here that are only present in the raw data and not the final
         # data (i.e. no2_ae and no2_we), and it would be better to have the same
         # code work for both raw and final data.
-        raw = self._raw_data[deviceID]
-        nrows = len(raw)
+        raw_data = raw_data["final"]
+        nrows = len(raw_data)
         if nrows < 1:
             logging.warning("No data found")
             return None
 
         # Don't need url + sn and will handle geo separately
-        measurands = list(raw[0].keys())
-        measurands.remove("geo")
-        measurands.remove("url")
-        measurands.remove("sn")
+        measurands = list(raw_data[0].keys())
+        if "geo" in measurands:
+            measurands.remove("geo")
+        if "url" in measurands:
+            measurands.remove("url")
+        if "sn" in measurands:
+            measurands.remove("sn")
 
+        # TODO Could automate the handling of lat/lon?
+        # I.e. see if any dicts exist in data, and if so then expand them
         clean_data = []
         for i in range(nrows):
-            row = [raw[i][measurand] for measurand in measurands]
-            # Manually add lat/lon as in second level of dict
-            row.append(raw[i]["geo"]["lat"])
-            row.append(raw[i]["geo"]["lon"])
+            row = []
+            for measurand in measurands:
+                try:
+                    value = raw_data[i][measurand]
+                except KeyError:
+                    # TODO Currently use empty string to denote missingness,
+                    # should we use a custom error code to help later debugging?
+                    value = ""
+                row.append(value)
+            row.append(raw_data[i]["geo"]["lat"])
+            row.append(raw_data[i]["geo"]["lon"])
             clean_data.append(row)
 
         # Add headers

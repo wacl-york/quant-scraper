@@ -1,9 +1,11 @@
 import csv
 import os
 import logging
+import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
+from quantscraper.utils import DataDownloadError
 
 
 class Manufacturer(ABC):
@@ -46,7 +48,7 @@ class Manufacturer(ABC):
         pass
 
     @abstractmethod
-    def process_device(self, deviceID):
+    def parse_to_csv(self, rawdata):
         """
         TODO
         """
@@ -65,50 +67,53 @@ class Manufacturer(ABC):
         self._raw_data = {}
         self._clean_data = {}
 
-    # TODO Should this be super implementation, or just copy the exact same
-    # method for both the Aeroqual and AQMesh subclasses? These 2 manufacturers
-    # use this method, but the other 2 have their own instance. Given that would
-    # need to have session, auth_headers, auth_params, auth_url as all abstract
-    # attrs, maybe should just make an abstract connect() method and copy paste
-    # this implementation twice
     @abstractmethod
     def connect(self):
         """
         TODO
         """
-        self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
 
     def scrape(self):
         """
         TODO
         """
+        # TODO Should this code be here, or should it be in the CLI script, so
+        # that all logging is run in once place?
         for devid in self.device_ids:
-            logging.info("Attempting to scrape data for device {}...".format(devid))
-            self.raw_data[devid] = self.scrape_device(devid)
-            logging.info("Scrape successful.")
+            try:
+                logging.info("Attempting to scrape data for device {}...".format(devid))
+                self.raw_data[devid] = self.scrape_device(devid)
+                logging.info("Scrape successful.")
+            except DataDownloadError as ex:
+                logging.error("Unable to download data for device {}.".format(devid))
+                logging.error(traceback.format_exc())
+                self.raw_data[devid] = None
 
-    def parse_to_csv(self):
+    # TODO Better name?! preprocess? process_data?
+    def process(self):
         """
         TODO
         """
+        # TODO Like with scrape(), should this code below be handled in the CLI
+        # script? Is it fair for Manufacturer (a library class) to access
+        # logger?
         for devid in self.device_ids:
+            logging.info("Cleaning data from device {}...".format(devid))
             if self.raw_data[devid] is None:
-                logging.warning("No available raw data for device {}.".format(devid))
+                logging.warning("No available raw data")
                 continue
-            logging.info(
-                "Attempting to parse data into CSV for device {}...".format(devid)
-            )
-            self.clean_data[devid] = self.process_device(devid)
+            logging.info("Attempting to parse data into CSV")
+            self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
             logging.info(
                 "Parse successful. {} samples have been recorded.".format(
+                    len(self.clean_data[devid])
+                )
+            )
+            logging.info("SV for device {}...".format(devid))
+            # TODO Implement! And change interface to accept raw data
+            # self.clean_data[devid] = self.validate_data(self.clean_data[devid])
+            logging.info(
+                "Validation successful. There are {} samples with no errors.".format(
                     len(self.clean_data[devid])
                 )
             )

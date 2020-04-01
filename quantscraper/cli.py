@@ -12,7 +12,11 @@ import logging
 import argparse
 import configparser
 from datetime import date, timedelta, datetime, time
+import requests as re
+import quantaq
+import traceback
 
+from quantscraper.utils import LoginError
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
@@ -127,17 +131,27 @@ def main():
         logging.info("Manufacturer: {}".format(man_class.name))
         manufacturer = man_class(cfg)
 
-        logging.info("Attempting to connect...")
-        if manufacturer.connect():
+        try:
+            logging.info("Attempting to connect...")
+            manufacturer.connect()
             logging.info("Connection established")
-        else:
-            logging.warning("Cannot establish connection to {}.".format(man_class.name))
+        except LoginError:
+            logging.error("Cannot establish connection to {}.".format(man_class.name))
+            logging.error(traceback.format_exc())
             continue
 
         logging.info("Scraping all devices.")
+        # TODO Scrape function just iterates through all devices and calls
+        # .scrape_device().
+        # Should this be instead be run from here, rather than Manufacturer?
+        # Particularly since it handles error logging
         manufacturer.scrape()
-        logging.info("Parsing raw data into CSV.")
-        manufacturer.parse_to_csv()
+
+        # TODO Ditto above issue about whether the iterating through each device
+        # should be run here rather than from Manufacturer, so that only have 1
+        # place that is logging.
+        logging.info("Processing raw data into validated cleaned data.")
+        manufacturer.process()
 
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")

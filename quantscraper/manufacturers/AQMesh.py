@@ -3,6 +3,8 @@ from string import Template
 from datetime import datetime
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
+from bs4 import BeautifulSoup
 
 
 class AQMesh(Manufacturer):
@@ -50,7 +52,7 @@ class AQMesh(Manufacturer):
         self.data_params = {
             "CRUD": "READ",
             "Call": "telemetrytable",
-            "UniqueId": Template("{device}"),
+            "UniqueId": Template("${device}"),
             "Channels": Template(
                 "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
             ),
@@ -76,17 +78,21 @@ class AQMesh(Manufacturer):
         TODO
         """
         self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        # TODO How should error handling be done? Not enough to just pass False up,
-        # as want to log information about why error occurred. Should this be
-        # done in here, or in main script?
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
+
+        try:
+            result = self.session.post(
+                self.auth_url, data=self.auth_params, headers=self.auth_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
+
+        # Check for authentication
+        soup = BeautifulSoup(result.text, features="html.parser")
+        login_div = soup.find(id="loginBox")
+        if login_div is not None:
+            self.session.close()
+            raise LoginError("Login failed")
 
     def scrape_device(self, deviceID):
         """
@@ -96,26 +102,39 @@ class AQMesh(Manufacturer):
         this_params["UniqueId"] = this_params["UniqueId"].substitute(device=deviceID)
         this_params["Channels"] = this_params["Channels"].substitute(device=deviceID)
 
-        result = self.session.get(
-            self.data_url, params=this_params, headers=self.data_headers,
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot download data")
-            return None
-        data = result.json()["Data"]
+        try:
+            result = self.session.get(
+                self.data_url, params=this_params, headers=self.data_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download data.\n{}".format(str(ex))
+            ) from None
 
+        data = result.json()["Data"]
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        raw_data = self._raw_data[deviceID]
-
         # Combine header and data into 1 list
         header = [h["Header"] for h in raw_data["Headers"]]
         clean_data = raw_data["Rows"]
+
+        # Check have consistent number of columns
+        ncols = [len(row) for row in clean_data]
+        if len(set(ncols)) > 1:
+            raise DataParseError("Have differing number of columns: {}".format(ncols))
+
+        if ncols[0] != len(header):
+            raise DataParseError(
+                "Have differing number of columns ({}) to headers ({})".format(
+                    ncols[0], len(header)
+                )
+            )
+
         clean_data.insert(0, header)
 
         return clean_data

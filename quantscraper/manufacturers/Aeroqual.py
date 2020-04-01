@@ -1,10 +1,10 @@
-import logging
-import sys
 from datetime import datetime
-import requests as re
-from quantscraper.manufacturers.Manufacturer import Manufacturer
 from string import Template
 import csv
+import requests as re
+from bs4 import BeautifulSoup
+from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Aeroqual(Manufacturer):
@@ -78,70 +78,96 @@ class Aeroqual(Manufacturer):
 
         super().__init__(cfg)
 
-    # TODO Ditto issue with AQMesh about whose responsibility it is to log this
-    # error
     def connect(self):
         """
         TODO
         """
         self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect.")
-            return False
-        else:
-            return True
+        try:
+            result = self.session.post(
+                self.auth_url, data=self.auth_params, headers=self.auth_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
+
+        # Check for authentication
+        soup = BeautifulSoup(result.text, features="html.parser")
+        login_div = soup.find(id="loginContent")
+        if login_div is not None:
+            self.session.close()
+            raise LoginError("Login failed")
 
     def scrape_device(self, deviceID):
         """
         TODO
         """
+        try:
+            result = self.session.post(
+                self.select_device_url,
+                json=[self.select_device_string.substitute(device=deviceID)],
+                headers=self.select_device_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError("Cannot select device.\n{}".format(ex)) from None
 
-        # TODO Multiple returns, not ideal
-
-        result = self.session.post(
-            self.select_device_url,
-            json=[self.select_device_string.substitute(device=deviceID)],
-            headers=self.select_device_headers,
-        )
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot select device {}".format(deviceID))
-            return None
-
-        result = self.session.post(
-            self.data_url, data=self.data_params, headers=self.data_headers
-        )
-        if result.status_code != re.codes["ok"]:
+        try:
+            result = self.session.post(
+                self.data_url, data=self.data_params, headers=self.data_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
             if result.status_code == re.codes["no_content"]:
-                logging.info("No data available for selected date range.")
+                msg = "No data available for selected date range."
             else:
-                logging.error("Unable to generate data for selected date range.")
-            return None
+                msg = "Unable to generate data for selected date range."
+            msg = msg + "\n" + str(ex)
+            raise DataDownloadError(msg) from None
 
-        result = self.session.get(self.dl_url, headers=self.dl_headers)
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot download data")
-            return None
+        try:
+            result = self.session.get(self.dl_url, headers=self.dl_headers)
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError("Cannot download data\n{}".format(ex)) from None
 
         return result.content
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        raw_data = self._raw_data[deviceID]
-        # TODO See if still need this conversion when get data from website
-        # directly rather than from pickle
+        # Raw data comes in as a byte-string
         raw_data = raw_data.decode("utf-8")
 
-        # TODO error handle if no raw lines
+        # Split into rows and run basic validation
         raw_lines = raw_data.split("\r\n")
-        # This data comes with a number of metadata rows that we don't need to
-        # store
-        raw_lines = raw_lines[self.lines_skip :]
 
-        lines = csv.reader(raw_lines, delimiter=",")
-        return [r for r in lines]
+        if len(raw_lines) < self.lines_skip:
+            raise DataParseError(
+                "Fewer lines ({}) available than expected number of headers ({})".format(
+                    len(raw_lines), self.lines_skip
+                )
+            )
+
+        header_removed = raw_lines[self.lines_skip :]
+        if len(header_removed) == 0:
+            raise DataParseError("Have no rows of data available.")
+
+        # Parse into CSV. reader returns generator so turn into list
+        data = csv.reader(header_removed, delimiter=",")
+        data = [row for row in data]
+
+        # Check have consistent number of columns.
+        # Only test have > 1 column as unsure what would be expected number, but
+        # can be fairly sure that just 1 column is a sign something's gone wrong
+        ncols = [len(row) for row in data]
+        unique_ncols = set(ncols)
+        if len(unique_ncols) > 1:
+            raise DataParseError(
+                "Rows have differing number of columns: {}.".format(unique_ncols)
+            )
+        if ncols[0] == 1:
+            raise DataParseError("Rows only have 1 column.")
+
+        return data

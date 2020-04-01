@@ -1,8 +1,11 @@
+import sys
 import logging
 from datetime import datetime
 from string import Template
+from bs4 import BeautifulSoup
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Zephyr(Manufacturer):
@@ -20,6 +23,8 @@ class Zephyr(Manufacturer):
         """
         self.auth_url = cfg.get(self.name, "auth_url")
         self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.averaging_window = cfg.get(self.name, "averaging_window")
+        self.slot = cfg.get(self.name, "slot")
 
         # Authentication
         self.auth_params = {
@@ -46,6 +51,9 @@ class Zephyr(Manufacturer):
             raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"
         )
 
+        # This field gets set in self.connect()
+        self.api_token = None
+
         super().__init__(cfg)
 
     def connect(self):
@@ -53,50 +61,54 @@ class Zephyr(Manufacturer):
         Overrides super method as needs to obtain API token
         """
         self.session = re.Session()
-        result = self.session.post(
-            self.auth_url, data=self.auth_params, headers=self.auth_headers
-        )
 
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot connect")
-            return False
-        else:
-            self.api_token = result.json()["access_token"]
-            return True
+        try:
+            result = self.session.post(
+                self.auth_url, data=self.auth_params, headers=self.auth_headers
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise LoginError("HTTP error when logging in.\n{}".format(ex)) from None
+
+        # Set api_token if above didn't raise HTTPError at any non-200 status
+        self.api_token = result.json()["access_token"]
+        # Would typically like to confirm authentication here, but this post
+        # request returns an access token for _any_ username/password
+        # combination. Only find out later when try to pull data if credentials
+        # are incorrect.
 
     def scrape_device(self, deviceID):
         """
         TODO
         """
-        # TODO Replace ALL format calls with substitute where allowing user
-        # input
         this_url = self.data_url.substitute(
             device=deviceID,
             token=self.api_token,
             start=self.start_date,
             end=self.end_date,
         )
-        # TODO Multiple returns, not ideal
-        result = self.session.get(this_url, headers=self.data_headers,)
-        if result.status_code != re.codes["ok"]:
-            logging.error("Error: cannot download data")
-            return None
-        data = result.json()
+        try:
+            result = self.session.get(this_url, headers=self.data_headers,)
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download data.\n{}".format(str(ex))
+            ) from None
 
+        data = result.json()
         return data
 
-    def process_device(self, deviceID):
+    def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # TODO Can change this to use property getter?
-        # Has 4 fields:
+        # TODO Is it appropriate to log from this method?
+        # Input raw data has 4 fields:
         #   - errorDesc: Potentially useful for error handling, will keep a note
         #   of it. So far has just had None
         #   - data: Payload of interest
         #   - queryInfo: query params, not useful except potentially debugging
         #   - info: Looks like info for webpage, as has HMTL markup
-        raw = self._raw_data[deviceID]
 
         # data has 5 fields for different averaging strategies:
         #   - unaveraged (what I assume we want)
@@ -104,22 +116,38 @@ class Zephyr(Manufacturer):
         #   - daily average at midnight
         #   - hourly average on the hour
         #   - 8 hour average at midnight and 8am and 4pm
-        raw_data = raw["data"]
-        raw_data = raw_data["Unaveraged"]
+        raw_data = raw_data["data"]
+        raw_data = raw_data[self.averaging_window]
 
         # This data has 2 fields:
         #   slotA and slotB.
         # So far I've never seen slotA populated, but best to check
-        if raw_data["slotB"] is None:
-            logging.warning("slotB is empty")
+        try:
+            parsed_data = raw_data[self.slot]
+            if parsed_data is None:
+                raise KeyError
+        except KeyError:
+            logging.warning("Chosen slot '{}' is empty".format(self.slot))
+            # See if have data in another slot
+            slot_keys = list(raw_data.keys())
+            if self.slot in slot_keys:
+                slot_keys.remove(self.slot)
 
-            if raw_data["slotA"] is None:
-                logging.warning("slotA is also empty")
-            else:
-                logging.info("slotA has data so will pull it")
-                parsed_data = raw_data["slotA"]
-        else:
-            parsed_data = raw_data["slotB"]
+            if len(slot_keys) == 1:
+                logging.info(
+                    "There is one other slot, can see if it has data: {}".format(
+                        slot_keys
+                    )
+                )
+
+                remaining_slot = slot_keys[0]
+
+                if raw_data[remaining_slot] is None:
+                    logging.warning("{} is also empty.".format(remaining_slot))
+                    raise DataParseError("No data available in any slots.")
+                else:
+                    logging.info("{} has data so will pull it.".format(remaining_slot))
+                    parsed_data = raw_data[remaining_slot]
 
         # Parsed data is now a dictionary:
         # parsed_data= {measurand: {
@@ -137,9 +165,8 @@ class Zephyr(Manufacturer):
 
         # Check have same number of rows for each field
         nrows = [len(parsed_data[measurand]["data"]) for measurand in measurands]
-        same_length = len(set(nrows)) == 1
-        if not same_length:
-            logging.error(
+        if not len(set(nrows)) == 1:
+            raise DataParseError(
                 "Fields have differing number of observations: {}".format(nrows)
             )
 
