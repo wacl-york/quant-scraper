@@ -27,7 +27,7 @@ jobs:
     - name: Lint with pylint
       run: |
         pip install pylint
-        pylint .
+        pylint quantscraper
     - name: Test with coverage
       run: |
         pip install coverage
