@@ -35,10 +35,14 @@ class TestAeroqual(unittest.TestCase):
     # Mock a status code return of 200
     def test_success(self):
         resp = build_mock_response(text="Foo")
+        post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
-            mock_session.return_value = Mock(post=Mock(return_value=resp))
+            mock_session.return_value = Mock(post=post_mock)
             try:
                 self.aeroqual.connect()
+                post_mock.assert_called_once_with(self.aeroqual.auth_url,
+                                                  data=self.aeroqual.auth_params,
+                                                  headers=self.aeroqual.auth_headers)
             except:
                 self.fail("Connect raised exception with status code 200")
 
@@ -100,10 +104,14 @@ class TestAQMesh(unittest.TestCase):
     # Mock a status code return of 200
     def test_success(self):
         resp = build_mock_response(text="foo")
+        post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
-            mock_session.return_value = Mock(post=Mock(return_value=resp))
+            mock_session.return_value = Mock(post=post_mock)
             try:
                 self.aqmesh.connect()
+                post_mock.assert_called_once_with(self.aqmesh.auth_url,
+                                                 data=self.aqmesh.auth_params,
+                                                 headers=self.aqmesh.auth_headers)
             except:
                 self.fail("Connect raised exception with status code 200")
 
@@ -170,13 +178,17 @@ class TestZephyr(unittest.TestCase):
     def test_success(self):
         zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(json_data={"access_token": "foo"}, text="foo")
+        post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
-            mock_session.return_value = Mock(post=Mock(return_value=resp))
+            mock_session.return_value = Mock(post=post_mock)
             try:
                 zephyr.connect()
+                self.assertEqual(zephyr.api_token, "foo")
+                post_mock.assert_called_once_with(zephyr.auth_url,
+                                                  data=zephyr.auth_params,
+                                                  headers=zephyr.auth_headers)
             except:
                 self.fail("Connect raised exception with status code 200")
-            self.assertEqual(zephyr.api_token, "foo")
 
     # Should definitely be able to DRY these HTTP errors once have more
     # familiarity with mock library.
@@ -244,18 +256,38 @@ class TestMyQuantAQ(unittest.TestCase):
     # quantaq.get_account() method raising an error, an indication that the
     # login has failed
 
+    def test_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        # Dummy API token just in case
+        cfg.set("QuantAQ", "api_token", "foo")
+        myquantaq = MyQuantAQ.MyQuantAQ(cfg)
+        # mock the get_account method that is called to test authentication
+        get_account_mock = Mock(return_value='foo', side_effect=None)
+        with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
+            # Ensure the patched Class returns a Mock instance
+            mock_api.return_value = Mock(get_account = get_account_mock)
+            try:
+                myquantaq.connect()
+                get_account_mock.assert_called_once()
+            except:
+                self.fail("Error during supposedly successful connection.")
+
     def test_login_failure(self):
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
+        # Dummy API token just in case
         cfg.set("QuantAQ", "api_token", "foo")
         myquantaq = MyQuantAQ.MyQuantAQ(cfg)
+        # give mock api a mock return value, that raises DataReadError when
+        # .get_account() is called
+        get_account_mock = Mock(side_effect=DataReadError)
         with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
-            # give mock api a mock return value, that raises DataReadError when
-            # .get_account() is called
-            mock_instance = Mock(get_account=Mock(side_effect=DataReadError))
-            mock_api.return_value = mock_instance
-        with self.assertRaises(LoginError):
-            res = myquantaq.connect()
+            mock_api.return_value = Mock(get_account=get_account_mock)
+            with self.assertRaises(LoginError):
+                myquantaq.connect()
+                get_account_mock.assert_called_once()
+
 
 
 # TODO Test only called once
