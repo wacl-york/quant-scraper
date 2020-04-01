@@ -31,4 +31,4 @@ jobs:
     - name: Lint with pylint
       run: |
         pip install pylint
-        pylint quantscraper
+        pylint --exit-zero quantscraper
