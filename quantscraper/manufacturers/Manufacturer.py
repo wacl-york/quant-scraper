@@ -251,7 +251,11 @@ class Manufacturer(ABC):
         if os.path.isfile(filename):
             raise DataSavingError("File {} already exists.".format(filename))
 
-        with open(filename, "w") as outfile:
-            json.dump(data, outfile)
-
+        try:
+            with open(filename, "w") as outfile:
+                json.dump(data, outfile)
+        except json.decoder.JSONDecodeError:
+            raise DataSavingError(
+                "Unable to serialize raw data to json."
+            )
     # TODO Need to document device_ids parameter as abstract

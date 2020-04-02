@@ -8,6 +8,7 @@
 
 import unittest
 import configparser
+from json.decoder import JSONDecodeError
 from string import Template
 from unittest.mock import patch, MagicMock, Mock, call, mock_open
 from requests.exceptions import Timeout, HTTPError
@@ -220,6 +221,26 @@ class Test_SaveRawData(unittest.TestCase):
                 with self.assertRaises(DataSavingError):
                     aeroqual._save_raw_data("path/to/fn.json", [[1, 2, 3], [4, 5,
                                                                              6]])
+
+    # This method doesn't work as can't mock JSONDecodeError.
+    # It needs to be instantiated which I can't mock
+    #def test_serialize_error(self):
+    #    # Check that the DataSavingError is raised when can't serialize json
+    #    aeroqual = Aeroqual.Aeroqual(self.cfg)
+    #    m = mock_open()
+
+    #    with patch("quantscraper.manufacturers.Manufacturer.open", m):
+    #        # Mock file existing
+    #        with patch("quantscraper.manufacturers.Manufacturer.os.path") as mock_path:
+    #            mock_path.isfile = Mock(return_value=False)
+
+    #            with patch("quantscraper.manufacturers.Manufacturer.json") as mock_json:
+    #                mock_dump = Mock(side_effect=JSONDecodeError("", "{'foo':'bar'}", 0))
+    #                mock_json.dump = mock_dump
+
+    #                with self.assertRaises(DataSavingError):
+    #                    aeroqual._save_raw_data("path/to/fn.json", [[1, 2, 3], [4, 5,
+    #                                                                             6]])
 
 
 class TestSaveRawData(unittest.TestCase):
