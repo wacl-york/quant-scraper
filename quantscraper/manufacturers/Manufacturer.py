@@ -5,7 +5,7 @@ import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
-from quantscraper.utils import DataDownloadError
+from quantscraper.utils import DataDownloadError, DataSavingError
 
 
 class Manufacturer(ABC):
@@ -17,9 +17,12 @@ class Manufacturer(ABC):
         """
         TODO
         """
-        return self._raw_data
+        return self._clean_data
 
     @clean_data.setter
+    # TODO Clean this up as currently doesn't work: 
+        # can only have 1 non-self argument. Can pass a dict mapping 
+        # {devID: value} as second argument
     def clean_data(self, devID, value):
         """
         TODO
@@ -120,7 +123,7 @@ class Manufacturer(ABC):
 
     def save_clean_data(self, folder, start_time, end_time):
         """
-        Saves clean data to file.
+        Iterates through all its devices and saves their cleaned data to disk.
 
         Uses the following template filename:
 
@@ -140,29 +143,45 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            logging.error(
+            raise DataSavingError(
                 "Folder {} doesn't exist, cannot save clean data.".format(folder)
             )
-        else:
-            filename = Template("${man}_${device}_${start}_${end}.csv")
-            for devid in self.device_ids:
-                fn = filename.substitute(
-                    man=self.name, device=devid, start=start_time, end=end_time
+
+        filename = Template("${man}_${device}_${start}_${end}.csv")
+        for devid in self.device_ids:
+            fn = filename.substitute(
+                man=self.name, device=devid, start=start_time, end=end_time
+            )
+
+            data = self.clean_data[devid]
+            if data is None:
+                logging.warning(
+                    "No clean data to save for device {}.".format(devid)
                 )
+                continue
 
-                data = self.clean_data[devid]
-                if data is None:
-                    logging.warning(
-                        "No clean data to save for device {}.".format(devid)
-                    )
-                    continue
+            full_path = os.path.join(folder, fn)
+            logging.info("Saving data to file: {}".format(full_path))
+            self._save_clean_data(full_path, data)
 
-                # TODO Add more error handling (what exceptions to look out
-                # for?)
-                full_path = os.path.join(folder, fn)
-                logging.info("Saving data to file: {}".format(full_path))
-                with open(full_path, "w") as outfile:
-                    writer = csv.writer(outfile, delimiter=",")
-                    writer.writerows(data)
+    def _save_clean_data(self, filename, data):
+        """
+        Actual function that saves data.
+
+        Uses the following template filename:
+
+        Args:
+            - filename (str): Location to save data to
+            - data (list): Data in CSV (2D list) format to be saved.
+
+        Returns:
+            None. Saves data to disk as CSV files as a side-effect.
+        """
+        if os.path.isfile(filename):
+            raise DataSavingError("File {} already exists.".format(filename))
+
+        with open(filename, "w") as outfile:
+            writer = csv.writer(outfile, delimiter=",")
+            writer.writerows(data)
 
     # TODO Need to document device_ids parameter as abstract

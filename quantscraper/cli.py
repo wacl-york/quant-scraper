@@ -147,6 +147,17 @@ def main():
         # Particularly since it handles error logging
         manufacturer.scrape()
 
+        # TODO Whose responsibility is it to generate filename? CLI script or
+        # manufacturer? Currently filename is built in
+        # Manufacturer.save_raw_data from these input values
+        if cfg.getboolean("Main", "save_raw_data"):
+            logging.info("Saving raw data to file.")
+            manufacturer.save_raw_data(
+                cfg.get("Main", "folder_raw_data"),
+                cfg.get("Main", "start_time"),
+                cfg.get("Main", "end_time"),
+            )
+
         # TODO Ditto above issue about whether the iterating through each device
         # should be run here rather than from Manufacturer, so that only have 1
         # place that is logging.
