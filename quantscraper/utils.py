@@ -20,5 +20,11 @@ class DataDownloadError(Exception):
 
 class DataParseError(Exception):
     """
-    Custom exception class for situations where a parse into CSV has failed.
+    Custom exception class for situations where parsing into CSV has failed.
+    """
+
+
+class DataSavingError(Exception):
+    """
+    Custom exception class for situations where saving a file has failed.
     """
