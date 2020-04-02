@@ -112,7 +112,13 @@ class AQMesh(Manufacturer):
                 "Cannot download data.\n{}".format(str(ex))
             ) from None
 
-        data = result.json()["Data"]
+        try:
+            data = result.json()["Data"]
+        except json.decoder.JSONDecodeError:
+            raise DataDownloadError(
+                "No 'Data' attribute in downloaded json."
+            )
+
         return data
 
     def parse_to_csv(self, raw_data):
