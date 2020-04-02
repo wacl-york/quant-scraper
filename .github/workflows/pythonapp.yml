@@ -24,11 +24,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .
-    - name: Test with coverage
+        # Install testing dependencies
+        pip install coverage, pylint
+    - name: Run unittests
       run: |
-        pip install coverage
         coverage run -m unittest discover -s quantscraper/tests -b
     - name: Lint with pylint
       run: |
-        pip install pylint
         pylint --exit-zero quantscraper
+    - name: Generate coverage report
+      run: |
+        # How to view coverage report later?
+        coverage
