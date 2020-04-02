@@ -77,7 +77,7 @@ class TestAeroqual(unittest.TestCase):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200,
-                                                         content="DummyData"))
+                                                         text="DummyData"))
         session_return = Mock(
             post=mock_post, get=mock_get
         )

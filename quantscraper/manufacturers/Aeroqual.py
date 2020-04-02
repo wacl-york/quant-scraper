@@ -131,15 +131,13 @@ class Aeroqual(Manufacturer):
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError("Cannot download data\n{}".format(ex)) from None
 
-        return result.content
+        raw = result.text
+        return raw
 
     def parse_to_csv(self, raw_data):
         """
         TODO
         """
-        # Raw data comes in as a byte-string
-        raw_data = raw_data.decode("utf-8")
-
         # Split into rows and run basic validation
         raw_lines = raw_data.split("\r\n")
 
