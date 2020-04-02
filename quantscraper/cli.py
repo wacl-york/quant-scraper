@@ -150,6 +150,17 @@ def main():
         # TODO Whose responsibility is it to generate filename? CLI script or
         # manufacturer? Currently filename is built in
         # Manufacturer.save_raw_data from these input values
+
+        # TODO Also see discussion above manufacturer.scrape() call about whose
+        # responsibility it should be to make these calls.
+        # If the main save_raw_data method just generates filenames and
+        # iterates through each device, called an inner method, should this be
+        # handled here in CLI executable script?
+        # And could it be refactored, say into 1 method to get raw data into an
+        # appropriate format for saving (responsiblity of Device), and second to
+        # just do the saving to disk (could be second class, FileHandler or
+        # something). FileHandler could have .save_json() and .save_csv()
+        # methods as have raw data in both of these formats
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
             manufacturer.save_raw_data(
