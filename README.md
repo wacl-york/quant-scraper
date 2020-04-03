@@ -1,4 +1,5 @@
 ![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=master)
+![Test coverage](resources/coverage.svg)
 
 # QUANTscraper
 
