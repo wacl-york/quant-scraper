@@ -37,12 +37,9 @@ jobs:
         coverage
     - name: Build coverage badge
       run: |
-        # Remove original badge so can commit safely
-        rm -f resources/coverage.svg
         coverage-badge -fq -o resources/coverage.svg
-    - name: Push coverage badge to origin
+    - name: Push coverage badge to origin if changed
       run: |
         git config --global user.name 'Stuart Lacy'
         git config --global user.email 'stulacy@users.noreply.github.com'
-        git commit -am "Automated coverage badge"
-        git push
+        git diff --quiet && git diff --staged --quiet || git commit -am "Automated coverage badge" && git push
