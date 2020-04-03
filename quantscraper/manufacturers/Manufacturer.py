@@ -6,7 +6,7 @@ import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
-from quantscraper.utils import DataDownloadError, DataSavingError
+from quantscraper.utils import DataDownloadError, DataSavingError, DataParseError
 
 
 class Manufacturer(ABC):
@@ -102,25 +102,48 @@ class Manufacturer(ABC):
         # script? Is it fair for Manufacturer (a library class) to access
         # logger?
         for devid in self.device_ids:
+
             logging.info("Cleaning data from device {}...".format(devid))
             if self.raw_data[devid] is None:
                 logging.warning("No available raw data")
+                self.clean_data[devid] = None
                 continue
-            logging.info("Attempting to parse data into CSV")
-            self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
-            logging.info(
-                "Parse successful. {} samples have been recorded.".format(
-                    len(self.clean_data[devid])
+
+            try:
+                logging.info("Attempting to parse data into CSV...")
+                self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
+                logging.info(
+                    "Parse successful. {} samples have been recorded.".format(
+                        len(self.clean_data[devid])
+                    )
                 )
-            )
-            logging.info("SV for device {}...".format(devid))
-            # TODO Implement! And change interface to accept raw data
-            # self.clean_data[devid] = self.validate_data(self.clean_data[devid])
+            except DataParseError as ex:
+                logging.error("Unable to parse data into CSV for device {}.".format(devid))
+                logging.error(traceback.format_exc())
+                self.clean_data[devid] = None
+                continue
+                
+            # TODO Implement! And raise custom exception
+            logging.info("Running validation...".format(devid))
+            self.clean_data[devid] = self.validate_data(self.clean_data[devid])
             logging.info(
                 "Validation successful. There are {} samples with no errors.".format(
                     len(self.clean_data[devid])
                 )
             )
+
+    def validate_data(self, data):
+        """
+        Runs QA validation checks on air quality data.
+        
+        Args:
+            data (list): Data in CSV, i.e. a 2D list, format. 
+                It will likely be stored as strings.
+
+        Returns:
+            The cleaned data, in the same 2D list structure.
+        """
+        return data
 
     def save_clean_data(self, folder, start_time, end_time):
         """
