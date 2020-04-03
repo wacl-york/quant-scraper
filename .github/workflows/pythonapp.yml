@@ -37,6 +37,8 @@ jobs:
         coverage
     - name: Build coverage badge
       run: |
+        # Remove original badge so can commit safely
+        rm -f resources/coverage.svg
         coverage-badge -fq -o resources/coverage.svg
     - name: Push coverage badge to origin
       run: |
