@@ -138,6 +138,11 @@ class Aeroqual(Manufacturer):
         """
         TODO
         """
+        # Expect to get an empty row at the end due to suplerfuous carriage
+        # return. Remove any trailing white-space (including CR).
+        # rstrip() won't raise error if no trailing white-space
+        raw_data = raw_data.rstrip()
+
         # Split into rows and run basic validation
         raw_lines = raw_data.split("\r\n")
 
@@ -148,7 +153,7 @@ class Aeroqual(Manufacturer):
                 )
             )
 
-        header_removed = raw_lines[self.lines_skip :]
+        header_removed = raw_lines[self.lines_skip : ]
         if len(header_removed) == 0:
             raise DataParseError("Have no rows of data available.")
 

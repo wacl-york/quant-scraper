@@ -1,6 +1,7 @@
 import logging
 from string import Template
 from datetime import datetime
+import json
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
