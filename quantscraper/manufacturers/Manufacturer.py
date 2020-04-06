@@ -143,6 +143,38 @@ class Manufacturer(ABC):
         Returns:
             The cleaned data, in the same 2D list structure.
         """
+        nrows = len(data)
+        measurand_indices = {}
+        timestamp_index = None
+        # First row should be header so obtain numeric indices
+        for i, col in enumerate(data[0]):
+            if col == self.timestamp_column:
+                timestamp_index = i
+            elif col in self.columns_to_validate:
+                measurand_indices[col] = i
+            else:
+                continue
+
+        # Store counts of number of clean values
+        n_clean_vals = {k: 0 for k in self.columns_to_validate}
+        # List to store clean data in
+        clean_data = []
+
+        for i in range(nrows):
+            # try to parse timestamp column, continue if invalid
+
+            for measurand in self.columns_to_validate:
+                pass
+                # try to parse measurand as float
+                # if successful:
+                    # add tuple to clean data of (timestamp, measurand (string), value)
+                    # increment n_clean_vals counter for this measurand
+
+
+        # Summarise n clean values
+
+        # Return clean_data
+
         return data
 
     def save_clean_data(self, folder, start_time, end_time):
