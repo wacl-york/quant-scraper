@@ -23,9 +23,9 @@ from quantscraper.utils import DataParseError
 
 
 class TestAeroqual(unittest.TestCase):
-    # Aeroqual's raw data is already in CSV as a byte string, but has 6 empty
-    # lines containing metadata before the data starts
-    # The raw data also uses \r\n as a line ending
+    # Aeroqual's raw data is organised as a CSV in a raw string, i.e. 
+    # \r\n delimiting lines and , delimiting columns
+    # However, it has 6 empty header lines containing metadata 
 
     # TODO Should config be mocked too, or is it fair enough to use the example
     # config that is bundled with the source code?
@@ -34,9 +34,7 @@ class TestAeroqual(unittest.TestCase):
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode(
-            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
-        )
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
         res = aeroqual.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
@@ -46,9 +44,7 @@ class TestAeroqual(unittest.TestCase):
         # string in output CSV data.
         # Have removed 2, 4, and 9
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode(
-            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
-        )
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
         exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
         res = aeroqual.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
@@ -57,7 +53,7 @@ class TestAeroqual(unittest.TestCase):
         # What happens if have fewer lines available than headers to skip?
         self.cfg.set("Aeroqual", "lines_skip", "6")
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode("header1\r\nheader2\r\nheader3\r\nheader4")
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4"
         with self.assertRaises(DataParseError):
             aeroqual.parse_to_csv(raw_data)
 
@@ -65,9 +61,7 @@ class TestAeroqual(unittest.TestCase):
         # What happens if have sufficient headers, but no data?
         self.cfg.set("Aeroqual", "lines_skip", "6")
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode(
-            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6"
-        )
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6"
         with self.assertRaises(DataParseError):
             aeroqual.parse_to_csv(raw_data)
 
@@ -78,9 +72,7 @@ class TestAeroqual(unittest.TestCase):
         # from NO2, CO2, or O3
         self.cfg.set("Aeroqual", "lines_skip", "6")
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode(
-            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
-        )
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
         with self.assertRaises(DataParseError):
             res = aeroqual.parse_to_csv(raw_data)
 
@@ -91,9 +83,7 @@ class TestAeroqual(unittest.TestCase):
         # Better to warn user of this behaviour than to silently pass
         self.cfg.set("Aeroqual", "lines_skip", "6")
         aeroqual = Aeroqual.Aeroqual(self.cfg)
-        raw_data = str.encode(
-            "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
-        )
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
         with self.assertRaises(DataParseError):
             aeroqual.parse_to_csv(raw_data)
 
