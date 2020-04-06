@@ -7,7 +7,7 @@ from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
 from datetime import datetime
-from quantscraper.utils import DataDownloadError, DataSavingError, DataParseError, ValidateDataError
+import quantscraper.utils as utils
 
 class Manufacturer(ABC):
     # Unsure how to force Name as an abstract class property.
@@ -88,7 +88,7 @@ class Manufacturer(ABC):
                 logging.info("Attempting to scrape data for device {}...".format(devid))
                 self.raw_data[devid] = self.scrape_device(devid)
                 logging.info("Scrape successful.")
-            except DataDownloadError as ex:
+            except utils.DataDownloadError as ex:
                 logging.error("Unable to download data for device {}.".format(devid))
                 logging.error(traceback.format_exc())
                 self.raw_data[devid] = None
@@ -117,20 +117,24 @@ class Manufacturer(ABC):
                         len(self.clean_data[devid])
                     )
                 )
-            except DataParseError as ex:
+            except utils.DataParseError as ex:
                 logging.error("Unable to parse data into CSV for device {}.".format(devid))
                 logging.error(traceback.format_exc())
                 self.clean_data[devid] = None
                 continue
                 
-            # TODO Implement! And raise custom exception
             logging.info("Running validation...".format(devid))
-            self.clean_data[devid] = self.validate_data(self.clean_data[devid])
-            logging.info(
-                "Validation successful. There are {} samples with no errors.".format(
-                    len(self.clean_data[devid])
+            try:
+                self.clean_data[devid] = self.validate_data(self.clean_data[devid])
+                logging.info(
+                    "Validation successful. There are {} samples with no errors.".format(
+                        len(self.clean_data[devid])
+                    )
                 )
-            )
+            except utils.ValidateDataError:
+                logging.error("Something went wrong during data validation.")
+                self.clean_data[devid] = None
+
 
     def validate_data(self, data):
         """
@@ -144,12 +148,12 @@ class Manufacturer(ABC):
             The cleaned data, in the same 2D list structure.
         """
         if data is None:
-            raise ValidateDataError(
+            raise utils.ValidateDataError(
                 "Input data is None."
             )
 
         if len(data) == 0:
-            raise ValidateDataError(
+            raise utils.ValidateDataError(
                 "0 errors in input data."
             )
 
@@ -169,7 +173,7 @@ class Manufacturer(ABC):
                 continue
 
         if timestamp_index is None:
-            raise ValidateDataError(
+            raise utils.ValidateDataError(
                 "No timestamp column '{}' found.".format(self.timestamp_col)
             )
 
@@ -179,7 +183,7 @@ class Manufacturer(ABC):
         n_clean_vals = {k: 0 for k in available_measurands}
         n_clean_vals['timestamp'] = 0
         # List to store clean data in
-        clean_data = []
+        clean_data = [['timestamp', 'measurand', 'value']]
 
         # Start at 1 to skip header
         for i in range(1, nrows):
@@ -193,40 +197,23 @@ class Manufacturer(ABC):
             timestamp_clean = dt.strftime(output_format)
 
             for measurand in available_measurands:
-                # TODO Catch if don't have measurand
                 val_raw = row[measurand_indices[measurand]]
                 try:
                     # TODO Is it fair to parse everything as float, or should
                     # try int first?
                     val_parsed = float(val_raw)
+                # Currently don't differentiate between these 2 errors
                 except ValueError:
+                    continue
+                except TypeError:
                     continue
 
                 n_clean_vals[measurand] += 1
                 clean_row = [timestamp_clean, measurand, val_parsed]
                 clean_data.append(clean_row)
 
-        # TODO Refactor this into utils function
-        n_raw = len(data) - 1
-        n_clean = n_clean_vals['timestamp']
-        try:
-            pct_clean = n_clean / n_raw * 100
-        except ZeroDivisionError:
-            pct_clean = 0
-        validate_summary = "Found {}/{} ({:.1f}%) rows with usable timestamps. Data fields: ".format(n_clean, n_raw, pct_clean)
-
-        for measurand, measurand_clean in n_clean_vals.items():
-            if measurand == 'timestamp':
-                continue
-            try:
-                pct_clean = measurand_clean / n_clean * 100
-            except ZeroDivisionError:
-                pct_clean = 0
-            measurand_str = "{} {}/{} ({:.1f}%)\t".format(measurand, measurand_clean,
-                                                          n_clean,
-                                                          pct_clean)
-            validate_summary += measurand_str
-        print(validate_summary)
+        summary = utils.summarise_validation(len(data)-1, n_clean_vals)
+        logging.info(summary)
 
         return clean_data
 
@@ -252,7 +239,7 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            raise DataSavingError(
+            raise utils.DataSavingError(
                 "Folder {} doesn't exist, cannot save clean data.".format(folder)
             )
 
@@ -287,7 +274,7 @@ class Manufacturer(ABC):
             None. Saves data to disk as CSV files as a side-effect.
         """
         if os.path.isfile(filename):
-            raise DataSavingError("File {} already exists.".format(filename))
+            raise utils.DataSavingError("File {} already exists.".format(filename))
 
         with open(filename, "w") as outfile:
             writer = csv.writer(outfile, delimiter=",")
@@ -322,7 +309,7 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            raise DataSavingError(
+            raise utils.DataSavingError(
                 "Folder {} doesn't exist, cannot save raw data.".format(folder)
             )
 
@@ -357,7 +344,7 @@ class Manufacturer(ABC):
             None. Saves data to disk as JSON files as a side-effect.
         """
         if os.path.isfile(filename):
-            raise DataSavingError("File {} already exists.".format(filename))
+            raise utils.DataSavingError("File {} already exists.".format(filename))
 
         try:
             with open(filename, "w") as outfile:

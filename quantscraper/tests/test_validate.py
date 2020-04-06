@@ -6,7 +6,6 @@
 """
 
 import unittest
-import pickle
 import configparser
 from string import Template
 from unittest.mock import patch, MagicMock, Mock, call
@@ -16,31 +15,8 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
-from quantscraper.utils import ValidateDataError
+from quantscraper.utils import ValidateDataError, copy_object
 from quantscraper.tests.test_utils import build_mock_response
-
-# Want to test that:
-#    - Function parses timestamps correctly
-#    - It returns the expected clean data
-#    - Handles multiple error types (string, empty string, odd characters)
-
-def copy_config(input):
-    """
-    Function to deep copy config parser object so can make changes to test
-    config without polluting the class namespace.
-
-    This pickle method should work for any Python 3 object.
-
-    Args:
-        input (ConfigParser): input ConfigParser object.
-
-    Returns:
-        A deep copy of 'input', a second ConfigParser object.
-    """
-    pickle_in = pickle.dumps(input)
-    pickle_out = pickle.loads(pickle_in)
-    return pickle_out
-
 
 class TestValidate(unittest.TestCase):
 
@@ -73,7 +49,8 @@ class TestValidate(unittest.TestCase):
                 ['2.8', '3.2', '2018-02-31 18:00', '23.2', '9.7', '28.9'],
                 ['23..8', '2str3', '2040-12-31 00:28', '90.2', '23', '  ']
                ]
-        exp = [['2019-03-02 15:30:00', 'foo', 2.0],
+        exp = [['timestamp', 'measurand', 'value'],
+               ['2019-03-02 15:30:00', 'foo', 2.0],
                ['2019-03-02 15:30:00', 'bar', 23.9],
                ['2019-03-02 15:31:00', 'foo', 2.0],
                ['2019-03-02 15:31:00', 'bar', 23.9],
@@ -115,7 +92,7 @@ class TestValidate(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         try:
             res = aeroqual.validate_data(data)
-            exp = []
+            exp = [['timestamp', 'measurand', 'value']]
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
@@ -154,7 +131,7 @@ class TestValidate(unittest.TestCase):
         # Here are asking for measurands that aren't in the raw data. Should
         # pass as very well could have situation where different devices
         # from same manufacturer have different sensor equipped
-        cfg_copy = copy_config(self.cfg)
+        cfg_copy = copy_object(self.cfg)
         cfg_copy.set('Aeroqual', 'columns_to_validate', 'foo,bar,car,donkey')
         data = [['not used', 'foo', 'timestamp', 'bar', 'unused', 'car'],
                 ['5', '2', '2019-03-02 15:30', '23.9', '5.0', 'bar'],
@@ -167,7 +144,8 @@ class TestValidate(unittest.TestCase):
                 ['2.8', '3.2', '2018-02-31 18:00', '23.2', '9.7', '28.9'],
                 ['23..8', '2str3', '2040-12-31 00:28', '90.2', '23', '  ']
                ]
-        exp = [['2019-03-02 15:30:00', 'foo', 2.0],
+        exp = [['timestamp', 'measurand', 'value'],
+               ['2019-03-02 15:30:00', 'foo', 2.0],
                ['2019-03-02 15:30:00', 'bar', 23.9],
                ['2019-03-02 15:31:00', 'foo', 2.0],
                ['2019-03-02 15:31:00', 'bar', 23.9],
@@ -188,7 +166,7 @@ class TestValidate(unittest.TestCase):
     def test_invalid_timestamp_format(self):
         # If forget to add the %%s, then timestamps won't be parsed and thus
         # will get empty output
-        cfg_copy = copy_config(self.cfg)
+        cfg_copy = copy_object(self.cfg)
         cfg_copy.set('Aeroqual', 'timestamp_format', 'Y-m-d H:M')
         data = [['not used', 'foo', 'timestamp', 'bar', 'unused', 'car'],
                 ['5', '2', '2019-03-02 15:30', '23.9', '5.0', 'bar'],
@@ -204,7 +182,7 @@ class TestValidate(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
             res = aeroqual.validate_data(data)
-            exp = []
+            exp = [['timestamp', 'measurand', 'value']]
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
@@ -212,7 +190,7 @@ class TestValidate(unittest.TestCase):
     def test_invalid_timestamp_format2(self):
         # If ask for wrong format, i.e. %y (00, 01) rather than %Y (2000, 2001),
         # then should also find no valid timestamps
-        cfg_copy = copy_config(self.cfg)
+        cfg_copy = copy_object(self.cfg)
         cfg_copy.set('Aeroqual', 'timestamp_format', '%%y-%%m-%%d %%H:%%M')
         data = [['not used', 'foo', 'timestamp', 'bar', 'unused', 'car'],
                 ['5', '2', '2019-03-02 15:30', '23.9', '5.0', 'bar'],
@@ -228,7 +206,7 @@ class TestValidate(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
             res = aeroqual.validate_data(data)
-            exp = []
+            exp = [['timestamp', 'measurand', 'value']]
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
