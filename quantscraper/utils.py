@@ -28,3 +28,8 @@ class DataSavingError(Exception):
     """
     Custom exception class for situations where saving a file has failed.
     """
+
+class ValidateDataError(Exception):
+    """
+    Custom exception class for situations where saving a file has failed.
+    """
