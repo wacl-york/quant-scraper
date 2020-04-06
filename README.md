@@ -1,3 +1,6 @@
+![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=master)
+![Test coverage](resources/coverage.svg)
+
 # QUANTscraper
 
 Scrapes data from the websites of air quality instrumentation system manufacturers for the QUANT project.
@@ -85,3 +88,4 @@ All unit tests can be run using the following command:
 
 `coverage run -m unittest discover -s quantscraper/tests -b`
 
+Test coverage can be viewed by running `coverage` afterwards.

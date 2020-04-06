@@ -16,6 +16,7 @@ setup(
     author_email="stuart.lacy@york.ac.uk",
     entry_points={"console_scripts": ["quantscrape = quantscraper.cli:main",],},
     install_requires=[
+        "bs4",
         "requests",
         "pandas",
         "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
