@@ -6,8 +6,8 @@ import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
-from quantscraper.utils import DataDownloadError, DataSavingError, DataParseError
-
+from datetime import datetime
+from quantscraper.utils import DataDownloadError, DataSavingError, DataParseError, ValidateDataError
 
 class Manufacturer(ABC):
     # Unsure how to force Name as an abstract class property.
@@ -143,39 +143,92 @@ class Manufacturer(ABC):
         Returns:
             The cleaned data, in the same 2D list structure.
         """
+        if data is None:
+            raise ValidateDataError(
+                "Input data is None."
+            )
+
+        if len(data) == 0:
+            raise ValidateDataError(
+                "0 errors in input data."
+            )
+
+        # Output timestamp format
+        output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}
         timestamp_index = None
+        
         # First row should be header so obtain numeric indices
         for i, col in enumerate(data[0]):
-            if col == self.timestamp_column:
+            if col == self.timestamp_col:
                 timestamp_index = i
-            elif col in self.columns_to_validate:
+            elif col in self.cols_to_validate:
                 measurand_indices[col] = i
             else:
                 continue
 
+        if timestamp_index is None:
+            raise ValidateDataError(
+                "No timestamp column '{}' found.".format(self.timestamp_col)
+            )
+
+        available_measurands = list(measurand_indices.keys())
+
         # Store counts of number of clean values
-        n_clean_vals = {k: 0 for k in self.columns_to_validate}
+        n_clean_vals = {k: 0 for k in available_measurands}
+        n_clean_vals['timestamp'] = 0
         # List to store clean data in
         clean_data = []
 
-        for i in range(nrows):
-            # try to parse timestamp column, continue if invalid
+        # Start at 1 to skip header
+        for i in range(1, nrows):
+            row = data[i]
+            try:
+                dt = datetime.strptime(row[timestamp_index], self.timestamp_format)
+            except ValueError:
+                continue
 
-            for measurand in self.columns_to_validate:
-                pass
-                # try to parse measurand as float
-                # if successful:
-                    # add tuple to clean data of (timestamp, measurand (string), value)
-                    # increment n_clean_vals counter for this measurand
+            n_clean_vals['timestamp'] += 1
+            timestamp_clean = dt.strftime(output_format)
 
+            for measurand in available_measurands:
+                # TODO Catch if don't have measurand
+                val_raw = row[measurand_indices[measurand]]
+                try:
+                    # TODO Is it fair to parse everything as float, or should
+                    # try int first?
+                    val_parsed = float(val_raw)
+                except ValueError:
+                    continue
 
-        # Summarise n clean values
+                n_clean_vals[measurand] += 1
+                clean_row = [timestamp_clean, measurand, val_parsed]
+                clean_data.append(clean_row)
 
-        # Return clean_data
+        # TODO Refactor this into utils function
+        n_raw = len(data) - 1
+        n_clean = n_clean_vals['timestamp']
+        try:
+            pct_clean = n_clean / n_raw * 100
+        except ZeroDivisionError:
+            pct_clean = 0
+        validate_summary = "Found {}/{} ({:.1f}%) rows with usable timestamps. Data fields: ".format(n_clean, n_raw, pct_clean)
 
-        return data
+        for measurand, measurand_clean in n_clean_vals.items():
+            if measurand == 'timestamp':
+                continue
+            try:
+                pct_clean = measurand_clean / n_clean * 100
+            except ZeroDivisionError:
+                pct_clean = 0
+            measurand_str = "{} {}/{} ({:.1f}%)\t".format(measurand, measurand_clean,
+                                                          n_clean,
+                                                          pct_clean)
+            validate_summary += measurand_str
+        print(validate_summary)
+
+        return clean_data
 
     def save_clean_data(self, folder, start_time, end_time):
         """
