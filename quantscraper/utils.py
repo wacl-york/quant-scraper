@@ -5,7 +5,13 @@
     Contains utility functions.
 """
 
+import os
 import pickle
+
+from google.oauth2 import service_account
+import googleapiclient.discovery
+from googleapiclient.http import MediaFileUpload
+
 
 class LoginError(Exception):
     """
@@ -85,3 +91,61 @@ def summarise_validation(n_raw, counts):
                                                       pct_clean)
         summary += measurand_str
     return summary
+
+def auth_google_api(credentials_fn):
+    """
+    Authorizes connection to GoogleDrive API.
+
+    Uses v3 of the GoogleDrive API, see examples at:
+    https://developers.google.com/drive/api/v3/quickstart/python
+
+    Args:
+        credentials_fn (str): Path to JSON file that has Google API credentials
+            saved.
+
+    Returns:
+        A googleapiclient.discovery.Resource object.
+    """
+    scopes = ['https://www.googleapis.com/auth/drive']
+    SERVICE_ACCOUNT_FILE = credentials_fn
+
+    credentials = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=scopes)
+    service = googleapiclient.discovery.build('drive', 'v3', credentials=credentials)
+    return service
+
+
+def upload_file_google_drive(service, fn, folder_id, mime_type='text/csv'):
+    """
+    Uploads a file to a specified Google Drive folder.
+
+    Args:
+        service (googleapiclient.discovery.Resource): Google API service object.
+        fn (str): Filepath of the local file to be uploaded.
+        folder_id (str): ID of the target Google Drive folder.
+        mime_type (str): MIME type of file.
+
+    Returns:
+        None, uploads data to Google Drive as a side effect.
+    """
+    # TODO:
+    #    - Implement resumable upload
+    #    - Sort permissions for writer to only access Data folder
+
+    # Filename should be base filename, removing path
+    base_fn = os.path.basename(fn)
+
+    file_metadata = {
+        'name': base_fn,
+        'mimeType': mime_type,
+        'parents': [folder_id]
+    }
+
+    media = MediaFileUpload(fn,
+                            mimetype=mime_type,
+                            resumable=True)
+
+    service.files().create(body=file_metadata,
+                           media_body=media,
+                           supportsAllDrives=True).execute()
+

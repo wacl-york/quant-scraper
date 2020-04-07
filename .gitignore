@@ -15,3 +15,7 @@ data/*
 # Testing related outputs
 .coverage
 .coverage.*
+
+# GoogleAPI
+credentials.json
+googleapi_credentials.json

@@ -16,7 +16,7 @@ import requests as re
 import quantaq
 import traceback
 
-from quantscraper.utils import LoginError
+import quantscraper.utils as utils
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
@@ -135,7 +135,7 @@ def main():
             logging.info("Attempting to connect...")
             manufacturer.connect()
             logging.info("Connection established")
-        except LoginError:
+        except utils.LoginError:
             logging.error("Cannot establish connection to {}.".format(man_class.name))
             logging.error(traceback.format_exc())
             continue
@@ -147,20 +147,13 @@ def main():
         # Particularly since it handles error logging
         manufacturer.scrape()
 
-        # TODO Whose responsibility is it to generate filename? CLI script or
-        # manufacturer? Currently filename is built in
-        # Manufacturer.save_raw_data from these input values
 
-        # TODO Also see discussion above manufacturer.scrape() call about whose
-        # responsibility it should be to make these calls.
-        # If the main save_raw_data method just generates filenames and
-        # iterates through each device, called an inner method, should this be
-        # handled here in CLI executable script?
-        # And could it be refactored, say into 1 method to get raw data into an
-        # appropriate format for saving (responsiblity of Device), and second to
-        # just do the saving to disk (could be second class, FileHandler or
-        # something). FileHandler could have .save_json() and .save_csv()
-        # methods as have raw data in both of these formats
+        # TODO Ditto saving issue about whether the iterating through each device
+        # should be run here rather than from Manufacturer, so that only have 1
+        # place that is logging.
+        logging.info("Processing raw data into validated cleaned data.")
+        manufacturer.process()
+
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
             manufacturer.save_raw_data(
@@ -169,12 +162,6 @@ def main():
                 cfg.get("Main", "end_time"),
             )
 
-        # TODO Ditto above issue about whether the iterating through each device
-        # should be run here rather than from Manufacturer, so that only have 1
-        # place that is logging.
-        logging.info("Processing raw data into validated cleaned data.")
-        manufacturer.process()
-
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")
             manufacturer.save_clean_data(
@@ -182,6 +169,8 @@ def main():
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
             )
+
+        # TODO Upload both raw and clean data to Google Drive
 
 
 if __name__ == "__main__":
