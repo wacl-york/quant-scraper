@@ -111,16 +111,15 @@ def auth_google_api(credentials_fn):
     Returns:
         A googleapiclient.discovery.Resource object.
     """
-    scopes = ['https://www.googleapis.com/auth/drive']
-    SERVICE_ACCOUNT_FILE = credentials_fn
+    scopes = ['https://www.googleapis.com/auth/drive.file']
 
     credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=scopes)
+            credentials_fn, scopes=scopes)
     service = googleapiclient.discovery.build('drive', 'v3', credentials=credentials)
     return service
 
 
-def upload_file_google_drive(service, fn, folder_id, mime_type='text/csv'):
+def upload_file_google_drive(service, fn, folder_id, mime_type):
     """
     Uploads a file to a specified Google Drive folder.
 
@@ -134,8 +133,8 @@ def upload_file_google_drive(service, fn, folder_id, mime_type='text/csv'):
         None, uploads data to Google Drive as a side effect.
     """
     # TODO:
-    #    - Implement resumable upload
     #    - Sort permissions for writer to only access Data folder
+    #    - Error handle
 
     # Filename should be base filename, removing path
     base_fn = os.path.basename(fn)
@@ -146,9 +145,7 @@ def upload_file_google_drive(service, fn, folder_id, mime_type='text/csv'):
         'parents': [folder_id]
     }
 
-    media = MediaFileUpload(fn,
-                            mimetype=mime_type,
-                            resumable=True)
+    media = MediaFileUpload(fn, mimetype=mime_type)
 
     service.files().create(body=file_metadata,
                            media_body=media,

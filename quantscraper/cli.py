@@ -121,10 +121,11 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
             string format as INI file uses.
 
     Returns:
-        None. Saves data to disk as CSV files as a side-effect.
+        List of filenames that were successfully saved.
     """
     # TODO Change start + end time to just a single date, as this is primary
     # usecase?
+    fns = []
 
     if not os.path.isdir(folder):
         raise utils.DataSavingError(
@@ -146,7 +147,16 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
         utils.save_csv_file(full_path, data)
+        fns.append(full_path)
+    return fns
 
+
+# TODO save_clean_data and save_raw_data have a huge amount of duplicated code!
+# Can they be refactored to be combined in some way?
+# Only differences are:
+#   - Which data to pull (raw/clean)
+#   - Which template filename to pull (csv/json)
+#   - Which saving function to call (csv/json)
 def save_raw_data(manufacturer, folder, start_time, end_time):
     """
     Iterates through all a manufacturer's devices and saves their raw data to disk.
@@ -164,10 +174,11 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
             string format as INI file uses.
 
     Returns:
-        None. Saves data to disk as CSV files as a side-effect.
+        List of filenames that were successfully saved.
     """
     # TODO Change start + end time to just a single date, as this is primary
     # usecase?
+    fns = []
 
     if not os.path.isdir(folder):
         raise utils.DataSavingError(
@@ -189,6 +200,31 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
         utils.save_json_file(full_path, data)
+        fns.append(full_path)
+    return fns
+
+def upload_data_googledrive(service, fns, folder_id, mime_type):
+    """
+    Uploads a number of files of the same type to a single GoogleDrive folder.
+
+    Args:
+        service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        fns (list): A list of full filepaths to the files to be uploaded.
+        folder_id (str): The GoogleDrive ID of the target folder.
+        mime_type (str): The MIME type of the files.
+
+    Returns:
+        None, uploads files as a side-effect.
+    """
+    if fns is None:
+        logging.error("No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'.")
+        return
+
+    # TODO Error handle and log
+    for fn in fns:
+        logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
+        utils.upload_file_google_drive(service, fn, folder_id, mime_type)
+        logging.info("Upload successful.")
 
 
 def main():
@@ -238,25 +274,50 @@ def main():
         logging.info("Processing raw data into validated cleaned data.")
         manufacturer.process()
 
+        # TODO Have these functions return filepaths that have been saved to for
+        # the subsequent Google Drive uploads
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
-            save_raw_data(
+            raw_fns = save_raw_data(
                 manufacturer,
-                cfg.get("Main", "folder_raw_data"),
+                cfg.get("Main", "local_folder_raw_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
             )
 
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")
-            save_clean_data(
+            clean_fns = save_clean_data(
                 manufacturer,
-                cfg.get("Main", "folder_clean_data"),
+                cfg.get("Main", "local_folder_clean_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
             )
 
-        # TODO Upload both raw and clean data to Google Drive
+        upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")
+        upload_clean = cfg.getboolean("Main", "upload_clean_googledrive")
+
+        if upload_raw or upload_clean:
+            service = utils.auth_google_api(cfg.get('GoogleAPI',
+                                                    'credentials_fn'))
+
+            if upload_raw:
+                logging.info("Uploading raw data to Google Drive.")
+                upload_data_googledrive(
+                    service,
+                    raw_fns,
+                    cfg.get("GoogleAPI", "raw_data_id"),
+                    "text/json"
+                )
+
+            if upload_clean:
+                logging.info("Uploading clean CSV data to Google Drive.")
+                upload_data_googledrive(
+                    service,
+                    clean_fns,
+                    cfg.get("GoogleAPI", "clean_data_id"),
+                    "text/csv"
+                )
 
 
 if __name__ == "__main__":
