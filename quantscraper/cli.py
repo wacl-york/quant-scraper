@@ -146,7 +146,7 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
 
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
-        utils.save_csv_file(full_path, data)
+        utils.save_csv_file(data, full_path)
         fns.append(full_path)
     return fns
 
@@ -199,7 +199,7 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
 
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
-        utils.save_json_file(full_path, data)
+        utils.save_json_file(data, full_path)
         fns.append(full_path)
     return fns
 
@@ -222,9 +222,14 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
 
     # TODO Error handle and log
     for fn in fns:
-        logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
-        utils.upload_file_google_drive(service, fn, folder_id, mime_type)
-        logging.info("Upload successful.")
+        try:
+            logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
+            utils.upload_file_google_drive(service, fn, folder_id, mime_type)
+            logging.info("Upload successful.")
+        except DataUploadError:
+            logging.error("Error in upload")
+            logging.error(traceback.format_exc())
+            continue
 
 
 def main():
