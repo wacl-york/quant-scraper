@@ -279,8 +279,6 @@ def main():
         logging.info("Processing raw data into validated cleaned data.")
         manufacturer.process()
 
-        # TODO Have these functions return filepaths that have been saved to for
-        # the subsequent Google Drive uploads
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
             raw_fns = save_raw_data(

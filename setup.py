@@ -17,6 +17,9 @@ setup(
     entry_points={"console_scripts": ["quantscrape = quantscraper.cli:main",],},
     install_requires=[
         "bs4",
+        "google-api-python-client",
+        "google-auth-httplib2",
+        "google-auth-oauthlib",
         "requests",
         "pandas",
         "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
