@@ -7,11 +7,16 @@
 
 import os
 import pickle
+import json
+import csv
+from string import Template
 
 from google.oauth2 import service_account
 import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload
 
+RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
+CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
 
 class LoginError(Exception):
     """
@@ -149,3 +154,44 @@ def upload_file_google_drive(service, fn, folder_id, mime_type='text/csv'):
                            media_body=media,
                            supportsAllDrives=True).execute()
 
+
+def save_json_file(filename, data):
+    """
+    Encodes data as JSON and saves it to disk.
+
+    Args:
+        - filename (str): Location to save data to
+        - data (misc): Data in JSON-parseable format.
+
+    Returns:
+        None. Saves data to disk as JSON files as a side-effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    try:
+        with open(filename, "w") as outfile:
+            json.dump(data, outfile)
+    except json.decoder.JSONDecodeError:
+        raise DataSavingError(
+            "Unable to serialize raw data to json."
+        )
+
+
+def save_csv_file(filename, data):
+    """
+    Saves CSV data to disk.
+
+    Args:
+        - filename (str): Location to save data to
+        - data (list): Data in CSV (2D list) format to be saved.
+
+    Returns:
+        None. Saves data to disk as CSV files as a side-effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    with open(filename, "w") as outfile:
+        writer = csv.writer(outfile, delimiter=",")
+        writer.writerows(data)
