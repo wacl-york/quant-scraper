@@ -5,6 +5,7 @@
     Contains utility functions.
 """
 
+import math
 import pickle
 
 class LoginError(Exception):
@@ -85,3 +86,35 @@ def summarise_validation(n_raw, counts):
                                                       pct_clean)
         summary += measurand_str
     return summary
+
+
+def is_float(x):
+    """
+    Tests whether a given string is a float.
+
+    Note that this function uses a relatively strict definition of float, such
+    that infinity and nan are not considered floats, despite being counted as
+    such by Python.
+
+    Args:
+        x (str): The input string.
+
+    Returns:
+        Boolean indicating whether x can be parsed as a float or not.
+        Note it doesn't actually do the parsing into float format.
+    """
+    is_float = False
+    try:
+        val_parsed = float(x)
+        # Look out for infinity and NaNs
+        if math.isinf(val_parsed) or math.isnan(val_parsed):
+            raise ValueError
+
+        is_float = True
+
+    except ValueError:
+        is_float = False
+    except TypeError:
+        is_float = False
+
+    return is_float

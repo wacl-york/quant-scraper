@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import logging
+import math
 import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
@@ -198,18 +199,12 @@ class Manufacturer(ABC):
 
             for measurand in available_measurands:
                 val_raw = row[measurand_indices[measurand]]
-                try:
-                    # TODO Is it fair to parse everything as float, or should
-                    # try int first?
-                    val_parsed = float(val_raw)
-                # Currently don't differentiate between these 2 errors
-                except ValueError:
-                    continue
-                except TypeError:
-                    continue
 
+                if not utils.is_float(val_raw):
+                    continue
+                
                 n_clean_vals[measurand] += 1
-                clean_row = [timestamp_clean, measurand, val_parsed]
+                clean_row = [timestamp_clean, measurand, float(val_raw)]
                 clean_data.append(clean_row)
 
         summary = utils.summarise_validation(len(data)-1, n_clean_vals)
