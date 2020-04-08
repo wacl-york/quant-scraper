@@ -2,12 +2,13 @@ import csv
 import json
 import os
 import logging
+import math
 import traceback
 from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
-from quantscraper.utils import DataDownloadError, DataSavingError
-
+from datetime import datetime
+import quantscraper.utils as utils
 
 class Manufacturer(ABC):
     # Unsure how to force Name as an abstract class property.
@@ -88,7 +89,7 @@ class Manufacturer(ABC):
                 logging.info("Attempting to scrape data for device {}...".format(devid))
                 self.raw_data[devid] = self.scrape_device(devid)
                 logging.info("Scrape successful.")
-            except DataDownloadError as ex:
+            except utils.DataDownloadError as ex:
                 logging.error("Unable to download data for device {}.".format(devid))
                 logging.error(traceback.format_exc())
                 self.raw_data[devid] = None
@@ -102,25 +103,114 @@ class Manufacturer(ABC):
         # script? Is it fair for Manufacturer (a library class) to access
         # logger?
         for devid in self.device_ids:
+
             logging.info("Cleaning data from device {}...".format(devid))
             if self.raw_data[devid] is None:
                 logging.warning("No available raw data")
+                self.clean_data[devid] = None
                 continue
-            logging.info("Attempting to parse data into CSV")
-            self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
-            logging.info(
-                "Parse successful. {} samples have been recorded.".format(
-                    len(self.clean_data[devid])
+
+            try:
+                logging.info("Attempting to parse data into CSV...")
+                self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
+                logging.info(
+                    "Parse successful. {} samples have been recorded.".format(
+                        len(self.clean_data[devid])
+                    )
                 )
-            )
-            logging.info("SV for device {}...".format(devid))
-            # TODO Implement! And change interface to accept raw data
-            # self.clean_data[devid] = self.validate_data(self.clean_data[devid])
-            logging.info(
-                "Validation successful. There are {} samples with no errors.".format(
-                    len(self.clean_data[devid])
+            except utils.DataParseError as ex:
+                logging.error("Unable to parse data into CSV for device {}.".format(devid))
+                logging.error(traceback.format_exc())
+                self.clean_data[devid] = None
+                continue
+                
+            logging.info("Running validation...".format(devid))
+            try:
+                self.clean_data[devid] = self.validate_data(self.clean_data[devid])
+                logging.info(
+                    "Validation successful. There are {} samples with no errors.".format(
+                        len(self.clean_data[devid])
+                    )
                 )
+            except utils.ValidateDataError:
+                logging.error("Something went wrong during data validation.")
+                self.clean_data[devid] = None
+
+
+    def validate_data(self, data):
+        """
+        Runs QA validation checks on air quality data.
+        
+        Args:
+            data (list): Data in CSV, i.e. a 2D list, format. 
+                It will likely be stored as strings.
+
+        Returns:
+            The cleaned data, in the same 2D list structure.
+        """
+        if data is None:
+            raise utils.ValidateDataError(
+                "Input data is None."
             )
+
+        if len(data) == 0:
+            raise utils.ValidateDataError(
+                "0 errors in input data."
+            )
+
+        # Output timestamp format
+        output_format = "%Y-%m-%d %H:%M:%S"
+        nrows = len(data)
+        measurand_indices = {}
+        timestamp_index = None
+        
+        # First row should be header so obtain numeric indices
+        for i, col in enumerate(data[0]):
+            if col == self.timestamp_col:
+                timestamp_index = i
+            elif col in self.cols_to_validate:
+                measurand_indices[col] = i
+            else:
+                continue
+
+        if timestamp_index is None:
+            raise utils.ValidateDataError(
+                "No timestamp column '{}' found.".format(self.timestamp_col)
+            )
+
+        available_measurands = list(measurand_indices.keys())
+
+        # Store counts of number of clean values
+        n_clean_vals = {k: 0 for k in available_measurands}
+        n_clean_vals['timestamp'] = 0
+        # List to store clean data in
+        clean_data = [['timestamp', 'measurand', 'value']]
+
+        # Start at 1 to skip header
+        for i in range(1, nrows):
+            row = data[i]
+            try:
+                dt = datetime.strptime(row[timestamp_index], self.timestamp_format)
+            except ValueError:
+                continue
+
+            n_clean_vals['timestamp'] += 1
+            timestamp_clean = dt.strftime(output_format)
+
+            for measurand in available_measurands:
+                val_raw = row[measurand_indices[measurand]]
+
+                if not utils.is_float(val_raw):
+                    continue
+                
+                n_clean_vals[measurand] += 1
+                clean_row = [timestamp_clean, measurand, float(val_raw)]
+                clean_data.append(clean_row)
+
+        summary = utils.summarise_validation(len(data)-1, n_clean_vals)
+        logging.info(summary)
+
+        return clean_data
 
     def save_clean_data(self, folder, start_time, end_time):
         """
@@ -144,7 +234,7 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            raise DataSavingError(
+            raise utils.DataSavingError(
                 "Folder {} doesn't exist, cannot save clean data.".format(folder)
             )
 
@@ -179,7 +269,7 @@ class Manufacturer(ABC):
             None. Saves data to disk as CSV files as a side-effect.
         """
         if os.path.isfile(filename):
-            raise DataSavingError("File {} already exists.".format(filename))
+            raise utils.DataSavingError("File {} already exists.".format(filename))
 
         with open(filename, "w") as outfile:
             writer = csv.writer(outfile, delimiter=",")
@@ -214,7 +304,7 @@ class Manufacturer(ABC):
         # usecase?
 
         if not os.path.isdir(folder):
-            raise DataSavingError(
+            raise utils.DataSavingError(
                 "Folder {} doesn't exist, cannot save raw data.".format(folder)
             )
 
@@ -249,7 +339,7 @@ class Manufacturer(ABC):
             None. Saves data to disk as JSON files as a side-effect.
         """
         if os.path.isfile(filename):
-            raise DataSavingError("File {} already exists.".format(filename))
+            raise utils.DataSavingError("File {} already exists.".format(filename))
 
         try:
             with open(filename, "w") as outfile:

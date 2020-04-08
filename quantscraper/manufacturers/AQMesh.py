@@ -1,6 +1,7 @@
 import logging
 from string import Template
 from datetime import datetime
+import json
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
@@ -23,6 +24,9 @@ class AQMesh(Manufacturer):
         self.auth_url = cfg.get(self.name, "auth_url")
         self.data_url = cfg.get(self.name, "data_url")
         self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.cols_to_validate = cfg.get(self.name, "columns_to_validate").split(",")
+        self.timestamp_col = cfg.get(self.name, "timestamp_column")
+        self.timestamp_format = cfg.get(self.name, "timestamp_format")
 
         # Authentication
         self.auth_params = {
