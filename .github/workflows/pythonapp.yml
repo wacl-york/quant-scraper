@@ -42,4 +42,4 @@ jobs:
       run: |
         git config --global user.name 'Stuart Lacy'
         git config --global user.email 'stulacy@users.noreply.github.com'
-        git diff --quiet && git diff --staged --quiet || git commit -am "Automated coverage badge" && git push
+        git diff --quiet && git diff --staged --quiet || git commit -am "Automated coverage badge" && git push origin HEAD:${GITHUB_REF##*/}
