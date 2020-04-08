@@ -42,4 +42,5 @@ jobs:
       run: |
         git config --global user.name 'Stuart Lacy'
         git config --global user.email 'stulacy@users.noreply.github.com'
-        git diff --quiet && git diff --staged --quiet || git commit -am "Automated coverage badge" && git push origin HEAD:${GITHUB_REF##*/}
+        # TODO if on PR will this work, or need to use env variable GITHUB_HEAD_REF instead?
+        git diff --quiet && git diff --staged --quiet || git commit -am "Automated coverage badge" && git push origin HEAD:${GITHUB_REF#refs/heads/}
