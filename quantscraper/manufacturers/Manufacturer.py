@@ -154,7 +154,7 @@ class Manufacturer(ABC):
                 "0 errors in input data."
             )
 
-        # Output timestamp format
+        # TODO put desired output timestamp format in config
         output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}

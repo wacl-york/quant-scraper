@@ -16,6 +16,7 @@ from string import Template
 from google.oauth2 import service_account
 import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 
 RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
@@ -43,16 +44,25 @@ class DataSavingError(Exception):
     Custom exception class for situations where saving a file has failed.
     """
 
+
 class DataUploadError(Exception):
     """
     Custom exception class for situations where uploading a file to GoogleDrive
     has failed.
     """
 
+
 class ValidateDataError(Exception):
     """
     Custom exception class for situations where validating a dataset has failed.
     """
+
+
+class GoogleAPIError(Exception):
+    """
+    Custom exception class for errors related to using Google's API.
+    """
+
 
 def copy_object(input):
     """
@@ -151,8 +161,14 @@ def auth_google_api(credentials_fn):
     """
     scopes = ['https://www.googleapis.com/auth/drive.file']
 
-    credentials = service_account.Credentials.from_service_account_file(
-            credentials_fn, scopes=scopes)
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+                credentials_fn, scopes=scopes)
+    except FileNotFoundError:
+        raise GoogleAPIError("Credential file '{}' not found".format(credentials_fn)) from None
+    except ValueError:
+        raise GoogleAPIError("Credential file is not formatted as expected") from None
+
     # setting cache_discovery = False removes a large amount of warnings in log,
     # that seemingly have little performance impact as we don't need cache.
     service = googleapiclient.discovery.build('drive', 'v3',
@@ -174,10 +190,6 @@ def upload_file_google_drive(service, fn, folder_id, mime_type):
     Returns:
         None, uploads data to Google Drive as a side effect.
     """
-    # TODO:
-    #    - Sort permissions for writer to only access Data folder
-    #    - Error handle
-
     # Filename should be base filename, removing path
     base_fn = os.path.basename(fn)
 
@@ -194,7 +206,9 @@ def upload_file_google_drive(service, fn, folder_id, mime_type):
                                media_body=media,
                                supportsAllDrives=True).execute()
     except socket.timeout:
-        raise DataUploadError("Connection timed out")
+        raise DataUploadError("Connection timed out") from None
+    except HttpError as ex:
+        raise DataUploadError("HTTP error: {}.".format(ex)) from None
 
 
 def save_json_file(data, filename):

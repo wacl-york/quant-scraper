@@ -203,6 +203,7 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
         fns.append(full_path)
     return fns
 
+
 def upload_data_googledrive(service, fns, folder_id, mime_type):
     """
     Uploads a number of files of the same type to a single GoogleDrive folder.
@@ -220,7 +221,6 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
         logging.error("No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'.")
         return
 
-    # TODO Error handle and log
     for fn in fns:
         try:
             logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
@@ -301,8 +301,13 @@ def main():
         upload_clean = cfg.getboolean("Main", "upload_clean_googledrive")
 
         if upload_raw or upload_clean:
-            service = utils.auth_google_api(cfg.get('GoogleAPI',
-                                                    'credentials_fn'))
+            try:
+                service = utils.auth_google_api(cfg.get('GoogleAPI',
+                                                        'credentials_fn'))
+            except utils.GoogleAPIError:
+                logging.error("Cannot connect to Google API.")
+                logging.error(traceback.format_exc())
+                break
 
             if upload_raw:
                 logging.info("Uploading raw data to Google Drive.")
