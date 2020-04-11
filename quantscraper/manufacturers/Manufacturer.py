@@ -1,10 +1,6 @@
-import csv
-import json
-import os
 import logging
 import math
 import traceback
-from string import Template
 from abc import ABC, abstractmethod, abstractproperty
 import requests as re
 from datetime import datetime
@@ -158,7 +154,7 @@ class Manufacturer(ABC):
                 "0 errors in input data."
             )
 
-        # Output timestamp format
+        # TODO put desired output timestamp format in config
         output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}
@@ -212,140 +208,5 @@ class Manufacturer(ABC):
 
         return clean_data
 
-    def save_clean_data(self, folder, start_time, end_time):
-        """
-        Iterates through all its devices and saves their cleaned data to disk.
 
-        Uses the following template filename:
-
-        <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.csv
-
-        Args:
-            - folder (str): Directory where files should be saved to.
-            - start_time (str): Starting time of scraping window. In same
-                string format as INI file uses.
-            - end_time (str): End time of scraping window. In same
-                string format as INI file uses.
-
-        Returns:
-            None. Saves data to disk as CSV files as a side-effect.
-        """
-        # TODO Change start + end time to just a single date, as this is primary
-        # usecase?
-
-        if not os.path.isdir(folder):
-            raise utils.DataSavingError(
-                "Folder {} doesn't exist, cannot save clean data.".format(folder)
-            )
-
-        filename = Template("${man}_${device}_${start}_${end}.csv")
-        for devid in self.device_ids:
-            fn = filename.substitute(
-                man=self.name, device=devid, start=start_time, end=end_time
-            )
-
-            data = self.clean_data[devid]
-            if data is None:
-                logging.warning(
-                    "No clean data to save for device {}.".format(devid)
-                )
-                continue
-
-            full_path = os.path.join(folder, fn)
-            logging.info("Saving data to file: {}".format(full_path))
-            self._save_clean_data(full_path, data)
-
-    def _save_clean_data(self, filename, data):
-        """
-        Actual function that saves data.
-
-        Uses the following template filename:
-
-        Args:
-            - filename (str): Location to save data to
-            - data (list): Data in CSV (2D list) format to be saved.
-
-        Returns:
-            None. Saves data to disk as CSV files as a side-effect.
-        """
-        if os.path.isfile(filename):
-            raise utils.DataSavingError("File {} already exists.".format(filename))
-
-        with open(filename, "w") as outfile:
-            writer = csv.writer(outfile, delimiter=",")
-            writer.writerows(data)
-
-    # TODO How best to refactor this? Same functionality as save_clean_data but
-    # different data source and different output.
-    # So this function does same logic (generate filename in same format,
-    # iterate through devices), only difference is whether uses .clean_data or
-    # .raw_data
-    # the helper function _save_raw_data does the same job as _save_clean_data
-    # but it saves to JSON rather than CSV
-    def save_raw_data(self, folder, start_time, end_time):
-        """
-        Iterates through all its devices and saves their raw data to disk.
-
-        Uses the following template filename:
-
-        <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.csv
-
-        Args:
-            - folder (str): Directory where files should be saved to.
-            - start_time (str): Starting time of scraping window. In same
-                string format as INI file uses.
-            - end_time (str): End time of scraping window. In same
-                string format as INI file uses.
-
-        Returns:
-            None. Saves data to disk as CSV files as a side-effect.
-        """
-        # TODO Change start + end time to just a single date, as this is primary
-        # usecase?
-
-        if not os.path.isdir(folder):
-            raise utils.DataSavingError(
-                "Folder {} doesn't exist, cannot save raw data.".format(folder)
-            )
-
-        filename = Template("${man}_${device}_${start}_${end}.json")
-        for devid in self.device_ids:
-            fn = filename.substitute(
-                man=self.name, device=devid, start=start_time, end=end_time
-            )
-
-            data = self.raw_data[devid]
-            if data is None:
-                logging.warning(
-                    "No raw data to save for device {}.".format(devid)
-                )
-                continue
-
-            full_path = os.path.join(folder, fn)
-            logging.info("Saving data to file: {}".format(full_path))
-            self._save_raw_data(full_path, data)
-
-    def _save_raw_data(self, filename, data):
-        """
-        Actual function that saves data.
-
-        Uses the following template filename:
-
-        Args:
-            - filename (str): Location to save data to
-            - data (misc): Data in JSON-parseable format.
-
-        Returns:
-            None. Saves data to disk as JSON files as a side-effect.
-        """
-        if os.path.isfile(filename):
-            raise utils.DataSavingError("File {} already exists.".format(filename))
-
-        try:
-            with open(filename, "w") as outfile:
-                json.dump(data, outfile)
-        except json.decoder.JSONDecodeError:
-            raise DataSavingError(
-                "Unable to serialize raw data to json."
-            )
     # TODO Need to document device_ids parameter as abstract

@@ -6,7 +6,20 @@
 """
 
 import math
+import os
 import pickle
+import json
+import csv
+import socket
+from string import Template
+
+from google.oauth2 import service_account
+import googleapiclient.discovery
+from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
+
+RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
+CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
 
 class LoginError(Exception):
     """
@@ -32,10 +45,30 @@ class DataSavingError(Exception):
     """
 
 
+class DataUploadError(Exception):
+    """
+    Custom exception class for situations where uploading a file to GoogleDrive
+    has failed.
+    """
+
+
 class ValidateDataError(Exception):
     """
-    Custom exception class for situations where saving a file has failed.
+    Custom exception class for situations where validating a dataset has failed.
     """
+
+
+class GoogleAPIError(Exception):
+    """
+    Custom exception class for errors related to using Google's API.
+    """
+
+
+class GoogleAPIError(Exception):
+    """
+    Custom exception class for errors related to using Google's API.
+    """
+
 
 def copy_object(input):
     """
@@ -87,7 +120,6 @@ def summarise_validation(n_raw, counts):
         summary += measurand_str
     return summary
 
-
 def is_float(x):
     """
     Tests whether a given string is a float.
@@ -118,3 +150,110 @@ def is_float(x):
         is_float = False
 
     return is_float
+
+def auth_google_api(credentials_fn):
+    """
+    Authorizes connection to GoogleDrive API.
+
+    Uses v3 of the GoogleDrive API, see examples at:
+    https://developers.google.com/drive/api/v3/quickstart/python
+
+    Args:
+        credentials_fn (str): Path to JSON file that has Google API credentials
+            saved.
+
+    Returns:
+        A googleapiclient.discovery.Resource object.
+    """
+    scopes = ['https://www.googleapis.com/auth/drive.file']
+
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+                credentials_fn, scopes=scopes)
+    except FileNotFoundError:
+        raise GoogleAPIError("Credential file '{}' not found".format(credentials_fn)) from None
+    except ValueError:
+        raise GoogleAPIError("Credential file is not formatted as expected") from None
+
+    # setting cache_discovery = False removes a large amount of warnings in log,
+    # that seemingly have little performance impact as we don't need cache.
+    service = googleapiclient.discovery.build('drive', 'v3',
+                                              credentials=credentials,
+                                              cache_discovery=False)
+    return service
+
+
+def upload_file_google_drive(service, fn, folder_id, mime_type):
+    """
+    Uploads a file to a specified Google Drive folder.
+
+    Args:
+        service (googleapiclient.discovery.Resource): Google API service object.
+        fn (str): Filepath of the local file to be uploaded.
+        folder_id (str): ID of the target Google Drive folder.
+        mime_type (str): MIME type of file.
+
+    Returns:
+        None, uploads data to Google Drive as a side effect.
+    """
+    # Filename should be base filename, removing path
+    base_fn = os.path.basename(fn)
+
+    file_metadata = {
+        'name': base_fn,
+        'mimeType': mime_type,
+        'parents': [folder_id]
+    }
+
+    media = MediaFileUpload(fn, mimetype=mime_type)
+
+    try:
+        service.files().create(body=file_metadata,
+                               media_body=media,
+                               supportsAllDrives=True).execute()
+    except socket.timeout:
+        raise DataUploadError("Connection timed out") from None
+    except HttpError as ex:
+        raise DataUploadError("HTTP error: {}.".format(ex)) from None
+
+
+def save_json_file(data, filename):
+    """
+    Encodes data as JSON and saves it to disk.
+
+    Args:
+        - data (misc): Data in JSON-parseable format.
+        - filename (str): Location to save data to
+
+    Returns:
+        None. Saves data to disk as JSON files as a side-effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    try:
+        with open(filename, "w") as outfile:
+            json.dump(data, outfile)
+    except json.decoder.JSONDecodeError:
+        raise DataSavingError(
+            "Unable to serialize raw data to json."
+        )
+
+
+def save_csv_file(data, filename):
+    """
+    Saves CSV data to disk.
+
+    Args:
+        - data (list): Data in CSV (2D list) format to be saved.
+        - filename (str): Location to save data to
+
+    Returns:
+        None. Saves data to disk as CSV files as a side-effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    with open(filename, "w") as outfile:
+        writer = csv.writer(outfile, delimiter=",")
+        writer.writerows(data)

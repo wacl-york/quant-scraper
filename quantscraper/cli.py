@@ -10,13 +10,14 @@
 
 import logging
 import argparse
+import os
 import configparser
 from datetime import date, timedelta, datetime, time
 import requests as re
 import quantaq
 import traceback
 
-from quantscraper.utils import LoginError
+import quantscraper.utils as utils
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
@@ -103,6 +104,134 @@ def setup_loggers(logfn):
         rootLogger.addHandler(fileLogger)
 
 
+def save_clean_data(manufacturer, folder, start_time, end_time):
+    """
+    Iterates through all a manufacturer's devices and saves their cleaned data to disk.
+
+    Uses the following template filename:
+
+    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.csv
+
+    Args:
+        - manufacturer (Manufacturer): Instance of Manufacturer.
+        - folder (str): Directory where files should be saved to.
+        - start_time (str): Starting time of scraping window. In same
+            string format as INI file uses.
+        - end_time (str): End time of scraping window. In same
+            string format as INI file uses.
+
+    Returns:
+        List of filenames that were successfully saved.
+    """
+    # TODO Change start + end time to just a single date, as this is primary
+    # usecase?
+    fns = []
+
+    if not os.path.isdir(folder):
+        raise utils.DataSavingError(
+            "Folder {} doesn't exist, cannot save clean data.".format(folder)
+        )
+
+    for devid in manufacturer.device_ids:
+        fn = utils.CLEAN_DATA_FN.substitute(
+            man=manufacturer.name, device=devid, start=start_time, end=end_time
+        )
+
+        data = manufacturer.clean_data[devid]
+        if data is None:
+            logging.warning(
+                "No clean data to save for device {}.".format(devid)
+            )
+            continue
+
+        full_path = os.path.join(folder, fn)
+        logging.info("Saving data to file: {}".format(full_path))
+        utils.save_csv_file(data, full_path)
+        fns.append(full_path)
+    return fns
+
+
+# TODO save_clean_data and save_raw_data have a huge amount of duplicated code!
+# Can they be refactored to be combined in some way?
+# Only differences are:
+#   - Which data to pull (raw/clean)
+#   - Which template filename to pull (csv/json)
+#   - Which saving function to call (csv/json)
+def save_raw_data(manufacturer, folder, start_time, end_time):
+    """
+    Iterates through all a manufacturer's devices and saves their raw data to disk.
+
+    Uses the following template filename:
+
+    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.json
+
+    Args:
+        - manufacturer (Manufacturer): Instance of Manufacturer.
+        - folder (str): Directory where files should be saved to.
+        - start_time (str): Starting time of scraping window. In same
+            string format as INI file uses.
+        - end_time (str): End time of scraping window. In same
+            string format as INI file uses.
+
+    Returns:
+        List of filenames that were successfully saved.
+    """
+    # TODO Change start + end time to just a single date, as this is primary
+    # usecase?
+    fns = []
+
+    if not os.path.isdir(folder):
+        raise utils.DataSavingError(
+            "Folder {} doesn't exist, cannot save raw data.".format(folder)
+        )
+
+    for devid in manufacturer.device_ids:
+        fn = utils.RAW_DATA_FN.substitute(
+            man=manufacturer.name, device=devid, start=start_time, end=end_time
+        )
+
+        data = manufacturer.raw_data[devid]
+        if data is None:
+            logging.warning(
+                "No raw data to save for device {}.".format(devid)
+            )
+            continue
+
+        full_path = os.path.join(folder, fn)
+        logging.info("Saving data to file: {}".format(full_path))
+        utils.save_json_file(data, full_path)
+        fns.append(full_path)
+    return fns
+
+
+def upload_data_googledrive(service, fns, folder_id, mime_type):
+    """
+    Uploads a number of files of the same type to a single GoogleDrive folder.
+
+    Args:
+        service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        fns (list): A list of full filepaths to the files to be uploaded.
+        folder_id (str): The GoogleDrive ID of the target folder.
+        mime_type (str): The MIME type of the files.
+
+    Returns:
+        None, uploads files as a side-effect.
+    """
+    if fns is None:
+        logging.error("No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'.")
+        return
+
+    for fn in fns:
+        try:
+            logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
+            utils.upload_file_google_drive(service, fn, folder_id, mime_type)
+            logging.info("Upload successful.")
+        except DataUploadError:
+            logging.error("Error in upload")
+            logging.error(traceback.format_exc())
+            continue
+
+
 def main():
     """
     Entry point into the script.
@@ -135,53 +264,68 @@ def main():
             logging.info("Attempting to connect...")
             manufacturer.connect()
             logging.info("Connection established")
-        except LoginError:
+        except utils.LoginError:
             logging.error("Cannot establish connection to {}.".format(man_class.name))
             logging.error(traceback.format_exc())
             continue
 
-        logging.info("Scraping all devices.")
         # TODO Scrape function just iterates through all devices and calls
         # .scrape_device().
         # Should this be instead be run from here, rather than Manufacturer?
         # Particularly since it handles error logging
+        logging.info("Scraping all devices.")
         manufacturer.scrape()
-
-        # TODO Whose responsibility is it to generate filename? CLI script or
-        # manufacturer? Currently filename is built in
-        # Manufacturer.save_raw_data from these input values
-
-        # TODO Also see discussion above manufacturer.scrape() call about whose
-        # responsibility it should be to make these calls.
-        # If the main save_raw_data method just generates filenames and
-        # iterates through each device, called an inner method, should this be
-        # handled here in CLI executable script?
-        # And could it be refactored, say into 1 method to get raw data into an
-        # appropriate format for saving (responsiblity of Device), and second to
-        # just do the saving to disk (could be second class, FileHandler or
-        # something). FileHandler could have .save_json() and .save_csv()
-        # methods as have raw data in both of these formats
-        if cfg.getboolean("Main", "save_raw_data"):
-            logging.info("Saving raw data to file.")
-            manufacturer.save_raw_data(
-                cfg.get("Main", "folder_raw_data"),
-                cfg.get("Main", "start_time"),
-                cfg.get("Main", "end_time"),
-            )
-
-        # TODO Ditto above issue about whether the iterating through each device
-        # should be run here rather than from Manufacturer, so that only have 1
-        # place that is logging.
+        # TODO Ditto 
         logging.info("Processing raw data into validated cleaned data.")
         manufacturer.process()
 
-        if cfg.getboolean("Main", "save_clean_data"):
-            logging.info("Saving clean CSV data to file.")
-            manufacturer.save_clean_data(
-                cfg.get("Main", "folder_clean_data"),
+        if cfg.getboolean("Main", "save_raw_data"):
+            logging.info("Saving raw data to file.")
+            raw_fns = save_raw_data(
+                manufacturer,
+                cfg.get("Main", "local_folder_raw_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
             )
+
+        if cfg.getboolean("Main", "save_clean_data"):
+            logging.info("Saving clean CSV data to file.")
+            clean_fns = save_clean_data(
+                manufacturer,
+                cfg.get("Main", "local_folder_clean_data"),
+                cfg.get("Main", "start_time"),
+                cfg.get("Main", "end_time"),
+            )
+
+        upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")
+        upload_clean = cfg.getboolean("Main", "upload_clean_googledrive")
+
+        if upload_raw or upload_clean:
+            try:
+                service = utils.auth_google_api(cfg.get('GoogleAPI',
+                                                        'credentials_fn'))
+            except utils.GoogleAPIError:
+                logging.error("Cannot connect to Google API.")
+                logging.error(traceback.format_exc())
+                break
+
+            if upload_raw:
+                logging.info("Uploading raw data to Google Drive.")
+                upload_data_googledrive(
+                    service,
+                    raw_fns,
+                    cfg.get("GoogleAPI", "raw_data_id"),
+                    "text/json"
+                )
+
+            if upload_clean:
+                logging.info("Uploading clean CSV data to Google Drive.")
+                upload_data_googledrive(
+                    service,
+                    clean_fns,
+                    cfg.get("GoogleAPI", "clean_data_id"),
+                    "text/csv"
+                )
 
 
 if __name__ == "__main__":
