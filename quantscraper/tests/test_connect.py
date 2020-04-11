@@ -40,9 +40,11 @@ class TestAeroqual(unittest.TestCase):
             mock_session.return_value = Mock(post=post_mock)
             try:
                 self.aeroqual.connect()
-                post_mock.assert_called_once_with(self.aeroqual.auth_url,
-                                                  data=self.aeroqual.auth_params,
-                                                  headers=self.aeroqual.auth_headers)
+                post_mock.assert_called_once_with(
+                    self.aeroqual.auth_url,
+                    data=self.aeroqual.auth_params,
+                    headers=self.aeroqual.auth_headers,
+                )
             except:
                 self.fail("Connect raised exception with status code 200")
 
@@ -109,9 +111,11 @@ class TestAQMesh(unittest.TestCase):
             mock_session.return_value = Mock(post=post_mock)
             try:
                 self.aqmesh.connect()
-                post_mock.assert_called_once_with(self.aqmesh.auth_url,
-                                                 data=self.aqmesh.auth_params,
-                                                 headers=self.aqmesh.auth_headers)
+                post_mock.assert_called_once_with(
+                    self.aqmesh.auth_url,
+                    data=self.aqmesh.auth_params,
+                    headers=self.aqmesh.auth_headers,
+                )
             except:
                 self.fail("Connect raised exception with status code 200")
 
@@ -184,9 +188,11 @@ class TestZephyr(unittest.TestCase):
             try:
                 zephyr.connect()
                 self.assertEqual(zephyr.api_token, "foo")
-                post_mock.assert_called_once_with(zephyr.auth_url,
-                                                  data=zephyr.auth_params,
-                                                  headers=zephyr.auth_headers)
+                post_mock.assert_called_once_with(
+                    zephyr.auth_url,
+                    data=zephyr.auth_params,
+                    headers=zephyr.auth_headers,
+                )
             except:
                 self.fail("Connect raised exception with status code 200")
 
@@ -263,10 +269,10 @@ class TestMyQuantAQ(unittest.TestCase):
         cfg.set("QuantAQ", "api_token", "foo")
         myquantaq = MyQuantAQ.MyQuantAQ(cfg)
         # mock the get_account method that is called to test authentication
-        get_account_mock = Mock(return_value='foo', side_effect=None)
+        get_account_mock = Mock(return_value="foo", side_effect=None)
         with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
             # Ensure the patched Class returns a Mock instance
-            mock_api.return_value = Mock(get_account = get_account_mock)
+            mock_api.return_value = Mock(get_account=get_account_mock)
             try:
                 myquantaq.connect()
                 get_account_mock.assert_called_once()
@@ -287,7 +293,6 @@ class TestMyQuantAQ(unittest.TestCase):
             with self.assertRaises(LoginError):
                 myquantaq.connect()
                 get_account_mock.assert_called_once()
-
 
 
 # TODO Test only called once

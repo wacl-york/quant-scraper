@@ -3,4 +3,16 @@ repos:
     rev: stable
     hooks:
       - id: black
-        language_version: python3.6
+        name: Black styler
+        language_version: python3.8
+        stages: [commit]
+  - repo: local
+    hooks:
+      - id: unittests
+        name: Unit tests
+        entry: coverage run -m unittest discover -s quantscraper/tests -b
+        language: python
+        language_version: python3.8
+        pass_filenames: false
+        stages: [commit]
+

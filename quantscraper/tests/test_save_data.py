@@ -22,6 +22,7 @@ import quantscraper.utils as utils
 import quantscraper.cli as cli
 from quantscraper.tests.test_utils import build_mock_response
 
+
 class TestSaveCSVFile(unittest.TestCase):
     # The saving clean data functionality is split into 2 functions:
     #    - cli.save_clean_data: iterates through all devices, forms their
@@ -46,13 +47,12 @@ class TestSaveCSVFile(unittest.TestCase):
                 with patch("quantscraper.utils.csv") as mock_csv:
                     mock_writer = Mock()
                     mock_writerows = Mock()
-                    mock_writer.return_value = Mock(writerows = mock_writerows)
+                    mock_writer.return_value = Mock(writerows=mock_writerows)
                     mock_csv.writer = mock_writer
 
-                    utils.save_csv_file([[1, 2, 3], [4, 5,6]],
-                                        "path/to/fn.csv")
+                    utils.save_csv_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.csv")
                     # Check calls are as expected
-                    m.assert_called_once_with("path/to/fn.csv", 'w')
+                    m.assert_called_once_with("path/to/fn.csv", "w")
                     mock_writer.assert_called_once_with(m(), delimiter=",")
                     mock_writerows.assert_called_once_with([[1, 2, 3], [4, 5, 6]])
 
@@ -66,8 +66,7 @@ class TestSaveCSVFile(unittest.TestCase):
                 mock_path.isfile = Mock(return_value=True)
 
                 with self.assertRaises(utils.DataSavingError):
-                    utils.save_csv_file([[1, 2, 3], [4, 5,6]],
-                                        "path/to/fn.csv")
+                    utils.save_csv_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.csv")
 
 
 class TestSaveCleanData(unittest.TestCase):
@@ -83,14 +82,12 @@ class TestSaveCleanData(unittest.TestCase):
     cfg.read("example.ini")
 
     # Set dummy device IDs
-    cfg.set('Aeroqual', 'devices', '1,2')
+    cfg.set("Aeroqual", "devices", "1,2")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._clean_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                                '2': [[7, 8, 9]]
-                               }
+        aeroqual._clean_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
 
         # Need to patch os.path to force directory to exist
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
@@ -104,15 +101,12 @@ class TestSaveCleanData(unittest.TestCase):
 
                     calls = mock_save.mock_calls
                     exp_calls = [
-                                 call(
-                                       [[1, 2, 3], [4, 5, 6]],
-                                       "dummyFolder/Aeroqual_1_startT_endT.csv"
-                                      ),
-                                 call(
-                                       [[7, 8, 9]],
-                                       "dummyFolder/Aeroqual_2_startT_endT.csv"
-                                     )
-                                 ]
+                        call(
+                            [[1, 2, 3], [4, 5, 6]],
+                            "dummyFolder/Aeroqual_1_startT_endT.csv",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_startT_endT.csv"),
+                    ]
                     self.assertEqual(calls, exp_calls)
                     print(mock_isdir.mock_calls)
                 except:
@@ -121,9 +115,7 @@ class TestSaveCleanData(unittest.TestCase):
     def test_dir_doesnt_exist(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._clean_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                                '2': [[7, 8, 9]]
-                               }
+        aeroqual._clean_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
 
         # Need to patch os.path to force directory to not exist
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
@@ -132,15 +124,13 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                        cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._clean_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                                '2': None
-                               }
+        aeroqual._clean_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": None}
 
         # Need to patch os.path to force directory to exist
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
@@ -151,12 +141,12 @@ class TestSaveCleanData(unittest.TestCase):
 
                 try:
                     cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
-                    
+
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
-                                                      [[1, 2, 3], [4, 5, 6]],
-                                                      "dummyFolder/Aeroqual_1_startT_endT.csv")
+                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_startT_endT.csv"
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -165,7 +155,7 @@ class TestSaveJSONFile(unittest.TestCase):
     # The saving raw data functionality is split into 2 functions:
     #    - cli.save_raw_data: iterates through all devices, forms their
     #          filename and extracts their clean data
-    #    - utils.save_json_file: Does actual writing to file of a given 
+    #    - utils.save_json_file: Does actual writing to file of a given
     #          serializable Python object and a given filename.
 
     # This class tests the latter.
@@ -188,7 +178,7 @@ class TestSaveJSONFile(unittest.TestCase):
 
                     utils.save_json_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.json")
                     # Check calls are as expected
-                    m.assert_called_once_with("path/to/fn.json", 'w')
+                    m.assert_called_once_with("path/to/fn.json", "w")
                     mock_dump.assert_called_once_with([[1, 2, 3], [4, 5, 6]], m())
 
     def test_file_exists(self):
@@ -205,7 +195,7 @@ class TestSaveJSONFile(unittest.TestCase):
 
     # This method doesn't work as can't mock JSONDecodeError.
     # It needs to be instantiated which I can't mock
-    #def test_serialize_error(self):
+    # def test_serialize_error(self):
     #    # Check that the DataSavingError is raised when can't serialize json
     #    aeroqual = Aeroqual.Aeroqual(self.cfg)
     #    m = mock_open()
@@ -228,7 +218,7 @@ class TestSaveRawData(unittest.TestCase):
     # The saving raw data functionality is split into 2 functions:
     #    - cli.save_raw_data: iterates through all devices, forms their
     #          filename and extracts their clean data
-    #    - utils.save_json_file: Does actual writing to file of a given 
+    #    - utils.save_json_file: Does actual writing to file of a given
     #          serializable Python object and a given filename.
 
     # This class tests the former.
@@ -245,14 +235,12 @@ class TestSaveRawData(unittest.TestCase):
     cfg.read("example.ini")
 
     # Set dummy device IDs
-    cfg.set('Aeroqual', 'devices', '1,2')
+    cfg.set("Aeroqual", "devices", "1,2")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._raw_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                                '2': [[7, 8, 9]]
-                               }
+        aeroqual._raw_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
 
         # Need to patch os.path to force directory to exist
         with patch("quantscraper.utils.os.path.isdir") as mock_isdir:
@@ -266,15 +254,12 @@ class TestSaveRawData(unittest.TestCase):
 
                     calls = mock_save.mock_calls
                     exp_calls = [
-                                 call(
-                                       [[1, 2, 3], [4, 5, 6]],
-                                       "dummyFolder/Aeroqual_1_startT_endT.json"
-                                      ),
-                                 call(
-                                      [[7, 8, 9]],
-                                     "dummyFolder/Aeroqual_2_startT_endT.json"
-                                     )
-                                 ]
+                        call(
+                            [[1, 2, 3], [4, 5, 6]],
+                            "dummyFolder/Aeroqual_1_startT_endT.json",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_startT_endT.json"),
+                    ]
                     self.assertEqual(calls, exp_calls)
                     print(mock_isdir.mock_calls)
                 except:
@@ -283,9 +268,7 @@ class TestSaveRawData(unittest.TestCase):
     def test_dir_doesnt_exist(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._raw_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                                '2': [[7, 8, 9]]
-                               }
+        aeroqual._raw_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
 
         # Need to patch os.path to force directory to not exist
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
@@ -294,15 +277,13 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                        cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         # Set dummy data
-        aeroqual._raw_data = {'1': [[1, 2, 3], [4, 5, 6]],
-                              '2': None
-                               }
+        aeroqual._raw_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": None}
 
         # Need to patch os.path to force directory to exist
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
@@ -313,11 +294,13 @@ class TestSaveRawData(unittest.TestCase):
 
                 try:
                     cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
-                    
+
                     # This inner function should only be called once on account
                     # of second device not having data
-                    mock_save.assert_called_once_with([[1, 2, 3], [4, 5, 6]],
-                                                      "dummyFolder/Aeroqual_1_startT_endT.json")
+                    mock_save.assert_called_once_with(
+                        [[1, 2, 3], [4, 5, 6]],
+                        "dummyFolder/Aeroqual_1_startT_endT.json",
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 

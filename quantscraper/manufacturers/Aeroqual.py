@@ -156,7 +156,7 @@ class Aeroqual(Manufacturer):
                 )
             )
 
-        header_removed = raw_lines[self.lines_skip : ]
+        header_removed = raw_lines[self.lines_skip :]
         if len(header_removed) == 0:
             raise DataParseError("Have no rows of data available.")
 

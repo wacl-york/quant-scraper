@@ -47,27 +47,26 @@ class TestAeroqual(unittest.TestCase):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200))
-        session_return = Mock(
-            post=mock_post, get=mock_get
-        )
+        session_return = Mock(post=mock_post, get=mock_get)
         aeroqual.session = session_return
         try:
             aeroqual.scrape_device("foo")
             exp_post_calls = [
                 call(
                     aeroqual.select_device_url,
-                    json=[aeroqual.select_device_string.substitute(device='foo')],
-                    headers=aeroqual.select_device_headers
+                    json=[aeroqual.select_device_string.substitute(device="foo")],
+                    headers=aeroqual.select_device_headers,
                 ),
                 call(
                     aeroqual.data_url,
                     data=aeroqual.data_params,
-                    headers=aeroqual.data_headers
+                    headers=aeroqual.data_headers,
                 ),
             ]
             self.assertEqual(mock_post.mock_calls, exp_post_calls)
-            mock_get.assert_called_once_with(aeroqual.dl_url,
-                                             headers=aeroqual.dl_headers)
+            mock_get.assert_called_once_with(
+                aeroqual.dl_url, headers=aeroqual.dl_headers
+            )
         except:
             self.fail("Connect raised exception with status code 200")
 
@@ -76,11 +75,8 @@ class TestAeroqual(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
-        mock_get = Mock(return_value=build_mock_response(status=200,
-                                                         text="DummyData"))
-        session_return = Mock(
-            post=mock_post, get=mock_get
-        )
+        mock_get = Mock(return_value=build_mock_response(status=200, text="DummyData"))
+        session_return = Mock(post=mock_post, get=mock_get)
         aeroqual.session = session_return
         try:
             resp = aeroqual.scrape_device("foo")
@@ -88,18 +84,19 @@ class TestAeroqual(unittest.TestCase):
             exp_post_calls = [
                 call(
                     aeroqual.select_device_url,
-                    json=[aeroqual.select_device_string.substitute(device='foo')],
-                    headers=aeroqual.select_device_headers
+                    json=[aeroqual.select_device_string.substitute(device="foo")],
+                    headers=aeroqual.select_device_headers,
                 ),
                 call(
                     aeroqual.data_url,
                     data=aeroqual.data_params,
-                    headers=aeroqual.data_headers
+                    headers=aeroqual.data_headers,
                 ),
             ]
             self.assertEqual(mock_post.mock_calls, exp_post_calls)
-            mock_get.assert_called_once_with(aeroqual.dl_url,
-                                             headers=aeroqual.dl_headers)
+            mock_get.assert_called_once_with(
+                aeroqual.dl_url, headers=aeroqual.dl_headers
+            )
         except:
             self.fail("Connect raised exception with status code 200")
 

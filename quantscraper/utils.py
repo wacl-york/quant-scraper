@@ -21,6 +21,7 @@ from googleapiclient.errors import HttpError
 RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
 
+
 class LoginError(Exception):
     """
     Custom exception class for situations where a login attempt has failed.
@@ -98,27 +99,30 @@ def summarise_validation(n_raw, counts):
     Returns:
         A string, summarising the number of clean data points.
     """
-    n_clean = counts['timestamp']
+    n_clean = counts["timestamp"]
     try:
         pct_clean = n_clean / n_raw * 100
     except ZeroDivisionError:
         pct_clean = 0
 
-    summary = "Found {}/{} ({:.1f}%) rows with usable timestamps. Data fields: ".format(n_clean, n_raw, pct_clean)
+    summary = "Found {}/{} ({:.1f}%) rows with usable timestamps. Data fields: ".format(
+        n_clean, n_raw, pct_clean
+    )
 
     for measurand, measurand_clean in counts.items():
-        if measurand == 'timestamp':
+        if measurand == "timestamp":
             continue
         try:
             pct_clean = measurand_clean / n_clean * 100
         except ZeroDivisionError:
             pct_clean = 0
 
-        measurand_str = "{} {}/{} ({:.1f}%)\t".format(measurand, measurand_clean,
-                                                      n_clean,
-                                                      pct_clean)
+        measurand_str = "{} {}/{} ({:.1f}%)\t".format(
+            measurand, measurand_clean, n_clean, pct_clean
+        )
         summary += measurand_str
     return summary
+
 
 def is_float(x):
     """
@@ -151,6 +155,7 @@ def is_float(x):
 
     return is_float
 
+
 def auth_google_api(credentials_fn):
     """
     Authorizes connection to GoogleDrive API.
@@ -165,21 +170,24 @@ def auth_google_api(credentials_fn):
     Returns:
         A googleapiclient.discovery.Resource object.
     """
-    scopes = ['https://www.googleapis.com/auth/drive.file']
+    scopes = ["https://www.googleapis.com/auth/drive.file"]
 
     try:
         credentials = service_account.Credentials.from_service_account_file(
-                credentials_fn, scopes=scopes)
+            credentials_fn, scopes=scopes
+        )
     except FileNotFoundError:
-        raise GoogleAPIError("Credential file '{}' not found".format(credentials_fn)) from None
+        raise GoogleAPIError(
+            "Credential file '{}' not found".format(credentials_fn)
+        ) from None
     except ValueError:
         raise GoogleAPIError("Credential file is not formatted as expected") from None
 
     # setting cache_discovery = False removes a large amount of warnings in log,
     # that seemingly have little performance impact as we don't need cache.
-    service = googleapiclient.discovery.build('drive', 'v3',
-                                              credentials=credentials,
-                                              cache_discovery=False)
+    service = googleapiclient.discovery.build(
+        "drive", "v3", credentials=credentials, cache_discovery=False
+    )
     return service
 
 
@@ -199,18 +207,14 @@ def upload_file_google_drive(service, fn, folder_id, mime_type):
     # Filename should be base filename, removing path
     base_fn = os.path.basename(fn)
 
-    file_metadata = {
-        'name': base_fn,
-        'mimeType': mime_type,
-        'parents': [folder_id]
-    }
+    file_metadata = {"name": base_fn, "mimeType": mime_type, "parents": [folder_id]}
 
     media = MediaFileUpload(fn, mimetype=mime_type)
 
     try:
-        service.files().create(body=file_metadata,
-                               media_body=media,
-                               supportsAllDrives=True).execute()
+        service.files().create(
+            body=file_metadata, media_body=media, supportsAllDrives=True
+        ).execute()
     except socket.timeout:
         raise DataUploadError("Connection timed out") from None
     except HttpError as ex:
@@ -235,9 +239,7 @@ def save_json_file(data, filename):
         with open(filename, "w") as outfile:
             json.dump(data, outfile)
     except json.decoder.JSONDecodeError:
-        raise DataSavingError(
-            "Unable to serialize raw data to json."
-        )
+        raise DataSavingError("Unable to serialize raw data to json.")
 
 
 def save_csv_file(data, filename):

@@ -6,6 +6,7 @@ import requests as re
 from datetime import datetime
 import quantscraper.utils as utils
 
+
 class Manufacturer(ABC):
     # Unsure how to force Name as an abstract class property.
     # Can only get it working as an instance attribute
@@ -18,9 +19,9 @@ class Manufacturer(ABC):
         return self._clean_data
 
     @clean_data.setter
-    # TODO Clean this up as currently doesn't work: 
-        # can only have 1 non-self argument. Can pass a dict mapping 
-        # {devID: value} as second argument
+    # TODO Clean this up as currently doesn't work:
+    # can only have 1 non-self argument. Can pass a dict mapping
+    # {devID: value} as second argument
     def clean_data(self, devID, value):
         """
         TODO
@@ -115,11 +116,13 @@ class Manufacturer(ABC):
                     )
                 )
             except utils.DataParseError as ex:
-                logging.error("Unable to parse data into CSV for device {}.".format(devid))
+                logging.error(
+                    "Unable to parse data into CSV for device {}.".format(devid)
+                )
                 logging.error(traceback.format_exc())
                 self.clean_data[devid] = None
                 continue
-                
+
             logging.info("Running validation...".format(devid))
             try:
                 self.clean_data[devid] = self.validate_data(self.clean_data[devid])
@@ -131,7 +134,6 @@ class Manufacturer(ABC):
             except utils.ValidateDataError:
                 logging.error("Something went wrong during data validation.")
                 self.clean_data[devid] = None
-
 
     def validate_data(self, data):
         """
@@ -145,21 +147,17 @@ class Manufacturer(ABC):
             The cleaned data, in the same 2D list structure.
         """
         if data is None:
-            raise utils.ValidateDataError(
-                "Input data is None."
-            )
+            raise utils.ValidateDataError("Input data is None.")
 
         if len(data) == 0:
-            raise utils.ValidateDataError(
-                "0 errors in input data."
-            )
+            raise utils.ValidateDataError("0 errors in input data.")
 
         # TODO put desired output timestamp format in config
         output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}
         timestamp_index = None
-        
+
         # First row should be header so obtain numeric indices
         for i, col in enumerate(data[0]):
             if col == self.timestamp_col:
@@ -178,9 +176,9 @@ class Manufacturer(ABC):
 
         # Store counts of number of clean values
         n_clean_vals = {k: 0 for k in available_measurands}
-        n_clean_vals['timestamp'] = 0
+        n_clean_vals["timestamp"] = 0
         # List to store clean data in
-        clean_data = [['timestamp', 'measurand', 'value']]
+        clean_data = [["timestamp", "measurand", "value"]]
 
         # Start at 1 to skip header
         for i in range(1, nrows):
@@ -190,7 +188,7 @@ class Manufacturer(ABC):
             except ValueError:
                 continue
 
-            n_clean_vals['timestamp'] += 1
+            n_clean_vals["timestamp"] += 1
             timestamp_clean = dt.strftime(output_format)
 
             for measurand in available_measurands:
@@ -198,15 +196,14 @@ class Manufacturer(ABC):
 
                 if not utils.is_float(val_raw):
                     continue
-                
+
                 n_clean_vals[measurand] += 1
                 clean_row = [timestamp_clean, measurand, float(val_raw)]
                 clean_data.append(clean_row)
 
-        summary = utils.summarise_validation(len(data)-1, n_clean_vals)
+        summary = utils.summarise_validation(len(data) - 1, n_clean_vals)
         logging.info(summary)
 
         return clean_data
-
 
     # TODO Need to document device_ids parameter as abstract

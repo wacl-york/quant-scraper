@@ -23,9 +23,9 @@ from quantscraper.utils import DataParseError
 
 
 class TestAeroqual(unittest.TestCase):
-    # Aeroqual's raw data is organised as a CSV in a raw string, i.e. 
+    # Aeroqual's raw data is organised as a CSV in a raw string, i.e.
     # \r\n delimiting lines and , delimiting columns
-    # However, it has 6 empty header lines containing metadata 
+    # However, it has 6 empty header lines containing metadata
 
     # TODO Should config be mocked too, or is it fair enough to use the example
     # config that is bundled with the source code?
@@ -248,7 +248,7 @@ class TestZephyr(unittest.TestCase):
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
         res = zephyr.parse_to_csv(raw)
         self.assertEqual(res, exp)
-        
+
     def test_empty_strings(self):
         # Test with empty strings
         # Have removed 2, 4, 9
@@ -381,11 +381,7 @@ class TestQuantAQ(unittest.TestCase):
                     "geo": {"lat": "3.5", "lon": "4.5"},
                 },
                 {"NO2": "4", "O3": "6", "geo": {"lat": "5.5", "lon": "6.5"}},
-                {
-                    "NO2": "7",
-                    "CO2": "8",
-                    "geo": {"lat": "7.5", "lon": "8.5"},
-                },
+                {"NO2": "7", "CO2": "8", "geo": {"lat": "7.5", "lon": "8.5"},},
             ],
         }
 
@@ -407,18 +403,9 @@ class TestQuantAQ(unittest.TestCase):
         raw_data = {
             "raw": "foo",
             "final": [
-                {
-                    "NO2": "1",
-                    "CO2": "",
-                    "O3": "3",
-                    "geo": {"lat": "", "lon": "4.5"},
-                },
+                {"NO2": "1", "CO2": "", "O3": "3", "geo": {"lat": "", "lon": "4.5"},},
                 {"NO2": "4", "O3": "6", "geo": {"lat": "5.5", "lon": "6.5"}},
-                {
-                    "NO2": "7",
-                    "CO2": "",
-                    "geo": {"lat": "7.5", "lon": ""},
-                },
+                {"NO2": "7", "CO2": "", "geo": {"lat": "7.5", "lon": ""},},
             ],
         }
 

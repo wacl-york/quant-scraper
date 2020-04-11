@@ -139,9 +139,7 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
 
         data = manufacturer.clean_data[devid]
         if data is None:
-            logging.warning(
-                "No clean data to save for device {}.".format(devid)
-            )
+            logging.warning("No clean data to save for device {}.".format(devid))
             continue
 
         full_path = os.path.join(folder, fn)
@@ -192,9 +190,7 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
 
         data = manufacturer.raw_data[devid]
         if data is None:
-            logging.warning(
-                "No raw data to save for device {}.".format(devid)
-            )
+            logging.warning("No raw data to save for device {}.".format(devid))
             continue
 
         full_path = os.path.join(folder, fn)
@@ -218,7 +214,9 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
         None, uploads files as a side-effect.
     """
     if fns is None:
-        logging.error("No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'.")
+        logging.error(
+            "No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'."
+        )
         return
 
     for fn in fns:
@@ -275,7 +273,7 @@ def main():
         # Particularly since it handles error logging
         logging.info("Scraping all devices.")
         manufacturer.scrape()
-        # TODO Ditto 
+        # TODO Ditto
         logging.info("Processing raw data into validated cleaned data.")
         manufacturer.process()
 
@@ -302,8 +300,7 @@ def main():
 
         if upload_raw or upload_clean:
             try:
-                service = utils.auth_google_api(cfg.get('GoogleAPI',
-                                                        'credentials_fn'))
+                service = utils.auth_google_api(cfg.get("GoogleAPI", "credentials_fn"))
             except utils.GoogleAPIError:
                 logging.error("Cannot connect to Google API.")
                 logging.error(traceback.format_exc())
@@ -312,10 +309,7 @@ def main():
             if upload_raw:
                 logging.info("Uploading raw data to Google Drive.")
                 upload_data_googledrive(
-                    service,
-                    raw_fns,
-                    cfg.get("GoogleAPI", "raw_data_id"),
-                    "text/json"
+                    service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
                 )
 
             if upload_clean:
@@ -324,7 +318,7 @@ def main():
                     service,
                     clean_fns,
                     cfg.get("GoogleAPI", "clean_data_id"),
-                    "text/csv"
+                    "text/csv",
                 )
 
 
