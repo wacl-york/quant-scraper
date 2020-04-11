@@ -64,6 +64,12 @@ class GoogleAPIError(Exception):
     """
 
 
+class GoogleAPIError(Exception):
+    """
+    Custom exception class for errors related to using Google's API.
+    """
+
+
 def copy_object(input):
     """
     Function to deep copy a Python object.
