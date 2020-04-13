@@ -51,6 +51,8 @@ class TestLoadData(unittest.TestCase):
             res = daily_preprocessing.get_data(
                 cfg, "manu1", "dev1", "2012-03-12 10:23:55", "2012-04-12 10:56:09"
             )
+            print(res)
+            print(exp)
 
             # Format of expected filename is given in utils.CLEAN_DATA_FN
             mock_read.assert_called_once_with(
