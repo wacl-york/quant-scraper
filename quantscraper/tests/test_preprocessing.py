@@ -290,5 +290,176 @@ class TestLongToWide(unittest.TestCase):
         )
 
 
+class TestResample(unittest.TestCase):
+    # Tests daily_preprocessing.resample() function,
+    # which is a wrapper around pandas.resample()
+
+    def test_success_1min(self):
+        dummy = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:31:30",
+                    "2013-03-17 10:31:40",
+                    "2013-03-17 10:32:00",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:33:14",
+                    "2013-03-17 10:33:59",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": np.arange(8),
+                "measurand2": np.arange(10, 18) * 2,
+            }
+        )
+        dummy["timestamp"] = pd.to_datetime(dummy["timestamp"])
+        dummy.set_index("timestamp", inplace=True)
+
+        res = daily_preprocessing.resample(dummy, "1Min")
+
+        exp = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:32:00",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": [1, 3, 5, 7],
+                "measurand2": [22, 26, 30, 34],
+            }
+        )
+        exp["timestamp"] = pd.to_datetime(exp["timestamp"])
+        exp.set_index("timestamp", inplace=True)
+
+        pd.testing.assert_frame_equal(res, exp)
+
+    def test_success_1min_with_missing(self):
+        # Test handles missing minutes, which should be given NaN
+        dummy = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:31:30",
+                    "2013-03-17 10:31:40",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:33:14",
+                    "2013-03-17 10:33:59",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": np.arange(7),
+                "measurand2": np.arange(10, 17) * 2,
+            }
+        )
+        dummy["timestamp"] = pd.to_datetime(dummy["timestamp"])
+        dummy.set_index("timestamp", inplace=True)
+
+        res = daily_preprocessing.resample(dummy, "1Min")
+
+        exp = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:32:00",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": [1, np.nan, 4, 6],
+                "measurand2": [22, np.nan, 28, 32],
+            }
+        )
+        exp["timestamp"] = pd.to_datetime(exp["timestamp"])
+        exp.set_index("timestamp", inplace=True)
+
+        pd.testing.assert_frame_equal(res, exp)
+
+    def test_success_1hour_with_missing(self):
+        # Test that summarises by hour, and adds NaN for any missing hour
+        dummy = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:31:30",
+                    "2013-03-17 10:31:40",
+                    "2013-03-17 11:29:17",
+                    "2013-03-17 11:29:17",
+                    "2013-03-17 12:00:00",
+                    "2013-03-17 14:58:59",
+                    "2013-03-17 14:28:02",
+                ],
+                "measurand1": np.arange(8),
+                "measurand2": np.arange(10, 18) * 2,
+            }
+        )
+        dummy["timestamp"] = pd.to_datetime(dummy["timestamp"])
+        dummy.set_index("timestamp", inplace=True)
+
+        res = daily_preprocessing.resample(dummy, "1H")
+
+        exp = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:00:00",
+                    "2013-03-17 11:00:00",
+                    "2013-03-17 12:00:00",
+                    "2013-03-17 13:00:00",
+                    "2013-03-17 14:00:00",
+                ],
+                "measurand1": [1, 3.5, 5, np.nan, 6.5],
+                "measurand2": [22, 27, 30, np.nan, 33],
+            }
+        )
+        exp["timestamp"] = pd.to_datetime(exp["timestamp"])
+        exp.set_index("timestamp", inplace=True)
+
+        pd.testing.assert_frame_equal(res, exp)
+
+    def test_error_notimeindex(self):
+        # resample method requires index to be a datetime object
+        # Don't explicitly set timestamp to be datetime, or as index here
+        dummy = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:31:30",
+                    "2013-03-17 10:31:40",
+                    "2013-03-17 10:32:00",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:33:14",
+                    "2013-03-17 10:33:59",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": np.arange(8),
+                "measurand2": np.arange(10, 18) * 2,
+            }
+        )
+
+        with self.assertRaises(utils.ResamplingError):
+            res = daily_preprocessing.resample(dummy, "1Min")
+
+    def test_error_bad_resolution_format(self):
+        # Should raise error when pass in invalid time format
+        dummy = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:31:00",
+                    "2013-03-17 10:31:30",
+                    "2013-03-17 10:31:40",
+                    "2013-03-17 10:32:00",
+                    "2013-03-17 10:33:00",
+                    "2013-03-17 10:33:14",
+                    "2013-03-17 10:33:59",
+                    "2013-03-17 10:34:00",
+                ],
+                "measurand1": np.arange(8),
+                "measurand2": np.arange(10, 18) * 2,
+            }
+        )
+        dummy["timestamp"] = pd.to_datetime(dummy["timestamp"])
+        dummy.set_index("timestamp", inplace=True)
+
+        with self.assertRaises(utils.ResamplingError):
+            res = daily_preprocessing.resample(dummy, "adsdsa")
+
+
 if __name__ == "__main__":
     unittest.main()

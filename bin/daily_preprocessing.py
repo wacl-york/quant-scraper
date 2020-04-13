@@ -164,17 +164,32 @@ def long_to_wide(long, measurands=None):
     return wide
 
 
-def resample(df):
+def resample(df, resolution):
     """
-    Resamples the time-serieses into a constant resolution.
+    Resamples the time-series into a constant resolution.
+
+    Uses the pandas.resample() function that groups all points into bins at the
+    specified resolution, then aggregates them to obtain a single value.
+    In this usage, the aggregation function is the mean.
 
     Args:
         df (pandas.DataFrame): Input data.
-
+        resolution (str): Desired output resolution, see following link for
+            syntax:
+            https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects
     Returns:
         A pandas.DataFrame object in the specified time-resolution.
     """
-    return df
+    try:
+        df_resampled = df.resample(resolution).mean()
+    except TypeError:
+        raise utils.ResamplingError("Data doesn't have a time index.") from None
+    except ValueError:
+        raise utils.ResamplingError(
+            "'{}' isn't a valid time resolution format.".format(resolution)
+        ) from None
+
+    return df_resampled
 
 
 def main():
@@ -235,8 +250,18 @@ def main():
             continue
 
         # Resample into same resolution
-        logging.info("Resampling time-series.")
-        df_resampled = resample(wide_df)
+        time_res = cfg.get("Analysis", "time_resolution")
+        logging.info(
+            "Resampling time-series with a resolution of '{}'.".format(time_res)
+        )
+        try:
+            df_resampled = resample(wide_df, time_res)
+        except utils.ResamplingError:
+            logging.error(
+                "Error in resampling data, raw frequency will be used instead."
+            )
+            logging.error(traceback.format_exc())
+            df_resampled = wide_df
 
         # Save pre-processed data frame locally
         logging.info("Saving file to disk.")

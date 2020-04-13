@@ -79,6 +79,12 @@ class DataConversionError(Exception):
     """
 
 
+class ResamplingError(Exception):
+    """
+    Custom exception class for errors related to resampling a time-series.
+    """
+
+
 def copy_object(input):
     """
     Function to deep copy a Python object.
