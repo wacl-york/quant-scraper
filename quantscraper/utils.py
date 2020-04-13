@@ -20,6 +20,7 @@ from googleapiclient.errors import HttpError
 
 RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
+ANALYSIS_DATA_FN = Template("${man}_${start}_${end}.csv")
 
 
 class LoginError(Exception):
@@ -46,6 +47,13 @@ class DataSavingError(Exception):
     """
 
 
+class DataReadingError(Exception):
+    """
+    Custom exception class for situations where reading a file from disk
+    has failed.
+    """
+
+
 class DataUploadError(Exception):
     """
     Custom exception class for situations where uploading a file to GoogleDrive
@@ -65,9 +73,9 @@ class GoogleAPIError(Exception):
     """
 
 
-class GoogleAPIError(Exception):
+class DataConversionError(Exception):
     """
-    Custom exception class for errors related to using Google's API.
+    Custom exception class for errors related to pivoting a long table to wide.
     """
 
 
@@ -240,6 +248,8 @@ def save_json_file(data, filename):
             json.dump(data, outfile)
     except json.decoder.JSONDecodeError:
         raise DataSavingError("Unable to serialize raw data to json.")
+    except FileNotFoundError as ex:
+        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
 
 
 def save_csv_file(data, filename):
@@ -256,6 +266,29 @@ def save_csv_file(data, filename):
     if os.path.isfile(filename):
         raise DataSavingError("File {} already exists.".format(filename))
 
-    with open(filename, "w") as outfile:
-        writer = csv.writer(outfile, delimiter=",")
-        writer.writerows(data)
+    try:
+        with open(filename, "w") as outfile:
+            writer = csv.writer(outfile, delimiter=",")
+            writer.writerows(data)
+    except FileNotFoundError as ex:
+        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+
+
+def save_dataframe(data, filename):
+    """
+    Saves a pandas dataframe to disk.
+
+    Args:
+        - data (pandas.DataFrame): Input data frame.
+        - filename (str): Location to save data frame to.
+
+    Returns:
+        None, saves to disk as a side effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    try:
+        data.to_csv(filename)
+    except FileNotFoundError as ex:
+        raise DataSavingError("Cannot save to file {}.".format(filename)) from None

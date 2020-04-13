@@ -22,12 +22,8 @@ class Zephyr(Manufacturer):
             None
         """
         self.auth_url = cfg.get(self.name, "auth_url")
-        self.device_ids = cfg.get(self.name, "devices").split(",")
         self.averaging_window = cfg.get(self.name, "averaging_window")
         self.slot = cfg.get(self.name, "slot")
-        self.cols_to_validate = cfg.get(self.name, "columns_to_validate").split(",")
-        self.timestamp_col = cfg.get(self.name, "timestamp_column")
-        self.timestamp_format = cfg.get(self.name, "timestamp_format")
 
         # Authentication
         self.auth_params = {

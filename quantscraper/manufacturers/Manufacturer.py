@@ -68,6 +68,15 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
+        self.device_ids = cfg.get(self.name, "devices").split(",")
+        # Names of columns to store in cleaned data and run basic checks over
+        self.cols_to_validate = cfg.get(self.name, "columns_to_validate").split(",")
+        # Names of columns to pre-process and store as part of analysis routines
+        self.analysis_columns = cfg.get(self.name, "columns_to_preprocess").split(",")
+        # Name of column that holds timestamp
+        self.timestamp_col = cfg.get(self.name, "timestamp_column")
+        # String providing the format of the timestamp
+        self.timestamp_format = cfg.get(self.name, "timestamp_format")
 
     @abstractmethod
     def connect(self):

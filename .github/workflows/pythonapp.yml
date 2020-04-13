@@ -5,7 +5,7 @@ name: Python application
 
 on:
   push:
-    branches: [ master, initial-release, feature-* ]
+    branches: [ master, initial-release, feature-*, feature/* ]
   pull_request:
     branches: [ master, initial-release ]
 

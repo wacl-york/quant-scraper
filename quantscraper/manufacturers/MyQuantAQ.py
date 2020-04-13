@@ -21,10 +21,6 @@ class MyQuantAQ(Manufacturer):
             None
         """
         self.api_token = cfg.get(self.name, "api_token")
-        self.device_ids = cfg.get(self.name, "devices").split(",")
-        self.cols_to_validate = cfg.get(self.name, "columns_to_validate").split(",")
-        self.timestamp_col = cfg.get(self.name, "timestamp_column")
-        self.timestamp_format = cfg.get(self.name, "timestamp_format")
 
         # Load start and end scraping datetimes
         start_datetime = cfg.get("Main", "start_time")

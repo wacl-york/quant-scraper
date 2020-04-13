@@ -8,6 +8,7 @@
 
 import unittest
 import configparser
+import pandas as pd
 from json.decoder import JSONDecodeError
 from string import Template
 from unittest.mock import patch, MagicMock, Mock, call, mock_open
@@ -31,9 +32,6 @@ class TestSaveCSVFile(unittest.TestCase):
     #          dataset and a given filename.
 
     # This class tests the latter.
-
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
 
     def test_success(self):
         m = mock_open()
@@ -67,6 +65,26 @@ class TestSaveCSVFile(unittest.TestCase):
 
                 with self.assertRaises(utils.DataSavingError):
                     utils.save_csv_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.csv")
+
+    def test_dir_doesnt_exist(self):
+        m = mock_open()
+        # open raises FileNotFoundError if dir doesn't exist
+        m.side_effect = FileNotFoundError()
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+            # Need to patch os.path to force file to not exist
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=False)
+                # patch CSV and mock csv.writer
+                with patch("quantscraper.utils.csv") as mock_csv:
+                    mock_writer = Mock()
+                    mock_writerows = Mock()
+                    mock_writer.return_value = Mock(writerows=mock_writerows)
+                    mock_csv.writer = mock_writer
+
+                    with self.assertRaises(utils.DataSavingError):
+                        utils.save_csv_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.csv")
 
 
 class TestSaveCleanData(unittest.TestCase):
@@ -160,9 +178,6 @@ class TestSaveJSONFile(unittest.TestCase):
 
     # This class tests the latter.
 
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
-
     def test_success(self):
         m = mock_open()
 
@@ -184,6 +199,20 @@ class TestSaveJSONFile(unittest.TestCase):
     def test_file_exists(self):
         # Check that the DataSavingError is raised when file exists
         m = mock_open()
+
+        with patch("quantscraper.utils.open", m):
+            # Mock file existing
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=True)
+
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_json_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.json")
+
+    def test_dir_doesnt_exist(self):
+        # Check that the DataSavingError is raised when dir doesn't exist,
+        # which raises a FileNotFoundError
+        m = mock_open()
+        m.side_effect = FileNotFoundError()
 
         with patch("quantscraper.utils.open", m):
             # Mock file existing
@@ -222,10 +251,6 @@ class TestSaveRawData(unittest.TestCase):
     #          serializable Python object and a given filename.
 
     # This class tests the former.
-
-    # It iterates through each device and generates the filename as:
-    # "${manufacturer}_${device}_${start}_${end}.json"
-    # And pulls the raw data, then calls _save_raw_data to do the writing
 
     # Manufacturer.save_raw_data() is a concrete method so don't need to test
     # each subclass's implementation, but as Manufacturer has some abstract
@@ -303,6 +328,40 @@ class TestSaveRawData(unittest.TestCase):
                     )
                 except:
                     self.fail("Test raised error when should have passed.")
+
+
+class TestSaveDataFrame(unittest.TestCase):
+    # Tests utils.save_dataframe function that writes a pandas.DataFrame to disk
+    def test_success(self):
+        dummy_data = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        # Need to patch os.path to force file to not exist
+        with patch("quantscraper.utils.os.path") as mock_path:
+            mock_path.isfile = Mock(return_value=False)
+            with patch.object(pd.DataFrame, "to_csv") as mock_to_csv:
+                utils.save_dataframe(dummy_data, "path/to/fn.csv")
+                # Check calls is as expected
+                mock_to_csv.assert_called_once_with("path/to/fn.csv")
+
+    def test_file_exists(self):
+        dummy_data = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        # Check that the DataSavingError is raised when file exists
+        with patch("quantscraper.utils.os.path") as mock_path:
+            mock_path.isfile = Mock(return_value=True)
+
+            with self.assertRaises(utils.DataSavingError):
+                utils.save_dataframe(dummy_data, "path/to/fn.csv")
+
+    def test_dir_doesnt_exist(self):
+        # If dir doesn't exist a FileNotFoundError is raised
+        dummy_data = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        # Need to patch os.path to force file to not exist
+        with patch("quantscraper.utils.os.path") as mock_path:
+            mock_path.isfile = Mock(return_value=False)
+            with patch.object(pd.DataFrame, "to_csv") as mock_to_csv:
+                mock_to_csv.side_effect = FileNotFoundError()
+
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_dataframe(dummy_data, "path/to/fn.csv")
 
 
 if __name__ == "__main__":
