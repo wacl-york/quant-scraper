@@ -42,17 +42,22 @@ class TestLoadData(unittest.TestCase):
             }
         )
         exp = example_data.copy()
-        exp["manufacturer"] = "manu1"
         exp["device"] = "dev1"
+        timestamp_dt = pd.to_datetime(exp["timestamp"])
+        exp["timestamp"] = timestamp_dt
 
         # Mock file I/O
         with patch("daily_preprocessing.pd") as mock_pd:
             mock_read = Mock(return_value=example_data)
             mock_pd.read_csv = mock_read
+            mock_todt = Mock(return_value=timestamp_dt)
+            mock_pd.to_datetime = mock_todt
 
             res = daily_preprocessing.get_data(
                 cfg, "manu1", "dev1", "2012-03-12 10:23:55", "2012-04-12 10:56:09"
             )
+            print(res)
+            print(exp)
 
             # Format of expected filename is given in utils.CLEAN_DATA_FN
             mock_read.assert_called_once_with(
@@ -94,7 +99,6 @@ class TestLongToWide(unittest.TestCase):
                     "2013-03-17 10:34:00",
                     "2013-03-17 10:34:30",
                 ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
                 "device": ["dev1", "dev1", "dev1"],
                 "measurand": ["co2", "no2", "co2"],
                 "value": [2.3, 6.2, 2.6],
@@ -103,14 +107,12 @@ class TestLongToWide(unittest.TestCase):
 
         exp = pd.DataFrame(
             {
-                "manufacturer": ["manu1", "manu1"],
-                "device": ["dev1", "dev1"],
                 "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
-                "co2": [2.3, 2.6],
-                "no2": [6.2, np.nan],
+                "dev1_co2": [2.3, 2.6],
+                "dev1_no2": [6.2, np.nan],
             }
         )
-        exp = exp.set_index(["manufacturer", "device", "timestamp"])
+        exp = exp.set_index(["timestamp"])
         exp.columns.name = "measurand"
         res = daily_preprocessing.long_to_wide(example_data)
 
@@ -126,7 +128,6 @@ class TestLongToWide(unittest.TestCase):
                     "2013-03-17 10:34:00",
                     "2013-03-17 10:34:30",
                 ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
                 "device": ["dev1", "dev1", "dev1"],
                 "measurand": ["co2", "no2", "co2"],
                 "value": [2.3, 6.2, 2.6],
@@ -135,16 +136,14 @@ class TestLongToWide(unittest.TestCase):
 
         exp = pd.DataFrame(
             {
-                "manufacturer": ["manu1", "manu1"],
-                "device": ["dev1", "dev1"],
                 "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
-                "co2": [2.3, 2.6],
-                "no2": [6.2, np.nan],
-                "co": [np.nan, np.nan],
-                "o3": [np.nan, np.nan],
+                "dev1_co": [np.nan, np.nan],
+                "dev1_co2": [2.3, 2.6],
+                "dev1_no2": [6.2, np.nan],
+                "dev1_o3": [np.nan, np.nan],
             }
         )
-        exp = exp.set_index(["manufacturer", "device", "timestamp"])
+        exp = exp.set_index(["timestamp"])
         exp.columns.name = "measurand"
         res = daily_preprocessing.long_to_wide(
             example_data, measurands=["co", "o3", "co2", "no2"]
@@ -161,7 +160,6 @@ class TestLongToWide(unittest.TestCase):
                     "2013-03-17 10:34:00",
                     "2013-03-17 10:34:30",
                 ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
                 "device": ["dev1", "dev1", "dev1"],
                 "measurand": ["co2", "no2", "co2"],
                 "value": [2.3, 6.2, "3.2"],
@@ -174,14 +172,9 @@ class TestLongToWide(unittest.TestCase):
             )
 
     def test_missing_columns1(self):
-        # Missing manufacturer column
+        # Missing timestamp column
         example_data = pd.DataFrame(
             {
-                "timestamp": [
-                    "2013-03-17 10:34:00",
-                    "2013-03-17 10:34:00",
-                    "2013-03-17 10:34:30",
-                ],
                 "device": ["dev1", "dev1", "dev1"],
                 "measurand": ["co2", "no2", "co2"],
                 "value": [2.3, 6.2, "3.2"],
@@ -194,11 +187,14 @@ class TestLongToWide(unittest.TestCase):
             )
 
     def test_missing_columns2(self):
-        # Missing timestamp column
+        # Missing device column
         example_data = pd.DataFrame(
             {
-                "manufacturer": ["manu1", "manu1", "manu1"],
-                "device": ["dev1", "dev1", "dev1"],
+                "timestamp": [
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:30",
+                ],
                 "measurand": ["co2", "no2", "co2"],
                 "value": [2.3, 6.2, "3.2"],
             }
@@ -210,26 +206,6 @@ class TestLongToWide(unittest.TestCase):
             )
 
     def test_missing_columns3(self):
-        # Missing device column
-        example_data = pd.DataFrame(
-            {
-                "timestamp": [
-                    "2013-03-17 10:34:00",
-                    "2013-03-17 10:34:00",
-                    "2013-03-17 10:34:30",
-                ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
-                "measurand": ["co2", "no2", "co2"],
-                "value": [2.3, 6.2, "3.2"],
-            }
-        )
-
-        with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
-
-    def test_missing_columns4(self):
         # Missing measurand column
         example_data = pd.DataFrame(
             {
@@ -238,7 +214,6 @@ class TestLongToWide(unittest.TestCase):
                     "2013-03-17 10:34:00",
                     "2013-03-17 10:34:30",
                 ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
                 "device": ["dev1", "dev1", "dev1"],
                 "value": [2.3, 6.2, "3.2"],
             }
@@ -249,7 +224,7 @@ class TestLongToWide(unittest.TestCase):
                 example_data, measurands=["co", "o3", "co2", "no2"]
             )
 
-    def test_missing_columns5(self):
+    def test_missing_columns4(self):
         # Missing value column
         example_data = pd.DataFrame(
             {
@@ -258,7 +233,6 @@ class TestLongToWide(unittest.TestCase):
                     "2013-03-17 10:34:00",
                     "2013-03-17 10:34:30",
                 ],
-                "manufacturer": ["manu1", "manu1", "manu1"],
                 "device": ["dev1", "dev1", "dev1"],
                 "measurand": ["co2", "no2", "co2"],
             }
@@ -273,19 +247,13 @@ class TestLongToWide(unittest.TestCase):
         # Test when have no clean data and haven't specified measurands
         # that must be present. Should return an empty data frame
         example_data = pd.DataFrame(
-            {
-                "timestamp": [],
-                "manufacturer": [],
-                "device": [],
-                "measurand": [],
-                "value": [],
-            }
+            {"timestamp": [], "device": [], "measurand": [], "value": [],}
         )
 
         exp = pd.DataFrame(dtype=np.float64)
-        exp.index = pd.MultiIndex.from_tuples(
-            [], names=["manufacturer", "device", "timestamp"]
-        )
+        idx = pd.Index([])
+        idx.set_names("timestamp", inplace=True)
+        exp.index = idx
         exp.columns = pd.MultiIndex.from_tuples([], names=[None, "measurand"])
 
         res = daily_preprocessing.long_to_wide(example_data)
@@ -302,19 +270,13 @@ class TestLongToWide(unittest.TestCase):
         # Test when have no clean data but have specified measurands,
         # should still get an empty data frame but with specified columns
         example_data = pd.DataFrame(
-            {
-                "timestamp": [],
-                "manufacturer": [],
-                "device": [],
-                "measurand": [],
-                "value": [],
-            }
+            {"timestamp": [], "device": [], "measurand": [], "value": [],}
         )
 
         exp = pd.DataFrame(dtype=np.float64)
-        exp.index = pd.MultiIndex.from_tuples(
-            [], names=["manufacturer", "device", "timestamp"]
-        )
+        idx = pd.Index([])
+        idx.set_names("timestamp", inplace=True)
+        exp.index = idx
         exp.columns = pd.MultiIndex.from_tuples([], names=[None, "measurand"])
 
         res = daily_preprocessing.long_to_wide(example_data)

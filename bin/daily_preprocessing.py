@@ -72,15 +72,13 @@ def get_data(cfg, manufacturer, device_id, date_start, date_end):
     try:
         data = pd.read_csv(full_path)
     except FileNotFoundError:
-        raise utils.DataReadingError("File not found '{}'.".format(full_path))
+        raise utils.DataReadingError("File not found '{}'.".format(full_path)) from None
     except pd.errors.EmptyDataError:
-        raise utils.DataReadingError("Empty file '{}'.".format(full_path))
+        raise utils.DataReadingError("Empty file '{}'.".format(full_path)) from None
 
-    # Add manufacturer and device ID columns
-    data["manufacturer"] = manufacturer
+    # Add device ID column and parse timestamp as datetime
     data["device"] = device_id
-
-    # TODO Parse timestamp as datetime?
+    data["timestamp"] = pd.to_datetime(data["timestamp"])
 
     return data
 
@@ -93,7 +91,6 @@ def long_to_wide(long, measurands=None):
     Args:
         long (pandas.DataFrame): DataFrame with 1 row per measurement.
             Has columns:
-                - manufacturer (str)
                 - device (str)
                 - timestamp (str)
                 - measurand (str)
@@ -105,8 +102,7 @@ def long_to_wide(long, measurands=None):
 
     Returns:
         A pandas.DataFrame object with columns:
-            NB: The first 3 are used as a MultiIndex.
-            - manufacturer (str)
+            NB: The first 2 are used as a MultiIndex.
             - device (str)
             - timestamp (str)
             - Then 1 column for each measurand
@@ -120,10 +116,24 @@ def long_to_wide(long, measurands=None):
             raise utils.DataConversionError(
                 "Missing 'measurand' column in long clean data."
             )
+        # Get list of unique sensors
+        try:
+            devices = long.device.unique()
+        except AttributeError:
+            raise utils.DataConversionError("There is no 'device' column available.")
+
+    # Concatenate device and measurand, removing whitespace
+    try:
+        long = long.assign(measurand=long.device.map(str) + "_" + long.measurand)
+        long["measurand"] = long.measurand.str.replace(" ", "", regex=True)
+    except AttributeError:
+        raise utils.DataConversionError(
+            "Columns 'device' and 'measurand' must be available."
+        )
 
     try:
         wide = long.pivot_table(
-            index=["manufacturer", "device", "timestamp"],
+            index=["timestamp"],
             columns="measurand",
             values="value",
             fill_value=np.nan,  # As required
@@ -134,14 +144,22 @@ def long_to_wide(long, measurands=None):
     except KeyError as ex:
         raise utils.DataConversionError("Missing column in long clean data.")
 
-    # Add NaN filled column for any measurand that wasn't in long data
+    # Add NaN filled column for any measurand/sensor combination that wasn't in long data
     if measurands is not None:
         for measurand in measurands:
-            if measurand not in wide.columns:
-                wide[measurand] = np.nan
+            for device in devices:
+                # Generate combined column name
+                comb_col = device + "_" + measurand
+                comb_col = comb_col.replace(" ", "")
+                if comb_col not in wide.columns:
+                    wide[comb_col] = np.nan
 
     # Remove rows that have all NaNs
     wide.dropna(how="all", inplace=True)
+
+    # Reorder columns alphabetically so all measurands from same device are
+    # adjacent
+    wide = wide.reindex(sorted(wide.columns), axis=1)
 
     return wide
 
@@ -215,11 +233,6 @@ def main():
             )
             logging.error(traceback.format_exc())
             continue
-
-        print(wide_df)
-        import sys
-
-        sys.exit()
 
         # Resample into same resolution
         logging.info("Resampling time-series.")
