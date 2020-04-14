@@ -2,8 +2,8 @@
     test_save_data.py
     ~~~~~~~~~~~~~~~~~
 
-    Unit tests for methods that save data: Manufacturer.save_raw_data() and
-    Manufacturer.save_clean_data().
+    Unit tests for methods that save data: cli.save_data(),
+    utils.save_csv_file() and utils.save_json_file().
 """
 
 import unittest
@@ -26,7 +26,7 @@ from quantscraper.tests.test_utils import build_mock_response
 
 class TestSaveCSVFile(unittest.TestCase):
     # The saving clean data functionality is split into 2 functions:
-    #    - cli.save_clean_data: iterates through all devices, forms their
+    #    - cli.save_data: iterates through all devices, forms their
     #          filename and extracts their clean data
     #    - utils.save_csv_file: Does actual writing to file of a given CSV
     #          dataset and a given filename.
@@ -89,7 +89,7 @@ class TestSaveCSVFile(unittest.TestCase):
 
 class TestSaveCleanData(unittest.TestCase):
     # The saving clean data functionality is split into 2 functions:
-    #    - cli.save_clean_data: iterates through all devices, forms their
+    #    - cli.save_data: iterates through all devices, forms their
     #          filename and extracts their clean data
     #    - utils.save_csv_file: Does actual writing to file of a given CSV
     #          dataset and a given filename.
@@ -115,7 +115,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -142,7 +142,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                    cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
@@ -158,7 +158,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_clean_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
 
                     # This inner function should only be called once on account
                     # of second device not having data
@@ -171,7 +171,7 @@ class TestSaveCleanData(unittest.TestCase):
 
 class TestSaveJSONFile(unittest.TestCase):
     # The saving raw data functionality is split into 2 functions:
-    #    - cli.save_raw_data: iterates through all devices, forms their
+    #    - cli.save_data: iterates through all devices, forms their
     #          filename and extracts their clean data
     #    - utils.save_json_file: Does actual writing to file of a given
     #          serializable Python object and a given filename.
@@ -222,40 +222,18 @@ class TestSaveJSONFile(unittest.TestCase):
                 with self.assertRaises(utils.DataSavingError):
                     utils.save_json_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.json")
 
-    # This method doesn't work as can't mock JSONDecodeError.
-    # It needs to be instantiated which I can't mock
-    # def test_serialize_error(self):
-    #    # Check that the DataSavingError is raised when can't serialize json
-    #    aeroqual = Aeroqual.Aeroqual(self.cfg)
-    #    m = mock_open()
-
-    #    with patch("quantscraper.manufacturers.Manufacturer.open", m):
-    #        # Mock file existing
-    #        with patch("quantscraper.manufacturers.Manufacturer.os.path") as mock_path:
-    #            mock_path.isfile = Mock(return_value=False)
-
-    #            with patch("quantscraper.manufacturers.Manufacturer.json") as mock_json:
-    #                mock_dump = Mock(side_effect=JSONDecodeError("", "{'foo':'bar'}", 0))
-    #                mock_json.dump = mock_dump
-
-    #                with self.assertRaises(DataSavingError):
-    #                    aeroqual._save_raw_data("path/to/fn.json", [[1, 2, 3], [4, 5,
-    #                                                                             6]])
+    # Unfortunately can't mock JSONDecodeError to assert this error is handled
+    # correctly, as the error needs to be instantiated which I can't mock.
 
 
 class TestSaveRawData(unittest.TestCase):
     # The saving raw data functionality is split into 2 functions:
-    #    - cli.save_raw_data: iterates through all devices, forms their
+    #    - cli.save_data: iterates through all devices, forms their
     #          filename and extracts their clean data
     #    - utils.save_json_file: Does actual writing to file of a given
     #          serializable Python object and a given filename.
 
     # This class tests the former.
-
-    # Manufacturer.save_raw_data() is a concrete method so don't need to test
-    # each subclass's implementation, but as Manufacturer has some abstract
-    # methods and thus can't be instantiated, need to use a subclass to use for testing
-
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
@@ -275,7 +253,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -302,7 +280,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                    cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
@@ -318,7 +296,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_raw_data(aeroqual, "dummyFolder", "startT", "endT")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
 
                     # This inner function should only be called once on account
                     # of second device not having data
