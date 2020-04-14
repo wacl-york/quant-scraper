@@ -104,13 +104,13 @@ def setup_loggers(logfn):
         rootLogger.addHandler(fileLogger)
 
 
-def save_clean_data(manufacturer, folder, start_time, end_time):
+def save_data(manufacturer, folder, start_time, end_time, type):
     """
-    Iterates through all a manufacturer's devices and saves their cleaned data to disk.
+    Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
 
     Uses the following template filename:
 
-    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.csv
+    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.<json/csv>
 
     Args:
         - manufacturer (Manufacturer): Instance of Manufacturer.
@@ -119,6 +119,8 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
             string format as INI file uses.
         - end_time (str): End time of scraping window. In same
             string format as INI file uses.
+        - type (str): Either 'raw' or 'clean' to indicate which data is being
+            saved.
 
     Returns:
         List of filenames that were successfully saved.
@@ -127,56 +129,16 @@ def save_clean_data(manufacturer, folder, start_time, end_time):
     # usecase?
     fns = []
 
-    if not os.path.isdir(folder):
-        raise utils.DataSavingError(
-            "Folder {} doesn't exist, cannot save clean data.".format(folder)
-        )
-
-    for devid in manufacturer.device_ids:
-        fn = utils.CLEAN_DATA_FN.substitute(
-            man=manufacturer.name, device=devid, start=start_time, end=end_time
-        )
-
-        data = manufacturer.clean_data[devid]
-        if data is None:
-            logging.warning("No clean data to save for device {}.".format(devid))
-            continue
-
-        full_path = os.path.join(folder, fn)
-        logging.info("Saving data to file: {}".format(full_path))
-        utils.save_csv_file(data, full_path)
-        fns.append(full_path)
-    return fns
-
-
-# TODO save_clean_data and save_raw_data have a huge amount of duplicated code!
-# Can they be refactored to be combined in some way?
-# Only differences are:
-#   - Which data to pull (raw/clean)
-#   - Which template filename to pull (csv/json)
-#   - Which saving function to call (csv/json)
-def save_raw_data(manufacturer, folder, start_time, end_time):
-    """
-    Iterates through all a manufacturer's devices and saves their raw data to disk.
-
-    Uses the following template filename:
-
-    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.json
-
-    Args:
-        - manufacturer (Manufacturer): Instance of Manufacturer.
-        - folder (str): Directory where files should be saved to.
-        - start_time (str): Starting time of scraping window. In same
-            string format as INI file uses.
-        - end_time (str): End time of scraping window. In same
-            string format as INI file uses.
-
-    Returns:
-        List of filenames that were successfully saved.
-    """
-    # TODO Change start + end time to just a single date, as this is primary
-    # usecase?
-    fns = []
+    if type == "clean":
+        fn_template = utils.CLEAN_DATA_FN
+        manufacturer_data = manufacturer.clean_data
+        saving_function = utils.save_csv_file
+    elif type == "raw":
+        fn_template = utils.RAW_DATA_FN
+        manufacturer_data = manufacturer.raw_data
+        saving_function = utils.save_json_file
+    else:
+        raise utils.DataSavingError("Unknown data type '{}'.".format(type))
 
     if not os.path.isdir(folder):
         raise utils.DataSavingError(
@@ -184,18 +146,18 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
         )
 
     for devid in manufacturer.device_ids:
-        fn = utils.RAW_DATA_FN.substitute(
+        fn = fn_template.substitute(
             man=manufacturer.name, device=devid, start=start_time, end=end_time
         )
 
-        data = manufacturer.raw_data[devid]
+        data = manufacturer_data[devid]
         if data is None:
             logging.warning("No raw data to save for device {}.".format(devid))
             continue
 
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
-        utils.save_json_file(data, full_path)
+        saving_function(data, full_path)
         fns.append(full_path)
     return fns
 
@@ -279,20 +241,22 @@ def main():
 
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
-            raw_fns = save_raw_data(
+            raw_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_raw_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
+                "raw",
             )
 
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")
-            clean_fns = save_clean_data(
+            clean_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_clean_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
+                "clean",
             )
 
         upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")
