@@ -16,15 +16,6 @@ from io import StringIO
 
 from unittest.mock import patch, MagicMock, Mock, call
 
-# Test parse_args:
-#    - is this needed? Is it possible to test CLI arguments through unit testing?
-#    - more appropriate to keep parse_args() as a function and make a
-#    parse_config() function, that:
-#       - has args filepath, and returns config object
-#       - it also performs basic QA, ensuring the filepath exists and the INI is
-#       formatted correctly
-#   - can then test this parse_config() function
-
 
 class TestSetupLoggers(unittest.TestCase):
     # Capturing the log output is relatively tricky without a 3rd party library.
@@ -64,6 +55,58 @@ class TestSetupLoggers(unittest.TestCase):
                 "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
             )
             mock_setformatter.assert_called_once_with(mock_fmt)
+
+
+class TestParseArgs(unittest.TestCase):
+    def test_success(self):
+        # Just confirm that expected calls are made
+        with patch("quantscraper.cli.argparse.ArgumentParser") as mock_ArgumentParser:
+            mock_addargument = Mock()
+            mock_args = Mock
+            mock_parseargs = Mock(return_value=mock_args)
+            mock_parser = Mock(add_argument=mock_addargument, parse_args=mock_parseargs)
+            mock_ArgumentParser.return_value = mock_parser
+
+            res = cli.parse_args()
+
+            self.assertEqual(res, mock_args)
+            mock_ArgumentParser.assert_called_once_with(description="QUANT scraper")
+            mock_addargument.assert_called_once_with(
+                "configfilepath",
+                metavar="FILE",
+                help="Location of INI configuration file",
+            )
+            mock_parseargs.assert_called_once_with()
+
+
+class TestSetupConfig(unittest.TestCase):
+
+    # Ensures the expected calls are made
+    def test_success(self):
+        with patch("quantscraper.cli.configparser") as mock_cp:
+            mock_read = Mock()
+            mock_sections = Mock(return_value=[1, 2, 3])
+
+            mock_cfginstance = Mock(sections=mock_sections, read=mock_read)
+            mock_ConfigParser = Mock(return_value=mock_cfginstance)
+            mock_cp.ConfigParser = mock_ConfigParser
+
+            res = cli.setup_config("foo.ini")
+
+            self.assertEqual(res, mock_cfginstance)
+            mock_read.assert_called_once_with("foo.ini")
+
+    def test_errorraised_no_sections(self):
+        with patch("quantscraper.cli.configparser") as mock_cp:
+            mock_read = Mock()
+            mock_sections = Mock(return_value=[])
+
+            mock_cfginstance = Mock(sections=mock_sections, read=mock_read)
+            mock_ConfigParser = Mock(return_value=mock_cfginstance)
+            mock_cp.ConfigParser = mock_ConfigParser
+
+            with self.assertRaises(utils.SetupError):
+                res = cli.setup_config("foo.ini")
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
@@ -263,8 +306,3 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
 
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
-
-
-# Test setup_loggers:
-#   Not essential for now
-#   But can test format

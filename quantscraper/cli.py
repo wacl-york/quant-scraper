@@ -11,10 +11,9 @@
 import logging
 import argparse
 import os
+import sys
 import configparser
 from datetime import date, timedelta, datetime, time
-import requests as re
-import quantaq
 import traceback
 
 import quantscraper.utils as utils
@@ -22,6 +21,38 @@ from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+
+
+def setup_loggers(logfn=None):
+    """
+    Configures loggers.
+
+    By default, the error log is printed to standard out,
+    although it can be saved to file in addition.
+
+    Args:
+        logfn (str): File to save log to. If None then doesn't write log to file.
+
+    Returns:
+        None. the logger is accessed by the global module `logging`.
+    """
+    rootLogger = logging.getLogger("cli")
+    rootLogger.setLevel(logging.INFO)
+    logFmt = logging.Formatter(
+        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
+    cliLogger = logging.StreamHandler()
+    cliLogger.setFormatter(logFmt)
+    rootLogger.addHandler(cliLogger)
+
+    if not logfn is None:
+        if os.path.isfile(logfn):
+            raise utils.SetupError(
+                ("Log file {} already exists. " "Halting execution.").format(logfn)
+            )
+        fileLogger = logging.FileHandler(logfn)
+        fileLogger.setFormatter(logFmt)
+        rootLogger.addHandler(fileLogger)
 
 
 def parse_args():
@@ -42,37 +73,23 @@ def parse_args():
     return args
 
 
-def setup_loggers(logfn):
+def setup_config(fn):
     """
-    Configures loggers.
-
-    By default, the error log is printed to standard out,
-    although it can be saved to file in addition.
+    Loads configuration parameters from file into memory.
 
     Args:
-        logfn: File to save log to. If None then doesn't write log to file.
+        fn (str): Filepath of the .INI file.
 
     Returns:
-        None. the logger is accessed by the global module `logging`.
+        A ConfigParser() instance.
     """
-    rootLogger = logging.getLogger("cli")
-    rootLogger.setLevel(logging.INFO)
-    logFmt = logging.Formatter(
-        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-    )
-    cliLogger = logging.StreamHandler()
-    cliLogger.setFormatter(logFmt)
-    rootLogger.addHandler(cliLogger)
+    cfg = configparser.ConfigParser()
+    cfg.read(fn)
 
-    if not logfn is None:
-        if os.path.isfile(logfn):
-            logging.error(
-                ("Log file {} already exists. " "Halting execution.").format(logfn)
-            )
-            sys.exit()
-        fileLogger = logging.FileHandler(logfn)
-        fileLogger.setFormatter(logFmt)
-        rootLogger.addHandler(fileLogger)
+    if len(cfg.sections()) == 0:
+        raise utils.SetupError("No sections found in '{}'".format(fn))
+
+    return cfg
 
 
 def setup_scraping_timeframe(cfg):
@@ -212,7 +229,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
             utils.upload_file_google_drive(service, fn, folder_id, mime_type)
             logging.info("Upload successful.")
-        except DataUploadError:
+        except utils.DataUploadError:
             logging.error("Error in upload")
             logging.error(traceback.format_exc())
             continue
@@ -228,16 +245,25 @@ def main():
     Returns:
         None.
     """
-    # Setup logging
-    # TODO For now just log to stdout
-    setup_loggers(None)
+    # Setup logging, which for now just logs to stdout
+    try:
+        setup_loggers()
+    except utils.SetupError:
+        logging.error("Error in setting up loggers.")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
-    # Parse config file
+    # Parse args and config file
     args = parse_args()
-    # TODO validate config file's existence and format
+    try:
+        cfg = setup_config(args.configfilepath)
+    except utils.SetupError:
+        logging.error("Error in setting up configuration properties")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
-    cfg = configparser.ConfigParser()
-    cfg.read(args.configfilepath)
     setup_scraping_timeframe(cfg)
 
     # Load all manufacturers
