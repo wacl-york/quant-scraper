@@ -60,6 +60,11 @@ def setup_scraping_timeframe(cfg):
     Returns:
         None. Updates cfg by reference as a side-effect.
     """
+    docs_url = "https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat"
+    error_msg = (
+        "Unknown ISO 8601 format '{input}'. Available formats are described at {url}"
+    )
+
     yesterday = date.today() - timedelta(days=1)
     try:
         cfg.get("Main", "start_time")
@@ -69,6 +74,27 @@ def setup_scraping_timeframe(cfg):
         cfg.get("Main", "end_time")
     except configparser.NoOptionError:
         cfg["Main"]["end_time"] = datetime.combine(yesterday, time.max).isoformat()
+
+    # Confirm that both dates are valid
+    try:
+        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+    except ValueError:
+        raise utils.TimeError(
+            error_msg.format(input=cfg.get("Main", "start_time"), url=docs_url)
+        )
+    try:
+        end_dt = datetime.fromisoformat(cfg.get("Main", "end_time"))
+    except ValueError:
+        raise utils.TimeError(
+            error_msg.format(input=cfg.get("Main", "end_time"), url=docs_url)
+        )
+
+    if start_dt >= end_dt:
+        raise utils.TimeError(
+            "Start date must be earlier than end date. ({} - {})".format(
+                cfg.get("Main", "start_time"), cfg.get("Main", "end_time")
+            )
+        )
 
 
 def setup_loggers(logfn):
