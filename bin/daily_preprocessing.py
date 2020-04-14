@@ -124,7 +124,7 @@ def long_to_wide(long, measurands=None):
 
     # Concatenate device and measurand, removing whitespace
     try:
-        long = long.assign(measurand=long.device.map(str) + "_" + long.measurand)
+        long = long.assign(measurand=long.measurand.map(str) + "_" + long.device)
         long["measurand"] = long.measurand.str.replace(" ", "", regex=True)
     except AttributeError:
         raise utils.DataConversionError(
@@ -149,7 +149,7 @@ def long_to_wide(long, measurands=None):
         for measurand in measurands:
             for device in devices:
                 # Generate combined column name
-                comb_col = device + "_" + measurand
+                comb_col = measurand + "_" + device
                 comb_col = comb_col.replace(" ", "")
                 if comb_col not in wide.columns:
                     wide[comb_col] = np.nan

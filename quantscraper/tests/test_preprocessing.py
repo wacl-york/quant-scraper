@@ -108,8 +108,8 @@ class TestLongToWide(unittest.TestCase):
         exp = pd.DataFrame(
             {
                 "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
-                "dev1_co2": [2.3, 2.6],
-                "dev1_no2": [6.2, np.nan],
+                "co2_dev1": [2.3, 2.6],
+                "no2_dev1": [6.2, np.nan],
             }
         )
         exp = exp.set_index(["timestamp"])
@@ -137,10 +137,10 @@ class TestLongToWide(unittest.TestCase):
         exp = pd.DataFrame(
             {
                 "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
-                "dev1_co": [np.nan, np.nan],
-                "dev1_co2": [2.3, 2.6],
-                "dev1_no2": [6.2, np.nan],
-                "dev1_o3": [np.nan, np.nan],
+                "co2_dev1": [2.3, 2.6],
+                "co_dev1": [np.nan, np.nan],
+                "no2_dev1": [6.2, np.nan],
+                "o3_dev1": [np.nan, np.nan],
             }
         )
         exp = exp.set_index(["timestamp"])

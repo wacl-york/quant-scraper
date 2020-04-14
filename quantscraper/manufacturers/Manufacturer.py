@@ -70,6 +70,7 @@ class Manufacturer(ABC):
         self._raw_data = {}
         self._clean_data = {}
         self.device_ids = cfg.get(self.name, "devices").split(",")
+        self.device_web_ids = cfg.get(self.name, "devices_web").split(",")
         # Name of column that holds timestamp
         self.timestamp_col = cfg.get(self.name, "timestamp_column")
         # String providing the format of the timestamp
@@ -117,13 +118,13 @@ class Manufacturer(ABC):
         """
         # TODO Should this code be here, or should it be in the CLI script, so
         # that all logging is run in once place?
-        for devid in self.device_ids:
+        for webid, devid in zip(self.device_web_ids, self.device_ids):
             try:
-                logging.info("Attempting to scrape data for device {}...".format(devid))
-                self.raw_data[devid] = self.scrape_device(devid)
+                logging.info("Attempting to scrape data for device {}...".format(webid))
+                self.raw_data[devid] = self.scrape_device(webid)
                 logging.info("Scrape successful.")
             except utils.DataDownloadError as ex:
-                logging.error("Unable to download data for device {}.".format(devid))
+                logging.error("Unable to download data for device {}.".format(webid))
                 logging.error(traceback.format_exc())
                 self.raw_data[devid] = None
 
