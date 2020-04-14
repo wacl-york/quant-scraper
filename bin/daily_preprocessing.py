@@ -216,6 +216,7 @@ def main():
     local_folder = cfg.get("Main", "local_folder_analysis_data")
     credentials_fn = cfg.get("GoogleAPI", "credentials_fn")
     drive_analysis_id = cfg.get("GoogleAPI", "analysis_data_id")
+    upload_google_drive = cfg.getboolean("Main", "upload_analysis_googledrive")
 
     # Needs to iterate through all manufacturers
     manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
@@ -236,12 +237,23 @@ def main():
             dfs.append(df)
 
         # Stack data into 1 data frame for this manufacturer
-        combined_df = pd.concat(dfs)
+        try:
+            combined_df = pd.concat(dfs)
+        except ValueError:
+            logging.error(
+                "No clean data found for manufacturer '{}'.".format(manufacturer.name)
+            )
+            continue
 
         # Convert into wide table
         try:
             logging.info("Converting to wide format.")
-            wide_df = long_to_wide(combined_df, manufacturer.analysis_columns)
+            analysis_columns = [
+                m["clean_label"]
+                for m in manufacturer.measurands
+                if m["included_analysis"]
+            ]
+            wide_df = long_to_wide(combined_df, analysis_columns)
         except utils.DataConversionError:
             logging.error(
                 "Error when converting long table for this manufacturer to wide."
@@ -277,22 +289,23 @@ def main():
             continue
 
         # Upload to GoogleDrive
-        logging.info("Initiating upload to GoogleDrive.")
-        try:
-            service = utils.auth_google_api(credentials_fn)
-        except utils.GoogleAPIError:
-            logging.error("Cannot connect to Google API.")
-            logging.error(traceback.format_exc())
-            continue
+        if upload_google_drive:
+            logging.info("Initiating upload to GoogleDrive.")
+            try:
+                service = utils.auth_google_api(credentials_fn)
+            except utils.GoogleAPIError:
+                logging.error("Cannot connect to Google API.")
+                logging.error(traceback.format_exc())
+                continue
 
-        try:
-            utils.upload_file_google_drive(
-                service, file_path, drive_analysis_id, "text/csv"
-            )
-            logging.info("Upload successful.")
-        except utils.DataUploadError:
-            logging.error("Error in upload")
-            logging.error(traceback.format_exc())
+            try:
+                utils.upload_file_google_drive(
+                    service, file_path, drive_analysis_id, "text/csv"
+                )
+                logging.info("Upload successful.")
+            except utils.DataUploadError:
+                logging.error("Error in upload")
+                logging.error(traceback.format_exc())
 
 
 if __name__ == "__main__":

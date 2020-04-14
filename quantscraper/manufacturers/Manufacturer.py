@@ -10,6 +10,7 @@ import quantscraper.utils as utils
 class Manufacturer(ABC):
     # Unsure how to force Name as an abstract class property.
     # Can only get it working as an instance attribute
+    name = "Manufacturer"
 
     @property
     def clean_data(self):
@@ -69,14 +70,40 @@ class Manufacturer(ABC):
         self._raw_data = {}
         self._clean_data = {}
         self.device_ids = cfg.get(self.name, "devices").split(",")
-        # Names of columns to store in cleaned data and run basic checks over
-        self.cols_to_validate = cfg.get(self.name, "columns_to_validate").split(",")
-        # Names of columns to pre-process and store as part of analysis routines
-        self.analysis_columns = cfg.get(self.name, "columns_to_preprocess").split(",")
         # Name of column that holds timestamp
         self.timestamp_col = cfg.get(self.name, "timestamp_column")
         # String providing the format of the timestamp
         self.timestamp_format = cfg.get(self.name, "timestamp_format")
+
+        # Setup the measurand metadata, so have a record of which measurands to
+        # expect in raw data, what labels to reassign them, and if they need
+        # scaling at all. Store all this in a list of dicts
+        cols = cfg.get(self.name, "columns_to_validate").split(",")
+        labels = cfg.get(self.name, "column_labels").split(",")
+        scales = cfg.get(self.name, "scaling_factors").split(",")
+        analysis = cfg.get(self.name, "columns_to_preprocess").split(",")
+
+        # Ensure have the same number of values
+        lengths = [len(cols), len(labels), len(scales)]
+        if len(set(lengths)) != 1:
+            raise utils.DataParseError(
+                "Options 'columns_to_validate', 'column_labels' and 'scaling_factors' must have the same number of entries."
+            )
+
+        self.measurands = []
+        for i in range(lengths[0]):
+            scaling_factor = scales[i]
+            if not utils.is_float(scaling_factor):
+                scaling_factor = 1
+            else:
+                scaling_factor = float(scaling_factor)
+            entry = {
+                "raw_label": cols[i],
+                "clean_label": labels[i],
+                "scale": scaling_factor,
+                "included_analysis": labels[i] in analysis,
+            }
+            self.measurands.append(entry)
 
     @abstractmethod
     def connect(self):
@@ -155,6 +182,8 @@ class Manufacturer(ABC):
         Returns:
             The cleaned data, in the same 2D list structure.
         """
+        validate_cols = [r["raw_label"] for r in self.measurands]
+
         if data is None:
             raise utils.ValidateDataError("Input data is None.")
 
@@ -165,14 +194,19 @@ class Manufacturer(ABC):
         output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}
+        scaling_factors = {}
         timestamp_index = None
 
         # First row should be header so obtain numeric indices
         for i, col in enumerate(data[0]):
             if col == self.timestamp_col:
                 timestamp_index = i
-            elif col in self.cols_to_validate:
-                measurand_indices[col] = i
+            elif col in validate_cols:
+                # Store this index under the clean measurand label
+                measurand_index = validate_cols.index(col)
+                clean_label = self.measurands[measurand_index]["clean_label"]
+                measurand_indices[clean_label] = i
+                scaling_factors[clean_label] = self.measurands[measurand_index]["scale"]
             else:
                 continue
 
@@ -206,8 +240,10 @@ class Manufacturer(ABC):
                 if not utils.is_float(val_raw):
                     continue
 
+                val_scaled = float(val_raw) * scaling_factors[measurand]
+
                 n_clean_vals[measurand] += 1
-                clean_row = [timestamp_clean, measurand, float(val_raw)]
+                clean_row = [timestamp_clean, measurand, val_scaled]
                 clean_data.append(clean_row)
 
         summary = utils.summarise_validation(len(data) - 1, n_clean_vals)
