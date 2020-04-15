@@ -8,9 +8,21 @@ import quantscraper.utils as utils
 
 
 class Manufacturer(ABC):
-    # Unsure how to force Name as an abstract class property.
-    # Can only get it working as an instance attribute
-    name = "Manufacturer"
+
+    # Name is both abstract and a class method
+    @property
+    @classmethod
+    @abstractmethod
+    def name(self):
+        pass
+
+    @property
+    def devices(self):
+        return self._devices
+
+    @property
+    def devices_web(self):
+        return self._devices_web
 
     @property
     def clean_data(self):
@@ -19,29 +31,12 @@ class Manufacturer(ABC):
         """
         return self._clean_data
 
-    @clean_data.setter
-    # TODO Clean this up as currently doesn't work:
-    # can only have 1 non-self argument. Can pass a dict mapping
-    # {devID: value} as second argument
-    def clean_data(self, devID, value):
-        """
-        TODO
-        """
-        self._clean_data[devID] = value
-
     @property
     def raw_data(self):
         """
         TODO
         """
         return self._raw_data
-
-    @raw_data.setter
-    def raw_data(self, devID, value):
-        """
-        TODO
-        """
-        self._raw_data[devID] = value
 
     @abstractmethod
     def scrape_device(self, deviceID):
@@ -251,5 +246,3 @@ class Manufacturer(ABC):
         logging.info(summary)
 
         return clean_data
-
-    # TODO Need to document device_ids parameter as abstract
