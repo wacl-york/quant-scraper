@@ -422,13 +422,300 @@ class TestProcess(unittest.TestCase):
     # - runs QA validation on the CSV data
     # - handles and logs all errors appropriately
 
-    pass
+    def test_all_success(self):
+        # Test success on all devices
+        mock_parse = Mock(
+            side_effect=[
+                [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                [["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]],
+                [["no2", "co2", "co"], [12, 14, 16]],
+            ]
+        )
+        mock_validate = Mock(
+            side_effect=[
+                [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                [["foo", "bar"], [4, 2], [4, 1]],
+                [["no2", "co2"], [12, 14]],
+            ]
+        )
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
+            clean_data={},
+            parse_to_csv=mock_parse,
+            validate_data=mock_validate,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.process(man)
 
-    # TODO test all success
+        # Assert log is called with expected messages
+        self.assertEqual(
+            cm.output,
+            [
+                "INFO:root:Cleaning data from device 1...",
+                "INFO:root:Attempting to parse data into CSV...",
+                "INFO:root:Parse successful. Samples at 3 time-points have been recorded.",
+                "INFO:root:Running validation...",
+                "INFO:root:Validation successful.",
+                "INFO:root:Cleaning data from device 2...",
+                "INFO:root:Attempting to parse data into CSV...",
+                "INFO:root:Parse successful. Samples at 2 time-points have been recorded.",
+                "INFO:root:Running validation...",
+                "INFO:root:Validation successful.",
+                "INFO:root:Cleaning data from device 3...",
+                "INFO:root:Attempting to parse data into CSV...",
+                "INFO:root:Parse successful. Samples at 1 time-points have been recorded.",
+                "INFO:root:Running validation...",
+                "INFO:root:Validation successful.",
+            ],
+        )
 
-    # TODO test one raw data failure, i.e. that don't attempt to parse and clean
-    # data is None
+        # Assert parse_to_csv calls are as expected
+        parse_calls = mock_parse.mock_calls
+        exp_calls = [call([1, 2, 3]), call([8, 10]), call(["foo", "bar"])]
+        self.assertEqual(parse_calls, exp_calls)
 
-    # TODO test data parse error on one raw data, i.e. sets clean to None
+        # Assert validate_data calls are as expected
+        validate_calls = mock_validate.mock_calls
+        exp_calls = [
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
+            call([["no2", "co2", "co"], [12, 14, 16]]),
+        ]
+        self.assertEqual(validate_calls, exp_calls)
 
-    # TODO test validate_data error on one device, i.e. sets clean to None
+        # And that the clean data fields are set accordingly
+        self.assertEqual(
+            man.clean_data,
+            {
+                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                "2": [["foo", "bar"], [4, 2], [4, 1]],
+                "3": [["no2", "co2"], [12, 14]],
+            },
+        )
+
+    def test_no_raw_data(self):
+        # Device 3 has no raw data
+        mock_parse = Mock(
+            side_effect=[
+                [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                [["no2", "co2", "co"], [12, 14, 16]],
+            ]
+        )
+        mock_validate = Mock(
+            side_effect=[
+                [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                [["no2", "co2"], [12, 14]],
+            ]
+        )
+
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": None},
+            clean_data={},
+            parse_to_csv=mock_parse,
+            validate_data=mock_validate,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.process(man)
+
+        # Assert log is called with expected error messages
+        # Not going to try and assert equality on the full log as it contains a
+        # stack-trace
+        self.assertIn("WARNING:root:No available raw data.", cm.output)
+
+        # Assert parse_to_csv calls are as expected
+        parse_calls = mock_parse.mock_calls
+        exp_calls = [call([1, 2, 3]), call([8, 10])]
+        self.assertEqual(parse_calls, exp_calls)
+
+        # Assert validate_data calls are as expected
+        validate_calls = mock_validate.mock_calls
+        exp_calls = [
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            call([["no2", "co2", "co"], [12, 14, 16]]),
+        ]
+        self.assertEqual(validate_calls, exp_calls)
+
+        # And that the clean data fields are set accordingly
+        self.assertEqual(
+            man.clean_data,
+            {
+                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                "2": [["no2", "co2"], [12, 14]],
+                "3": None,
+            },
+        )
+
+    def test_parse_failure(self):
+        # Device 2 fails in parsing to CSV
+        mock_parse = Mock(
+            side_effect=[
+                [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                utils.DataParseError(""),
+                [["no2", "co2", "co"], [12, 14, 16]],
+            ]
+        )
+        mock_validate = Mock(
+            side_effect=[
+                [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                [["no2", "co2"], [12, 14]],
+            ]
+        )
+
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
+            clean_data={},
+            parse_to_csv=mock_parse,
+            validate_data=mock_validate,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.process(man)
+
+        # Assert log is called with expected error messages
+        # Not going to try and assert equality on the full log as it contains a
+        # stack-trace
+        self.assertIn("ERROR:root:Unable to parse data into CSV.", cm.output)
+
+        # Assert parse_to_csv calls are as expected
+        parse_calls = mock_parse.mock_calls
+        exp_calls = [call([1, 2, 3]), call([8, 10]), call(["foo", "bar"])]
+        self.assertEqual(parse_calls, exp_calls)
+
+        # Assert validate_data calls are as expected
+        validate_calls = mock_validate.mock_calls
+        exp_calls = [
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            call([["no2", "co2", "co"], [12, 14, 16]]),
+        ]
+        self.assertEqual(validate_calls, exp_calls)
+
+        # And that the clean data fields are set accordingly
+        self.assertEqual(
+            man.clean_data,
+            {
+                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                "2": None,
+                "3": [["no2", "co2"], [12, 14]],
+            },
+        )
+
+    def test_no_rows(self):
+        # Device 2 parses to CSV, but has no rows of data
+        mock_parse = Mock(
+            side_effect=[
+                [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                [],
+                [["no2", "co2", "co"], [12, 14, 16]],
+            ]
+        )
+        mock_validate = Mock(
+            side_effect=[
+                [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                [["no2", "co2"], [12, 14]],
+            ]
+        )
+
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
+            clean_data={},
+            parse_to_csv=mock_parse,
+            validate_data=mock_validate,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.process(man)
+
+        # Assert log is called with expected error messages
+        # Not going to try and assert equality on the full log as it contains a
+        # stack-trace
+        self.assertIn(
+            "ERROR:root:No time-points have been found in the parsed CSV.", cm.output
+        )
+
+        # Assert parse_to_csv calls are as expected
+        parse_calls = mock_parse.mock_calls
+        exp_calls = [call([1, 2, 3]), call([8, 10]), call(["foo", "bar"])]
+        self.assertEqual(parse_calls, exp_calls)
+
+        # Assert validate_data calls are as expected
+        validate_calls = mock_validate.mock_calls
+        exp_calls = [
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            call([["no2", "co2", "co"], [12, 14, 16]]),
+        ]
+        self.assertEqual(validate_calls, exp_calls)
+
+        # And that the clean data fields are set accordingly
+        self.assertEqual(
+            man.clean_data,
+            {
+                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
+                "2": None,
+                "3": [["no2", "co2"], [12, 14]],
+            },
+        )
+
+    def test_validate_failure(self):
+        # Device 1 fails in validation call
+        mock_parse = Mock(
+            side_effect=[
+                [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                [["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]],
+                [["no2", "co2", "co"], [12, 14, 16]],
+            ]
+        )
+        mock_validate = Mock(
+            side_effect=[
+                utils.ValidateDataError(""),
+                [["foo", "bar"], [4, 2], [4, 1]],
+                [["no2", "co2"], [12, 14]],
+            ]
+        )
+
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
+            clean_data={},
+            parse_to_csv=mock_parse,
+            validate_data=mock_validate,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.process(man)
+
+        # Assert log is called with expected error messages
+        # Not going to try and assert equality on the full log as it contains a
+        # stack-trace
+        self.assertIn(
+            "ERROR:root:Something went wrong during data validation.", cm.output
+        )
+
+        # Assert parse_to_csv calls are as expected
+        parse_calls = mock_parse.mock_calls
+        exp_calls = [call([1, 2, 3]), call([8, 10]), call(["foo", "bar"])]
+        self.assertEqual(parse_calls, exp_calls)
+
+        # Assert validate_data calls are as expected
+        validate_calls = mock_validate.mock_calls
+        exp_calls = [
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
+            call([["no2", "co2", "co"], [12, 14, 16]]),
+        ]
+        self.assertEqual(validate_calls, exp_calls)
+
+        # And that the clean data fields are set accordingly
+        self.assertEqual(
+            man.clean_data,
+            {
+                "1": None,
+                "2": [["foo", "bar"], [4, 2], [4, 1]],
+                "3": [["no2", "co2"], [12, 14]],
+            },
+        )

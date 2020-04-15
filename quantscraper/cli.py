@@ -170,38 +170,35 @@ def process(manufacturer):
 
         logging.info("Cleaning data from device {}...".format(devid))
         if manufacturer.raw_data[devid] is None:
-            logging.warning("No available raw data")
+            logging.warning("No available raw data.")
             manufacturer.clean_data[devid] = None
             continue
 
         try:
             logging.info("Attempting to parse data into CSV...")
-            manufacturer.clean_data[devid] = manufacturer.parse_to_csv(
-                manufacturer.raw_data[devid]
-            )
-            logging.info(
-                "Parse successful. {} samples have been recorded.".format(
-                    len(manufacturer.clean_data[devid])
+            csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
+            num_timepoints = len(csv_data) - 1
+            if num_timepoints > 0:
+                logging.info(
+                    "Parse successful. Samples at {} time-points have been recorded.".format(
+                        num_timepoints
+                    )
                 )
-            )
+            else:
+                logging.error("No time-points have been found in the parsed CSV.")
+                manufacturer.clean_data[devid] = None
+                continue
+
         except utils.DataParseError as ex:
-            logging.error("Unable to parse data into CSV for device {}.".format(devid))
+            logging.error("Unable to parse data into CSV.")
             logging.error(traceback.format_exc())
-            # TODO Should have a separate attribute for clean and CSV data
             manufacturer.clean_data[devid] = None
             continue
 
         logging.info("Running validation...")
         try:
-            manufacturer.clean_data[devid] = manufacturer.validate_data(
-                manufacturer.clean_data[devid]
-            )
-            # TODO is this message accurate?
-            logging.info(
-                "Validation successful. There are {} samples with no errors.".format(
-                    len(manufacturer.clean_data[devid])
-                )
-            )
+            manufacturer.clean_data[devid] = manufacturer.validate_data(csv_data)
+            logging.info("Validation successful.")
         except utils.ValidateDataError:
             logging.error("Something went wrong during data validation.")
             manufacturer.clean_data[devid] = None
