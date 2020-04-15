@@ -27,7 +27,6 @@ class TestSetupLoggers(unittest.TestCase):
         # By default, logger is set to warn (30) and has no handlers
         logger = logging.getLogger()
         self.assertEqual(logger.getEffectiveLevel(), 30)
-        self.assertFalse(logger.hasHandlers())
 
         # After running cli.seutp_loggers, the CLI logger should be set to
         # record at INFO (20) and has handlers
@@ -306,3 +305,130 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
 
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
+
+
+class TestScrape(unittest.TestCase):
+    # Tests the scrape() function, which iterates through a given manufacturer's
+    # devices and scrapes their data
+
+    def test_success_all_ids(self):
+        # Test success on all devices
+        mock_scrape = Mock(side_effect=["foo", "bar", "cat"])
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={},
+            scrape_device=mock_scrape,
+        )
+        with self.assertLogs(level="INFO") as cm:
+            cli.scrape(man)
+
+        # Assert log is called with expected messages
+        self.assertEqual(
+            cm.output,
+            [
+                "INFO:root:Attempting to scrape data for device 1...",
+                "INFO:root:Scrape successful.",
+                "INFO:root:Attempting to scrape data for device 2...",
+                "INFO:root:Scrape successful.",
+                "INFO:root:Attempting to scrape data for device 3...",
+                "INFO:root:Scrape successful.",
+            ],
+        )
+
+        # Assert scrape calls are as expected
+        scrape_calls = mock_scrape.mock_calls
+        exp_calls = [call("4"), call("5"), call("6")]
+        self.assertEqual(scrape_calls, exp_calls)
+
+        # And that the raw data fields are set accordingly
+        self.assertEqual(man.raw_data, {"1": "foo", "2": "bar", "3": "cat"})
+
+    def test_mixed_success(self):
+        # 2nd device raises utils.DataDownloadError
+        mock_scrape = Mock(side_effect=["foo", utils.DataDownloadError(""), "cat"])
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={},
+            scrape_device=mock_scrape,
+        )
+
+        with self.assertLogs(level="INFO") as cm:
+            cli.scrape(man)
+
+        # Assert log is called with expected messages
+        # NB: using assertIn rather than assertEqual as hard to produce the
+        # expected stacktrace that will also be logged alongside the error
+        # message.
+        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
+        self.assertIn("INFO:root:Scrape successful.", cm.output)
+        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
+        self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
+        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
+        self.assertIn("INFO:root:Scrape successful.", cm.output)
+
+        # Assert scrape calls are as expected
+        scrape_calls = mock_scrape.mock_calls
+        exp_calls = [call("4"), call("5"), call("6")]
+        self.assertEqual(scrape_calls, exp_calls)
+
+        # And that the raw data fields are set accordingly
+        self.assertEqual(man.raw_data, {"1": "foo", "2": None, "3": "cat"})
+
+    def test_all_failure(self):
+        # all devices fail to download data
+        mock_scrape = Mock(
+            side_effect=[
+                utils.DataDownloadError(""),
+                utils.DataDownloadError(""),
+                utils.DataDownloadError(""),
+            ]
+        )
+        man = Mock(
+            device_ids=["1", "2", "3"],
+            device_web_ids=["4", "5", "6"],
+            raw_data={},
+            scrape_device=mock_scrape,
+        )
+
+        with self.assertLogs(level="INFO") as cm:
+            cli.scrape(man)
+
+        # Assert log is called with expected messages
+        # NB: using assertIn rather than assertEqual as hard to produce the
+        # expected stacktrace that will also be logged alongside the error
+        # message.
+        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
+        self.assertIn("ERROR:root:Unable to download data for device 1.", cm.output)
+        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
+        self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
+        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
+        self.assertIn("ERROR:root:Unable to download data for device 3.", cm.output)
+
+        # Assert scrape calls are as expected
+        scrape_calls = mock_scrape.mock_calls
+        exp_calls = [call("4"), call("5"), call("6")]
+        self.assertEqual(scrape_calls, exp_calls)
+
+        # And that the raw data fields are set accordingly
+        self.assertEqual(man.raw_data, {"1": None, "2": None, "3": None})
+
+
+class TestProcess(unittest.TestCase):
+    # The cli.process(manufacturer) function iterates through the given
+    # manufacturer's devices and:
+    # - parses raw JSON data into CSV format
+    # - runs QA validation on the CSV data
+    # - handles and logs all errors appropriately
+
+    pass
+
+    # TODO test all success
+
+    # TODO test one raw data failure, i.e. that don't attempt to parse and clean
+    # data is None
+
+    # TODO test data parse error on one raw data, i.e. sets clean to None
+
+    # TODO test validate_data error on one device, i.e. sets clean to None

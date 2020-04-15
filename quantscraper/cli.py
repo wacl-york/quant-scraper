@@ -147,6 +147,66 @@ def setup_scraping_timeframe(cfg):
         )
 
 
+def scrape(manufacturer):
+    """
+    TODO
+    """
+    for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
+        try:
+            logging.info("Attempting to scrape data for device {}...".format(devid))
+            manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
+            logging.info("Scrape successful.")
+        except utils.DataDownloadError as ex:
+            logging.error("Unable to download data for device {}.".format(devid))
+            logging.error(traceback.format_exc())
+            manufacturer.raw_data[devid] = None
+
+
+def process(manufacturer):
+    """
+    TODO
+    """
+    for devid in manufacturer.device_ids:
+
+        logging.info("Cleaning data from device {}...".format(devid))
+        if manufacturer.raw_data[devid] is None:
+            logging.warning("No available raw data")
+            manufacturer.clean_data[devid] = None
+            continue
+
+        try:
+            logging.info("Attempting to parse data into CSV...")
+            manufacturer.clean_data[devid] = manufacturer.parse_to_csv(
+                manufacturer.raw_data[devid]
+            )
+            logging.info(
+                "Parse successful. {} samples have been recorded.".format(
+                    len(manufacturer.clean_data[devid])
+                )
+            )
+        except utils.DataParseError as ex:
+            logging.error("Unable to parse data into CSV for device {}.".format(devid))
+            logging.error(traceback.format_exc())
+            # TODO Should have a separate attribute for clean and CSV data
+            manufacturer.clean_data[devid] = None
+            continue
+
+        logging.info("Running validation...")
+        try:
+            manufacturer.clean_data[devid] = manufacturer.validate_data(
+                manufacturer.clean_data[devid]
+            )
+            # TODO is this message accurate?
+            logging.info(
+                "Validation successful. There are {} samples with no errors.".format(
+                    len(manufacturer.clean_data[devid])
+                )
+            )
+        except utils.ValidateDataError:
+            logging.error("Something went wrong during data validation.")
+            manufacturer.clean_data[devid] = None
+
+
 def save_data(manufacturer, folder, start_time, end_time, type):
     """
     Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
