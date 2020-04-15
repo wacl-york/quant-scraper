@@ -20,11 +20,6 @@ import daily_preprocessing
 import quantscraper.utils as utils
 
 
-# Functions to test:
-# - resample
-# - save output
-
-
 class TestLoadData(unittest.TestCase):
     def test_success(self):
         cfg = configparser.ConfigParser()

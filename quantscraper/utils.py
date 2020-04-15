@@ -29,6 +29,18 @@ class LoginError(Exception):
     """
 
 
+class TimeError(Exception):
+    """
+    Custom exception class for errors associated with datetime formatting.
+    """
+
+
+class SetupError(Exception):
+    """
+    Custom exception class for errors associated with CLI setup.
+    """
+
+
 class DataDownloadError(Exception):
     """
     Custom exception class for situations where a data scrape attempt has failed.

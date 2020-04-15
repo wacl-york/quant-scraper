@@ -11,10 +11,9 @@
 import logging
 import argparse
 import os
+import sys
 import configparser
 from datetime import date, timedelta, datetime, time
-import requests as re
-import quantaq
 import traceback
 
 import quantscraper.utils as utils
@@ -22,6 +21,38 @@ from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+
+
+def setup_loggers(logfn=None):
+    """
+    Configures loggers.
+
+    By default, the error log is printed to standard out,
+    although it can be saved to file in addition.
+
+    Args:
+        logfn (str): File to save log to. If None then doesn't write log to file.
+
+    Returns:
+        None. the logger is accessed by the global module `logging`.
+    """
+    rootLogger = logging.getLogger("cli")
+    rootLogger.setLevel(logging.INFO)
+    logFmt = logging.Formatter(
+        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
+    cliLogger = logging.StreamHandler()
+    cliLogger.setFormatter(logFmt)
+    rootLogger.addHandler(cliLogger)
+
+    if not logfn is None:
+        if os.path.isfile(logfn):
+            raise utils.SetupError(
+                ("Log file {} already exists. " "Halting execution.").format(logfn)
+            )
+        fileLogger = logging.FileHandler(logfn)
+        fileLogger.setFormatter(logFmt)
+        rootLogger.addHandler(fileLogger)
 
 
 def parse_args():
@@ -42,6 +73,25 @@ def parse_args():
     return args
 
 
+def setup_config(fn):
+    """
+    Loads configuration parameters from file into memory.
+
+    Args:
+        fn (str): Filepath of the .INI file.
+
+    Returns:
+        A ConfigParser() instance.
+    """
+    cfg = configparser.ConfigParser()
+    cfg.read(fn)
+
+    if len(cfg.sections()) == 0:
+        raise utils.SetupError("No sections found in '{}'".format(fn))
+
+    return cfg
+
+
 def setup_scraping_timeframe(cfg):
     """
     Sets up the scraping timeframe in the configuration.
@@ -60,6 +110,11 @@ def setup_scraping_timeframe(cfg):
     Returns:
         None. Updates cfg by reference as a side-effect.
     """
+    docs_url = "https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat"
+    error_msg = (
+        "Unknown ISO 8601 format '{input}'. Available formats are described at {url}"
+    )
+
     yesterday = date.today() - timedelta(days=1)
     try:
         cfg.get("Main", "start_time")
@@ -70,98 +125,92 @@ def setup_scraping_timeframe(cfg):
     except configparser.NoOptionError:
         cfg["Main"]["end_time"] = datetime.combine(yesterday, time.max).isoformat()
 
+    # Confirm that both dates are valid
+    try:
+        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+    except ValueError:
+        raise utils.TimeError(
+            error_msg.format(input=cfg.get("Main", "start_time"), url=docs_url)
+        )
+    try:
+        end_dt = datetime.fromisoformat(cfg.get("Main", "end_time"))
+    except ValueError:
+        raise utils.TimeError(
+            error_msg.format(input=cfg.get("Main", "end_time"), url=docs_url)
+        )
 
-def setup_loggers(logfn):
-    """
-    Configures loggers.
-
-    By default, the error log is printed to standard out,
-    although it can be saved to file in addition.
-
-    Args:
-        logfn: File to save log to. If None then doesn't write log to file.
-
-    Returns:
-        None. the logger is accessed by the global module `logging`.
-    """
-    rootLogger = logging.getLogger()
-    rootLogger.setLevel(logging.INFO)
-    logFmt = logging.Formatter(
-        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-    )
-    cliLogger = logging.StreamHandler()
-    cliLogger.setFormatter(logFmt)
-    rootLogger.addHandler(cliLogger)
-
-    if not logfn is None:
-        if os.path.isfile(logfn):
-            logging.error(
-                ("Log file {} already exists. " "Halting execution.").format(logfn)
+    if start_dt >= end_dt:
+        raise utils.TimeError(
+            "Start date must be earlier than end date. ({} - {})".format(
+                cfg.get("Main", "start_time"), cfg.get("Main", "end_time")
             )
-            sys.exit()
-        fileLogger = logging.FileHandler(logfn)
-        fileLogger.setFormatter(logFmt)
-        rootLogger.addHandler(fileLogger)
-
-
-def save_clean_data(manufacturer, folder, start_time, end_time):
-    """
-    Iterates through all a manufacturer's devices and saves their cleaned data to disk.
-
-    Uses the following template filename:
-
-    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.csv
-
-    Args:
-        - manufacturer (Manufacturer): Instance of Manufacturer.
-        - folder (str): Directory where files should be saved to.
-        - start_time (str): Starting time of scraping window. In same
-            string format as INI file uses.
-        - end_time (str): End time of scraping window. In same
-            string format as INI file uses.
-
-    Returns:
-        List of filenames that were successfully saved.
-    """
-    # TODO Change start + end time to just a single date, as this is primary
-    # usecase?
-    fns = []
-
-    if not os.path.isdir(folder):
-        raise utils.DataSavingError(
-            "Folder {} doesn't exist, cannot save clean data.".format(folder)
         )
 
+
+def scrape(manufacturer):
+    """
+    TODO
+    """
+    for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
+        try:
+            logging.info("Attempting to scrape data for device {}...".format(devid))
+            manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
+            logging.info("Scrape successful.")
+        except utils.DataDownloadError as ex:
+            logging.error("Unable to download data for device {}.".format(devid))
+            logging.error(traceback.format_exc())
+            manufacturer.raw_data[devid] = None
+
+
+def process(manufacturer):
+    """
+    TODO
+    """
     for devid in manufacturer.device_ids:
-        fn = utils.CLEAN_DATA_FN.substitute(
-            man=manufacturer.name, device=devid, start=start_time, end=end_time
-        )
 
-        data = manufacturer.clean_data[devid]
-        if data is None:
-            logging.warning("No clean data to save for device {}.".format(devid))
+        logging.info("Cleaning data from device {}...".format(devid))
+        if manufacturer.raw_data[devid] is None:
+            logging.warning("No available raw data.")
+            manufacturer.clean_data[devid] = None
             continue
 
-        full_path = os.path.join(folder, fn)
-        logging.info("Saving data to file: {}".format(full_path))
-        utils.save_csv_file(data, full_path)
-        fns.append(full_path)
-    return fns
+        try:
+            logging.info("Attempting to parse data into CSV...")
+            csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
+            num_timepoints = len(csv_data) - 1
+            if num_timepoints > 0:
+                logging.info(
+                    "Parse successful. Samples at {} time-points have been recorded.".format(
+                        num_timepoints
+                    )
+                )
+            else:
+                logging.error("No time-points have been found in the parsed CSV.")
+                manufacturer.clean_data[devid] = None
+                continue
+
+        except utils.DataParseError as ex:
+            logging.error("Unable to parse data into CSV.")
+            logging.error(traceback.format_exc())
+            manufacturer.clean_data[devid] = None
+            continue
+
+        logging.info("Running validation...")
+        try:
+            manufacturer.clean_data[devid] = manufacturer.validate_data(csv_data)
+            logging.info("Validation successful.")
+        except utils.ValidateDataError:
+            logging.error("Something went wrong during data validation.")
+            manufacturer.clean_data[devid] = None
 
 
-# TODO save_clean_data and save_raw_data have a huge amount of duplicated code!
-# Can they be refactored to be combined in some way?
-# Only differences are:
-#   - Which data to pull (raw/clean)
-#   - Which template filename to pull (csv/json)
-#   - Which saving function to call (csv/json)
-def save_raw_data(manufacturer, folder, start_time, end_time):
+def save_data(manufacturer, folder, start_time, end_time, type):
     """
-    Iterates through all a manufacturer's devices and saves their raw data to disk.
+    Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
 
     Uses the following template filename:
 
-    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.json
+    <manufacturer_name>_<deviceid>_<start_timeframe>_<end_timeframe>.<json/csv>
 
     Args:
         - manufacturer (Manufacturer): Instance of Manufacturer.
@@ -170,6 +219,8 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
             string format as INI file uses.
         - end_time (str): End time of scraping window. In same
             string format as INI file uses.
+        - type (str): Either 'raw' or 'clean' to indicate which data is being
+            saved.
 
     Returns:
         List of filenames that were successfully saved.
@@ -177,6 +228,17 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
     # TODO Change start + end time to just a single date, as this is primary
     # usecase?
     fns = []
+
+    if type == "clean":
+        fn_template = utils.CLEAN_DATA_FN
+        manufacturer_data = manufacturer.clean_data
+        saving_function = utils.save_csv_file
+    elif type == "raw":
+        fn_template = utils.RAW_DATA_FN
+        manufacturer_data = manufacturer.raw_data
+        saving_function = utils.save_json_file
+    else:
+        raise utils.DataSavingError("Unknown data type '{}'.".format(type))
 
     if not os.path.isdir(folder):
         raise utils.DataSavingError(
@@ -184,18 +246,18 @@ def save_raw_data(manufacturer, folder, start_time, end_time):
         )
 
     for devid in manufacturer.device_ids:
-        fn = utils.RAW_DATA_FN.substitute(
+        fn = fn_template.substitute(
             man=manufacturer.name, device=devid, start=start_time, end=end_time
         )
 
-        data = manufacturer.raw_data[devid]
+        data = manufacturer_data[devid]
         if data is None:
             logging.warning("No raw data to save for device {}.".format(devid))
             continue
 
         full_path = os.path.join(folder, fn)
         logging.info("Saving data to file: {}".format(full_path))
-        utils.save_json_file(data, full_path)
+        saving_function(data, full_path)
         fns.append(full_path)
     return fns
 
@@ -224,7 +286,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
             utils.upload_file_google_drive(service, fn, folder_id, mime_type)
             logging.info("Upload successful.")
-        except DataUploadError:
+        except utils.DataUploadError:
             logging.error("Error in upload")
             logging.error(traceback.format_exc())
             continue
@@ -240,16 +302,25 @@ def main():
     Returns:
         None.
     """
-    # Setup logging
-    # TODO For now just log to stdout
-    setup_loggers(None)
+    # Setup logging, which for now just logs to stdout
+    try:
+        setup_loggers()
+    except utils.SetupError:
+        logging.error("Error in setting up loggers.")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
-    # Parse config file
+    # Parse args and config file
     args = parse_args()
-    # TODO validate config file's existence and format
+    try:
+        cfg = setup_config(args.configfilepath)
+    except utils.SetupError:
+        logging.error("Error in setting up configuration properties")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
-    cfg = configparser.ConfigParser()
-    cfg.read(args.configfilepath)
     setup_scraping_timeframe(cfg)
 
     # Load all manufacturers
@@ -284,20 +355,22 @@ def main():
 
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")
-            raw_fns = save_raw_data(
+            raw_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_raw_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
+                "raw",
             )
 
         if cfg.getboolean("Main", "save_clean_data"):
             logging.info("Saving clean CSV data to file.")
-            clean_fns = save_clean_data(
+            clean_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_clean_data"),
                 cfg.get("Main", "start_time"),
                 cfg.get("Main", "end_time"),
+                "clean",
             )
 
         upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")

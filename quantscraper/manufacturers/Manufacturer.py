@@ -8,9 +8,29 @@ import quantscraper.utils as utils
 
 
 class Manufacturer(ABC):
-    # Unsure how to force Name as an abstract class property.
-    # Can only get it working as an instance attribute
-    name = "Manufacturer"
+
+    # Name is both abstract and a class method
+    @property
+    @classmethod
+    @abstractmethod
+    def name(cls):
+        """
+        TODO
+        """
+
+    @property
+    def devices(self):
+        """
+        TODO
+        """
+        return self._devices
+
+    @property
+    def devices_web(self):
+        """
+        TODO
+        """
+        return self._devices_web
 
     @property
     def clean_data(self):
@@ -19,16 +39,6 @@ class Manufacturer(ABC):
         """
         return self._clean_data
 
-    @clean_data.setter
-    # TODO Clean this up as currently doesn't work:
-    # can only have 1 non-self argument. Can pass a dict mapping
-    # {devID: value} as second argument
-    def clean_data(self, devID, value):
-        """
-        TODO
-        """
-        self._clean_data[devID] = value
-
     @property
     def raw_data(self):
         """
@@ -36,26 +46,23 @@ class Manufacturer(ABC):
         """
         return self._raw_data
 
-    @raw_data.setter
-    def raw_data(self, devID, value):
+    @abstractmethod
+    def connect(self):
         """
         TODO
         """
-        self._raw_data[devID] = value
 
     @abstractmethod
     def scrape_device(self, deviceID):
         """
         TODO
         """
-        pass
 
     @abstractmethod
     def parse_to_csv(self, rawdata):
         """
         TODO
         """
-        pass
 
     def __init__(self, cfg):
         """
@@ -106,78 +113,12 @@ class Manufacturer(ABC):
             }
             self.measurands.append(entry)
 
-    @abstractmethod
-    def connect(self):
-        """
-        TODO
-        """
-
-    def scrape(self):
-        """
-        TODO
-        """
-        # TODO Should this code be here, or should it be in the CLI script, so
-        # that all logging is run in once place?
-        for webid, devid in zip(self.device_web_ids, self.device_ids):
-            try:
-                logging.info("Attempting to scrape data for device {}...".format(webid))
-                self.raw_data[devid] = self.scrape_device(webid)
-                logging.info("Scrape successful.")
-            except utils.DataDownloadError as ex:
-                logging.error("Unable to download data for device {}.".format(webid))
-                logging.error(traceback.format_exc())
-                self.raw_data[devid] = None
-
-    # TODO Better name?! preprocess? process_data?
-    def process(self):
-        """
-        TODO
-        """
-        # TODO Like with scrape(), should this code below be handled in the CLI
-        # script? Is it fair for Manufacturer (a library class) to access
-        # logger?
-        for devid in self.device_ids:
-
-            logging.info("Cleaning data from device {}...".format(devid))
-            if self.raw_data[devid] is None:
-                logging.warning("No available raw data")
-                self.clean_data[devid] = None
-                continue
-
-            try:
-                logging.info("Attempting to parse data into CSV...")
-                self.clean_data[devid] = self.parse_to_csv(self.raw_data[devid])
-                logging.info(
-                    "Parse successful. {} samples have been recorded.".format(
-                        len(self.clean_data[devid])
-                    )
-                )
-            except utils.DataParseError as ex:
-                logging.error(
-                    "Unable to parse data into CSV for device {}.".format(devid)
-                )
-                logging.error(traceback.format_exc())
-                self.clean_data[devid] = None
-                continue
-
-            logging.info("Running validation...".format(devid))
-            try:
-                self.clean_data[devid] = self.validate_data(self.clean_data[devid])
-                logging.info(
-                    "Validation successful. There are {} samples with no errors.".format(
-                        len(self.clean_data[devid])
-                    )
-                )
-            except utils.ValidateDataError:
-                logging.error("Something went wrong during data validation.")
-                self.clean_data[devid] = None
-
     def validate_data(self, data):
         """
         Runs QA validation checks on air quality data.
-        
+
         Args:
-            data (list): Data in CSV, i.e. a 2D list, format. 
+            data (list): Data in CSV, i.e. a 2D list, format.
                 It will likely be stored as strings.
 
         Returns:
@@ -251,5 +192,3 @@ class Manufacturer(ABC):
         logging.info(summary)
 
         return clean_data
-
-    # TODO Need to document device_ids parameter as abstract
