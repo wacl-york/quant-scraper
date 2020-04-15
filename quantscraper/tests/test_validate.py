@@ -146,6 +146,8 @@ class TestValidate(unittest.TestCase):
     cfg.set("Aeroqual", "timestamp_format", "%%Y-%%m-%%d %%H:%%M")
     cfg.set("Aeroqual", "timestamp_column", "timestamp")
     cfg.set("Aeroqual", "columns_to_validate", "foo,bar,car")
+    cfg.set("Aeroqual", "column_labels", "foo,bar,car")
+    cfg.set("Aeroqual", "scaling_factors", "1,1,1")
 
     def test_success(self):
         data = [
@@ -268,6 +270,8 @@ class TestValidate(unittest.TestCase):
         # from same manufacturer have different sensor equipped
         cfg_copy = utils.copy_object(self.cfg)
         cfg_copy.set("Aeroqual", "columns_to_validate", "foo,bar,car,donkey")
+        cfg_copy.set("Aeroqual", "column_labels", "foo,bar,car,donkey")
+        cfg_copy.set("Aeroqual", "scaling_factors", "1,1,1,1")
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
             ["5", "2", "2019-03-02 15:30", "23.9", "5.0", "bar"],

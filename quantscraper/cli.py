@@ -256,7 +256,12 @@ def main():
     manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
     for man_class in manufacturers:
         logging.info("Manufacturer: {}".format(man_class.name))
-        manufacturer = man_class(cfg)
+        try:
+            manufacturer = man_class(cfg)
+        except utils.DataParseError:
+            logging.error("Error instantiating Manufacturer instance.")
+            logging.error(traceback.format_exc())
+            continue
 
         try:
             logging.info("Attempting to connect...")
