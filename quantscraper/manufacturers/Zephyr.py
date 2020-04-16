@@ -1,14 +1,28 @@
-import sys
+"""
+    quantscraper.manufacturers.Zephyr.py
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Concrete implementation of Manufacturer, representing the Zephyr air
+    quality instrumentation device manufacturer.
+"""
+
 import logging
 from datetime import datetime
 from string import Template
-from bs4 import BeautifulSoup
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Zephyr(Manufacturer):
+    """
+    Inherits attributes and methods from Manufacturer along with providing
+    implementations of:
+        - connect()
+        - scrape_device()
+        - parse_to_csv()
+    """
+
     name = "Zephyr"
 
     def __init__(self, cfg):
@@ -16,11 +30,12 @@ class Zephyr(Manufacturer):
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg: Instance of ConfigParser
+            - cfg (configparser.Namespace): Instance of ConfigParser.
 
         Returns:
             None
         """
+        self.session = None
         self.auth_url = cfg.get(self.name, "auth_url")
         self.averaging_window = cfg.get(self.name, "averaging_window")
         self.slot = cfg.get(self.name, "slot")
@@ -57,7 +72,27 @@ class Zephyr(Manufacturer):
 
     def connect(self):
         """
-        Overrides super method as needs to obtain API token
+        Establishes an HTTP connection to the AQMesh website.
+
+        Logs in with username and password and obtains an API token.
+
+        Would typically like to confirm authentication in this method,
+        but the POST request returns an access token for *any* username/password
+        regardless of whether the credentials are correct.
+
+        An unsuccesful login attempt is only identified later when attempting
+        to use the (invalid) API token.
+
+        The instance attribute 'session' stores a handle to the connection,
+        holding any generated cookies and the history of requests.
+
+        Args:
+            - None.
+
+        Returns:
+            None, although a handle to the connection is stored in the instance
+            attribute 'session' and the API token is also saved as an instance
+            attribute.
         """
         self.session = re.Session()
 
@@ -69,19 +104,30 @@ class Zephyr(Manufacturer):
         except re.exceptions.HTTPError as ex:
             raise LoginError("HTTP error when logging in.\n{}".format(ex)) from None
 
-        # Set api_token if above didn't raise HTTPError at any non-200 status
         self.api_token = result.json()["access_token"]
-        # Would typically like to confirm authentication here, but this post
-        # request returns an access token for _any_ username/password
-        # combination. Only find out later when try to pull data if credentials
-        # are incorrect.
 
-    def scrape_device(self, deviceID):
+    def scrape_device(self, device_id):
         """
-        TODO
+        Downloads the data for a given device from the website.
+
+        This just requires a single GET request with the query parameters are
+        hardcoded into the URL itself.
+
+        I.e. the URL to download data is in the form:
+        <main domain>/<api token>/<device id>/<start date>/<end date>/AB/newDef/6/JSON/api
+
+        Instead of passing in keyword-value arguments in the usual form of:
+        <main domain>?device=foo&start_date=bar...
+
+        Args:
+            device_id (str): The website device_id to scrape for.
+
+        Returns:
+            The raw data is returned in the response's JSON and organised in a
+            hierarchical format of dicts and lists.
         """
         this_url = self.data_url.substitute(
-            device=deviceID,
+            device=device_id,
             token=self.api_token,
             start=self.start_date,
             end=self.end_date,
@@ -99,27 +145,63 @@ class Zephyr(Manufacturer):
 
     def parse_to_csv(self, raw_data):
         """
-        TODO
-        """
-        # TODO Is it appropriate to log from this method?
-        # Input raw data has 4 fields:
-        #   - errorDesc: Potentially useful for error handling, will keep a note
-        #   of it. So far has just had None
-        #   - data: Payload of interest
-        #   - queryInfo: query params, not useful except potentially debugging
-        #   - info: Looks like info for webpage, as has HMTL markup
+        Parses the raw data into a 2D list format.
 
-        # data has 5 fields for different averaging strategies:
-        #   - unaveraged (what I assume we want)
-        #   - 15 mins on quarter hours
-        #   - daily average at midnight
-        #   - hourly average on the hour
-        #   - 8 hour average at midnight and 8am and 4pm
+        I'll document the data format here as there are several levels to it.
+
+        The raw data has 4 fields:
+          - errorDesc: Potentially useful for error handling, will keep a note
+          of it. So far has just had None
+          - data: Payload of interest
+          - queryInfo: query params, not useful except potentially debugging
+          - info: Looks like info for webpage, as has HMTL markup
+
+        The 'data' attribute has 5 fields for different averaging strategies:
+          - unaveraged
+          - 15 mins on quarter hours
+          - daily average at midnight
+          - hourly average on the hour
+          - 8 hour average at midnight and 8am and 4pm
+
+        Once the averaging attribute has been selected, a new dict is
+        encountered with 2 fields:
+          'slotA' and 'slotB'.
+        So far I've never seen slotA populated, but the code checks for data
+        existing in both, as it is not documented what the slots represent,
+        and we cannot assume that data will always be in slotB.
+
+        The non-empty slot holds another dictionary, mapping each measurand to
+        its recorded values and associated meta-data:
+        {
+            measurand: {
+                        header: [],
+                        data: [],
+                        data_hash: str
+                       },
+            measurand2: ...
+        }
+        'data' is the recorded values themselves.
+        The 'header' entries contain metadata, such as label, units, and order
+        in the output csv that can be downloaded from the website.
+
+        Args:
+            - raw_data (dict): The raw data is organised in a
+                hierarchical format of dicts and lists, containing a large
+                amount of metadata. See above for full documentation.
+
+        Returns:
+            A 2D list representing the data in a tabular format, so that each
+            row corresponds to a unique time-point and each column holds a
+            measurand.
+        """
+        # TODO is it fair to log from this method? Have removed it from all
+        # other Manufacturer methods, but useful here to log any irregularities
+        # with the data, since we don't understand exactly what the difference
+        # between 'slotA' and 'slotB' is.
+
         raw_data = raw_data["data"]
         raw_data = raw_data[self.averaging_window]
 
-        # This data has 2 fields:
-        #   slotA and slotB.
         # So far I've never seen slotA populated, but best to check
         try:
             parsed_data = raw_data[self.slot]
@@ -144,19 +226,9 @@ class Zephyr(Manufacturer):
                 if raw_data[remaining_slot] is None:
                     logging.warning("{} is also empty.".format(remaining_slot))
                     raise DataParseError("No data available in any slots.")
-                else:
-                    logging.info("{} has data so will pull it.".format(remaining_slot))
-                    parsed_data = raw_data[remaining_slot]
 
-        # Parsed data is now a dictionary:
-        # parsed_data= {measurand: {
-        #                           header: [],
-        #                           data: [],
-        #                           data_hash: str
-        #                          }
-        # The 'header' entries contain metadata, such as label, units, order in
-        # output csv
-        # 'data' is the list of values, and 'data_hash' is just a hash
+                logging.info("{} has data so will pull it.".format(remaining_slot))
+                parsed_data = raw_data[remaining_slot]
 
         # Obtain fields in CSV order
         measurands = list(parsed_data.keys())
@@ -169,10 +241,8 @@ class Zephyr(Manufacturer):
                 "Fields have differing number of observations: {}".format(nrows)
             )
 
-        # Form into CSV. Not most effecient solution but will do for now
-        # Could make into 2D list comp, not very readable but quicker
-        # Or there's probably an internal Python function from itertools or
-        # something that is more efficient
+        # Form into CSV. Not most efficient solution but will do for now
+        # There's probably a function from itertools that is more efficient
         clean_data = []
         for i in range(nrows[0]):
             row = [parsed_data[col]["data"][i] for col in measurands]

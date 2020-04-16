@@ -1,14 +1,29 @@
-import logging
+"""
+    quantscraper.manufacturers.AQMesh.py
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Concrete implementation of Manufacturer, representing the AQMesh air
+    quality instrumentation device manufacturer.
+"""
+
 from string import Template
 from datetime import datetime
 import json
 import requests as re
+from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
-from bs4 import BeautifulSoup
 
 
 class AQMesh(Manufacturer):
+    """
+    Inherits attributes and methods from Manufacturer along with providing
+    implementations of:
+        - connect()
+        - scrape_device()
+        - parse_to_csv()
+    """
+
     name = "AQMesh"
 
     def __init__(self, cfg):
@@ -16,11 +31,12 @@ class AQMesh(Manufacturer):
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg: Instance of ConfigParser
+            - cfg (configparser.Namespace): Instance of ConfigParser.
 
         Returns:
             None
         """
+        self.session = None
         self.auth_url = cfg.get(self.name, "auth_url")
         self.data_url = cfg.get(self.name, "data_url")
 
@@ -75,7 +91,21 @@ class AQMesh(Manufacturer):
 
     def connect(self):
         """
-        TODO
+        Establishes an HTTP connection to the AQMesh website.
+
+        Logs in with username and password, then checks for success by parsing
+        the resultant HTML page to see if the login prompt is still present,
+        indicating a login failure.
+
+        The instance attribute 'session' stores a handle to the connection,
+        holding any generated cookies and the history of requests.
+
+        Args:
+            - None.
+
+        Returns:
+            None, although a handle to the connection is stored in the instance
+            attribute 'session'.
         """
         self.session = re.Session()
 
@@ -94,13 +124,24 @@ class AQMesh(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, deviceID):
+    def scrape_device(self, device_id):
         """
-        TODO
+        Downloads the data for a given device from the website.
+
+        This just requires a single GET request with the appropriate params.
+        The raw data is held in the 'Data' attribute of the response JSON.
+
+        Args:
+            device_id (str): The website device_id to scrape for.
+
+        Returns:
+            The data stored in a hierarchical format comprising dicts and lists.
+            At the top level, the data has 2 attributes, 'Headers' and 'Rows',
+            which hold the column labels and data respectively.
         """
         this_params = self.data_params.copy()
-        this_params["UniqueId"] = this_params["UniqueId"].substitute(device=deviceID)
-        this_params["Channels"] = this_params["Channels"].substitute(device=deviceID)
+        this_params["UniqueId"] = this_params["UniqueId"].substitute(device=device_id)
+        this_params["Channels"] = this_params["Channels"].substitute(device=device_id)
 
         try:
             result = self.session.get(
@@ -121,7 +162,18 @@ class AQMesh(Manufacturer):
 
     def parse_to_csv(self, raw_data):
         """
-        TODO
+        Parses the raw data into a 2D list format.
+
+        Args:
+            - raw_data (dict): The data is stored in a hierarchical format
+                comprising dicts and lists. At the top level, the data has
+                2 attributes, 'Headers' and 'Rows', which hold the column
+                labels and data respectively.
+
+        Returns:
+            A 2D list representing the data in a tabular format, so that each
+            row corresponds to a unique time-point and each column holds a
+            measurand.
         """
         # Combine header and data into 1 list
         header = [h["Header"] for h in raw_data["Headers"]]

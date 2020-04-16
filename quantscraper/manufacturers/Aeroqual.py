@@ -1,3 +1,11 @@
+"""
+    quantscraper.manufacturers.Aeroqual.py
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Concrete implementation of Manufacturer, representing the Aeroqual air
+    quality instrumentation device manufacturer.
+"""
+
 from datetime import datetime
 from string import Template
 import csv
@@ -8,6 +16,14 @@ from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Aeroqual(Manufacturer):
+    """
+    Inherits attributes and methods from Manufacturer along with providing
+    implementations of:
+        - connect()
+        - scrape_device()
+        - parse_to_csv()
+    """
+
     name = "Aeroqual"
 
     def __init__(self, cfg):
@@ -15,11 +31,12 @@ class Aeroqual(Manufacturer):
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg: Instance of ConfigParser
+            - cfg (configparser.Namespace): Instance of ConfigParser.
 
         Returns:
-            None
+            None.
         """
+        self.session = None
         self.auth_url = cfg.get(self.name, "auth_url")
         self.select_device_url = cfg.get(self.name, "select_device_url")
         self.data_url = cfg.get(self.name, "data_url")
@@ -79,7 +96,21 @@ class Aeroqual(Manufacturer):
 
     def connect(self):
         """
-        TODO
+        Establishes an HTTP connection to the Aeroqual website.
+
+        Logs in with username and password, then checks for success by parsing
+        the resultant HTML page to see if the login prompt is still present,
+        indicating a login failure.
+
+        The instance attribute 'session' stores a handle to the connection,
+        holding any generated cookies and the history of requests.
+
+        Args:
+            - None.
+
+        Returns:
+            None, although a handle to the connection is stored in the instance
+            attribute 'session'.
         """
         self.session = re.Session()
         try:
@@ -97,14 +128,26 @@ class Aeroqual(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, deviceID):
+    def scrape_device(self, device_id):
         """
-        TODO
+        Downloads the data for a given device from the website.
+
+        This process requires several HTTP requests to be made:
+            - A POST call to select the device
+            - A POST call to generate the data for a given time-frame
+            - A GET call to obtain the data.
+
+        Args:
+            device_id (str): The website device_id to scrape for.
+
+        Returns:
+            A string containing the raw data in CSV format, i.e. rows are
+            delimited by '\r\n' characters and columns by ','.
         """
         try:
             result = self.session.post(
                 self.select_device_url,
-                json=[self.select_device_string.substitute(device=deviceID)],
+                json=[self.select_device_string.substitute(device=device_id)],
                 headers=self.select_device_headers,
             )
             result.raise_for_status()
@@ -135,7 +178,19 @@ class Aeroqual(Manufacturer):
 
     def parse_to_csv(self, raw_data):
         """
-        TODO
+        Parses the raw data into a 2D list format.
+
+        The raw data is already in CSV format, so it simply needs delimiting by
+        carriage return to get the rows, and then separating columns by commas.
+
+        Args:
+            - raw_data (str): A string containing the raw data in CSV format,
+                i.e. rows are delimited by '\r\n' characters and columns by ','.
+
+        Returns:
+            A 2D list representing the data in a tabular format, so that each
+            row corresponds to a unique time-point and each column holds a
+            measurand.
         """
         # Expect to get an empty row at the end due to suplerfuous carriage
         # return. Remove any trailing white-space (including CR).

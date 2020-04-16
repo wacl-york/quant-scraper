@@ -97,19 +97,19 @@ class ResamplingError(Exception):
     """
 
 
-def copy_object(input):
+def copy_object(obj):
     """
     Function to deep copy a Python object.
 
     This pickle method should work for any Python 3 object.
 
     Args:
-        input (Object): input object that must be serializable by pickle.
+        - obj (Object): input object that must be serializable by pickle.
 
     Returns:
-        A deep copy of 'input', a second ConfigParser object.
+        A deep copy of obj.
     """
-    pickle_in = pickle.dumps(input)
+    pickle_in = pickle.dumps(obj)
     pickle_out = pickle.loads(pickle_in)
     return pickle_out
 
@@ -119,8 +119,8 @@ def summarise_validation(n_raw, counts):
     Produces a text summary of the validation results.
 
     Args:
-        n_raw (int): Number of rows in the raw CSV data.
-        counts (dict): Dictionary mapping {measurand: # clean samples}
+        - n_raw (int): Number of rows in the raw CSV data.
+        - counts (dict): Dictionary mapping {measurand: # clean samples}
 
     Returns:
         A string, summarising the number of clean data points.
@@ -159,27 +159,28 @@ def is_float(x):
     such by Python.
 
     Args:
-        x (str): The input string.
+        - x (str): The input string.
 
     Returns:
         Boolean indicating whether x can be parsed as a float or not.
-        Note it doesn't actually do the parsing into float format.
+        Note it doesn't actually do the parsing into float, that will need to be
+        run separately.
     """
-    is_float = False
+    parseable = False
     try:
         val_parsed = float(x)
         # Look out for infinity and NaNs
         if math.isinf(val_parsed) or math.isnan(val_parsed):
             raise ValueError
 
-        is_float = True
+        parseable = True
 
     except ValueError:
-        is_float = False
+        parseable = False
     except TypeError:
-        is_float = False
+        parseable = False
 
-    return is_float
+    return parseable
 
 
 def auth_google_api(credentials_fn):
@@ -190,7 +191,7 @@ def auth_google_api(credentials_fn):
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        credentials_fn (str): Path to JSON file that has Google API credentials
+        - credentials_fn (str): Path to JSON file that has Google API credentials
             saved.
 
     Returns:
@@ -217,25 +218,25 @@ def auth_google_api(credentials_fn):
     return service
 
 
-def upload_file_google_drive(service, fn, folder_id, mime_type):
+def upload_file_google_drive(service, filepath, folder_id, mime_type):
     """
     Uploads a file to a specified Google Drive folder.
 
     Args:
-        service (googleapiclient.discovery.Resource): Google API service object.
-        fn (str): Filepath of the local file to be uploaded.
-        folder_id (str): ID of the target Google Drive folder.
-        mime_type (str): MIME type of file.
+        - service (googleapiclient.discovery.Resource): Google API service object.
+        - filepath (str): Filepath of the local file to be uploaded.
+        - folder_id (str): ID of the target Google Drive folder.
+        - mime_type (str): MIME type of file.
 
     Returns:
         None, uploads data to Google Drive as a side effect.
     """
     # Filename should be base filename, removing path
-    base_fn = os.path.basename(fn)
+    base_fn = os.path.basename(filepath)
 
     file_metadata = {"name": base_fn, "mimeType": mime_type, "parents": [folder_id]}
 
-    media = MediaFileUpload(fn, mimetype=mime_type)
+    media = MediaFileUpload(filepath, mimetype=mime_type)
 
     try:
         service.files().create(

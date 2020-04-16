@@ -3,25 +3,26 @@
     ~~~~~~~~~~~~~~~~~~~~~~
 
     Script that takes cleaned and validated air quality sensor data that has
-    been stored to disk, and converts it into a format suitable for analysis.Unit tests
+    been stored to disk, and converts it into a format suitable for analysis.
 
     In particular, the input data is stored:
-        - Currently in 1 file per device
-        - Each file is in long format, i.e. 3 columns with timestamp, measurand, 
+        - In 1 file per device
+        - Each file is in long format, i.e. 3 columns with timestamp, measurand,
             and measurement
 
     The output of this pre-processing is:
         - A single file per manufacturer containing the data from all its
-        devices
-        - The data will be in wide format, i.e. one column per measurand
+            devices
+        - The data will be in wide format, i.e. one column per measurand/device
+            pair
         - Each file will contain both gases and particular matter
         - Basic resampling will be run so that every file has the same
-        time resolution.
+            time resolution
 """
 
+import sys
 import os
 import logging
-import configparser
 import traceback
 
 import numpy as np
@@ -54,20 +55,20 @@ def get_data(cfg, manufacturer, device_id, date_start, date_end):
     any DB connection information can be pulled from the config object.
 
     Args:
-        cfg (ConfigParser): ConfigParser object containing data parameters.
-        manufacturer (string): Manufacturer name.
-        device_id (str): Device id
-        date_start (str): Starting time of the recording.
-        date_end (str): Ending time of the recording.
+        - cfg (configparser.Namespace): ConfigParser object containing data parameters.
+        - manufacturer (string): Manufacturer name.
+        - device_id (str): Device id
+        - date_start (str): Starting time of the recording.
+        - date_end (str): Ending time of the recording.
 
     Returns:
         A pandas.DataFrame object.
     """
-    fn = utils.CLEAN_DATA_FN.substitute(
+    data_fn = utils.CLEAN_DATA_FN.substitute(
         man=manufacturer, device=device_id, start=date_start, end=date_end
     )
     folder = cfg.get("Main", "local_folder_clean_data")
-    full_path = os.path.join(folder, fn)
+    full_path = os.path.join(folder, data_fn)
 
     try:
         data = pd.read_csv(full_path)
@@ -86,41 +87,47 @@ def get_data(cfg, manufacturer, device_id, date_start, date_end):
 def long_to_wide(long, measurands=None):
     """
     Converts a table containing sensor data in long format into a wide table
-    with 1 column per measurand.
+    with 1 column per measurand/device pair.
+
+    It firstly combines the measurands into a device/measurand pair in the long
+    format, and then pivots into a wide table so that each column is of the form
+    <measurand_device> and each row corresponds to a unique time-point.
 
     Args:
-        long (pandas.DataFrame): DataFrame with 1 row per measurement.
-            Has columns:
-                - device (str)
-                - timestamp (str)
-                - measurand (str)
-                - value (float)
-        measurands (str[], optional): List of measurands that expect to have
-            values. If any of these measurands don't have any clean values (and
-            thus aren't present in the 'long' table), then a column is formed
-            for them in the wide, filled with NaNs.
+        - long (pandas.DataFrame): DataFrame with 1 row per measurement.
+              Has columns:
+                  - device (str)
+                  - timestamp (str)
+                  - measurand (str)
+                  - value (float)
+        - measurands (str[], optional): List of measurands to include in the
+            output file. If not provided then all the measurands in 'long' are
+            kept. If provided then 'long' is firstly restricted to measurands in
+            this list, then NaN filled columns are made for any requested measurands in
+            'measurands' that don't have any observations in 'long'.
 
     Returns:
         A pandas.DataFrame object with columns:
-            NB: The first 2 are used as a MultiIndex.
-            - device (str)
-            - timestamp (str)
-            - Then 1 column for each measurand
+            - timestamp (pandas.datetime type, the DataFrame index)
+            - Then 1 column for each measurand/device pair, labelled
+                <measurand_device>.
     """
 
     # If specified measurands of interest then restrict data frame to them
     if measurands is not None:
         try:
             long = long[long["measurand"].isin(measurands)]
-        except KeyError as ex:
+        except KeyError:
             raise utils.DataConversionError(
                 "Missing 'measurand' column in long clean data."
-            )
+            ) from None
         # Get list of unique sensors
         try:
             devices = long.device.unique()
         except AttributeError:
-            raise utils.DataConversionError("There is no 'device' column available.")
+            raise utils.DataConversionError(
+                "There is no 'device' column available."
+            ) from None
 
     # Concatenate device and measurand, removing whitespace
     try:
@@ -131,6 +138,7 @@ def long_to_wide(long, measurands=None):
             "Columns 'device' and 'measurand' must be available."
         )
 
+    # Pivot to wide table
     try:
         wide = long.pivot_table(
             index=["timestamp"],
@@ -139,12 +147,14 @@ def long_to_wide(long, measurands=None):
             fill_value=np.nan,  # As required
             dropna=False,
         )  # Don't want to lose columns
-    except pd.core.base.DataError as ex:
-        raise utils.DataConversionError("The long clean data should be all floats.")
-    except KeyError as ex:
+    except pd.core.base.DataError:
+        raise utils.DataConversionError(
+            "The long clean data should be all floats."
+        ) from None
+    except KeyError:
         raise utils.DataConversionError("Missing column in long clean data.")
 
-    # Add NaN filled column for any measurand/sensor combination that wasn't in long data
+    # Add NaN filled column for any device/measurand combination that wasn't in long data
     if measurands is not None:
         for measurand in measurands:
             for device in devices:
@@ -157,14 +167,13 @@ def long_to_wide(long, measurands=None):
     # Remove rows that have all NaNs
     wide.dropna(how="all", inplace=True)
 
-    # Reorder columns alphabetically so all measurands from same device are
-    # adjacent
+    # Reorder columns alphabetically so all measurands are adjacent
     wide = wide.reindex(sorted(wide.columns), axis=1)
 
     return wide
 
 
-def resample(df, resolution):
+def resample(dataframe, resolution):
     """
     Resamples the time-series into a constant resolution.
 
@@ -173,7 +182,7 @@ def resample(df, resolution):
     In this usage, the aggregation function is the mean.
 
     Args:
-        df (pandas.DataFrame): Input data.
+        dataframe (pandas.DataFrame): Input data.
         resolution (str): Desired output resolution, see following link for
             syntax:
             https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects
@@ -181,7 +190,7 @@ def resample(df, resolution):
         A pandas.DataFrame object in the specified time-resolution.
     """
     try:
-        df_resampled = df.resample(resolution).mean()
+        df_resampled = dataframe.resample(resolution).mean()
     except TypeError:
         raise utils.ResamplingError("Data doesn't have a time index.") from None
     except ValueError:
@@ -194,19 +203,29 @@ def resample(df, resolution):
 
 def main():
 
-    # TODO Just using same setup functions as cli.py here.
+    # Just using same setup functions as cli.py here.
     # Don't think would be appropriate to refactor these functions into the
     # utils.py module, as these are script functions, rather than library
     # functions associated with the collection of air quality data
 
-    # Setup logging
-    cli.setup_loggers(None)
+    # Setup logging, which for now just logs to stdout
+    try:
+        cli.setup_loggers()
+    except utils.SetupError:
+        logging.error("Error in setting up loggers.")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
-    # Parse config file
+    # Parse args and config file
     args = cli.parse_args()
-
-    cfg = configparser.ConfigParser()
-    cfg.read(args.configfilepath)
+    try:
+        cfg = cli.setup_config(args.configfilepath)
+    except utils.SetupError:
+        logging.error("Error in setting up configuration properties")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
 
     cli.setup_scraping_timeframe(cfg)
 
@@ -228,13 +247,15 @@ def main():
         dfs = []
         for device in manufacturer.device_ids:
             try:
-                df = get_data(cfg, manufacturer.name, device, start_window, end_window)
+                dataframe = get_data(
+                    cfg, manufacturer.name, device, start_window, end_window
+                )
             except utils.DataReadingError:
                 logging.error("No clean data found for device '{}'.".format(device))
                 logging.error(traceback.format_exc())
                 continue
 
-            dfs.append(df)
+            dfs.append(dataframe)
 
         # Stack data into 1 data frame for this manufacturer
         try:
