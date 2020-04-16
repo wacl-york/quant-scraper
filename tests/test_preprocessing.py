@@ -2,21 +2,16 @@
     test_preprocessing.py
     ~~~~~~~~~~~~~~~~~~~~~
 
-    Unit tests for the bin/daily_preprocessing.py script.
+    Unit tests for the quantscraper/daily_preprocessing.py script.
 """
 
 import unittest
-import sys
 import configparser
 from unittest.mock import patch, Mock
 import pandas as pd
 import numpy as np
 import quantscraper.utils as utils
-
-# As scripts are stored in a 'bin' directory that isn't part of the quantscraper
-# module, need to add the directory to PYTHONPATH so can import the script
-sys.path.extend(["bin"])
-import daily_preprocessing
+import quantscraper.daily_preprocessing as daily_preprocessing
 
 
 class TestLoadData(unittest.TestCase):
@@ -41,7 +36,7 @@ class TestLoadData(unittest.TestCase):
         exp["timestamp"] = timestamp_dt
 
         # Mock file I/O
-        with patch("daily_preprocessing.pd") as mock_pd:
+        with patch("quantscraper.daily_preprocessing.pd") as mock_pd:
             mock_read = Mock(return_value=example_data)
             mock_pd.read_csv = mock_read
             mock_todt = Mock(return_value=timestamp_dt)
@@ -71,7 +66,7 @@ class TestLoadData(unittest.TestCase):
         cfg.set("Main", "local_folder_clean_data", "cleanfoo")
 
         # Mock file I/O
-        with patch("daily_preprocessing.pd") as mock_pd:
+        with patch("quantscraper.daily_preprocessing.pd") as mock_pd:
             mock_read = Mock(side_effect=FileNotFoundError(""))
             mock_pd.read_csv = mock_read
 

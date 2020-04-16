@@ -14,7 +14,12 @@ setup(
     url="https://github.com/wacl-york/QUANTscraper",
     author="Stuart Lacy",
     author_email="stuart.lacy@york.ac.uk",
-    entry_points={"console_scripts": ["quantscrape = quantscraper.cli:main",],},
+    entry_points={
+        "console_scripts": [
+            "quant_scrape = quantscraper.cli:main",
+            "quant_preprocess = quantscraper.daily_preprocessing:main",
+        ],
+    },
     install_requires=[
         "bs4",
         "google-api-python-client",
