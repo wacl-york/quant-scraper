@@ -5,7 +5,8 @@
 
     Main scraper script that collects data from each of the four manufacturers.
     By default it obtains all data from midnight to the following midnight of
-    the previous day.  This behaviour can be changed in the config.ini file, which is also where credentials are stored.
+    the previous day.  This behaviour can be changed in the config.ini file,
+    which is also where credentials are stored.
 """
 
 import logging
@@ -31,28 +32,28 @@ def setup_loggers(logfn=None):
     although it can be saved to file in addition.
 
     Args:
-        logfn (str): File to save log to. If None then doesn't write log to file.
+        - logfn (str, optional): File to save log to. If None then doesn't write log to file.
 
     Returns:
         None. the logger is accessed by the global module `logging`.
     """
-    rootLogger = logging.getLogger("cli")
-    rootLogger.setLevel(logging.INFO)
-    logFmt = logging.Formatter(
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    log_fmt = logging.Formatter(
         "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
     )
-    cliLogger = logging.StreamHandler()
-    cliLogger.setFormatter(logFmt)
-    rootLogger.addHandler(cliLogger)
+    cli_logger = logging.StreamHandler()
+    cli_logger.setFormatter(log_fmt)
+    root_logger.addHandler(cli_logger)
 
     if not logfn is None:
         if os.path.isfile(logfn):
             raise utils.SetupError(
                 ("Log file {} already exists. " "Halting execution.").format(logfn)
             )
-        fileLogger = logging.FileHandler(logfn)
-        fileLogger.setFormatter(logFmt)
-        rootLogger.addHandler(fileLogger)
+        file_logger = logging.FileHandler(logfn)
+        file_logger.setFormatter(log_fmt)
+        root_logger.addHandler(file_logger)
 
 
 def parse_args():
@@ -73,28 +74,28 @@ def parse_args():
     return args
 
 
-def setup_config(fn):
+def setup_config(cfg_fn):
     """
-    Loads configuration parameters from file into memory.
+    Loads configuration parameters from a file into memory.
 
     Args:
-        fn (str): Filepath of the .INI file.
+        - cfg_fn (str): Filepath of the .ini file.
 
     Returns:
-        A ConfigParser() instance.
+        A configparser.Namespace instance.
     """
     cfg = configparser.ConfigParser()
-    cfg.read(fn)
+    cfg.read(cfg_fn)
 
     if len(cfg.sections()) == 0:
-        raise utils.SetupError("No sections found in '{}'".format(fn))
+        raise utils.SetupError("No sections found in '{}'".format(cfg_fn))
 
     return cfg
 
 
 def setup_scraping_timeframe(cfg):
     """
-    Sets up the scraping timeframe in the configuration.
+    Sets up the scraping timeframe for the scraping run.
 
     By default, this script attempts to scrape from midnight of the day prior to
     the script being executed, to 1 second before the following midnight.
@@ -102,10 +103,11 @@ def setup_scraping_timeframe(cfg):
     window is between 2020-01-07 00:00:00 and 2020-01-07 23:59:59.
 
     If the Main.start_time and Main.end_time configuration parameters in the
-    INI file are supplied then this default behaviour is overruled.
+    ini file are supplied then this default behaviour is overruled.
 
     Args:
-        cfg: configparser Namespace object. Stores the contents of the INI file.
+        - cfg (configparser.Namespace): Contains the script configuration
+            settings.
 
     Returns:
         None. Updates cfg by reference as a side-effect.
@@ -149,14 +151,21 @@ def setup_scraping_timeframe(cfg):
 
 def scrape(manufacturer):
     """
-    TODO
+    Scrapes data for all devices belonging to a manufacturer.
+
+    Args:
+        - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+
+    Returns:
+        None, updates the Manufacturer.raw_data attribute if the download is
+        successful.
     """
     for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
         try:
             logging.info("Attempting to scrape data for device {}...".format(devid))
             manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
             logging.info("Scrape successful.")
-        except utils.DataDownloadError as ex:
+        except utils.DataDownloadError:
             logging.error("Unable to download data for device {}.".format(devid))
             logging.error(traceback.format_exc())
             manufacturer.raw_data[devid] = None
@@ -164,7 +173,16 @@ def scrape(manufacturer):
 
 def process(manufacturer):
     """
-    TODO
+    For each device belonging to a manufacturer, the raw JSON data is parsed
+    into CSV format, before running a data cleaning proecedure to store only
+    valid floating point values.
+
+    Args:
+        - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+
+    Returns:
+        None, updates the Manufacturer.clean_data attribute if the CSV parse and
+        subsequent QA validation procedures are successful.
     """
     for devid in manufacturer.device_ids:
 
@@ -189,7 +207,7 @@ def process(manufacturer):
                 manufacturer.clean_data[devid] = None
                 continue
 
-        except utils.DataParseError as ex:
+        except utils.DataParseError:
             logging.error("Unable to parse data into CSV.")
             logging.error(traceback.format_exc())
             manufacturer.clean_data[devid] = None
@@ -204,7 +222,7 @@ def process(manufacturer):
             manufacturer.clean_data[devid] = None
 
 
-def save_data(manufacturer, folder, start_time, end_time, type):
+def save_data(manufacturer, folder, start_time, end_time, data_type):
     """
     Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
 
@@ -219,7 +237,7 @@ def save_data(manufacturer, folder, start_time, end_time, type):
             string format as INI file uses.
         - end_time (str): End time of scraping window. In same
             string format as INI file uses.
-        - type (str): Either 'raw' or 'clean' to indicate which data is being
+        - data_type (str): Either 'raw' or 'clean' to indicate which data is being
             saved.
 
     Returns:
@@ -229,16 +247,16 @@ def save_data(manufacturer, folder, start_time, end_time, type):
     # usecase?
     fns = []
 
-    if type == "clean":
+    if data_type == "clean":
         fn_template = utils.CLEAN_DATA_FN
         manufacturer_data = manufacturer.clean_data
         saving_function = utils.save_csv_file
-    elif type == "raw":
+    elif data_type == "raw":
         fn_template = utils.RAW_DATA_FN
         manufacturer_data = manufacturer.raw_data
         saving_function = utils.save_json_file
     else:
-        raise utils.DataSavingError("Unknown data type '{}'.".format(type))
+        raise utils.DataSavingError("Unknown data type '{}'.".format(data_type))
 
     if not os.path.isdir(folder):
         raise utils.DataSavingError(
@@ -246,7 +264,7 @@ def save_data(manufacturer, folder, start_time, end_time, type):
         )
 
     for devid in manufacturer.device_ids:
-        fn = fn_template.substitute(
+        out_fn = fn_template.substitute(
             man=manufacturer.name, device=devid, start=start_time, end=end_time
         )
 
@@ -255,7 +273,7 @@ def save_data(manufacturer, folder, start_time, end_time, type):
             logging.warning("No raw data to save for device {}.".format(devid))
             continue
 
-        full_path = os.path.join(folder, fn)
+        full_path = os.path.join(folder, out_fn)
         logging.info("Saving data to file: {}".format(full_path))
         saving_function(data, full_path)
         fns.append(full_path)
@@ -343,15 +361,10 @@ def main():
             logging.error(traceback.format_exc())
             continue
 
-        # TODO Scrape function just iterates through all devices and calls
-        # .scrape_device().
-        # Should this be instead be run from here, rather than Manufacturer?
-        # Particularly since it handles error logging
         logging.info("Scraping all devices.")
-        manufacturer.scrape()
-        # TODO Ditto
+        scrape(manufacturer)
         logging.info("Processing raw data into validated cleaned data.")
-        manufacturer.process()
+        process(manufacturer)
 
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data to file.")

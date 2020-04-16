@@ -1,13 +1,33 @@
-import logging
-import sys
+"""
+    quantscraper.manufacturers.MyQuantAQ.py
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Concrete implementation of Manufacturer, representing the MyQuantAQ air
+    quality instrumentation device manufacturer.
+
+    The reason why 'My' prepends the module and class name is to avoid
+    any conflict with QuantAQ's own API, which has a QuantAQ class.
+"""
+
 from datetime import datetime, timedelta
 from string import Template
+import quantaq
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
-import quantaq
 
-# Need to avoid namespace issues with quantaq package
+
 class MyQuantAQ(Manufacturer):
+    """
+    Inherits attributes and methods from Manufacturer along with providing
+    implementations of:
+        - connect()
+        - scrape_device()
+        - parse_to_csv()
+
+    The reason why 'My' prepends the module and class name is to avoid
+    any conflict with QuantAQ's own API, which has a QuantAQ class.
+    """
+
     name = "QuantAQ"
 
     def __init__(self, cfg):
@@ -15,11 +35,12 @@ class MyQuantAQ(Manufacturer):
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg: Instance of ConfigParser
+            - cfg (configparser.Namespace): Instance of ConfigParser.
 
         Returns:
             None
         """
+        self.api_obj = None
         self.api_token = cfg.get(self.name, "api_token")
 
         # Load start and end scraping datetimes
@@ -46,7 +67,18 @@ class MyQuantAQ(Manufacturer):
 
     def connect(self):
         """
-        Overrides super method as not using requests.
+        Establishes a connection to the QuantAQ API.
+
+        Creates an instance of the QuantAQ API class using the stored
+        API token, then checks the authentication was successful by attempting
+        to run a basic query to get the account information.
+
+        Args:
+            - None.
+
+        Returns:
+            None, although a handle to the API is stored in the instance
+            attribute 'api_obj'.
         """
         self.api_obj = quantaq.QuantAQ(self.api_token)
         # Test connection by running basic query
@@ -57,13 +89,29 @@ class MyQuantAQ(Manufacturer):
                 "Could not connect to quantaq API.\n{}".format(ex)
             ) from None
 
-    def scrape_device(self, deviceID):
+    def scrape_device(self, device_id):
         """
-        TODO
+        Downloads the data for a given device from the API.
+
+        QuantAQ provide both 'raw' and 'final' data through their API.
+        The raw data is measured at the sensor voltage level, while the final
+        data has had their internal processing pipeline applied to convert
+        these values into standard concentration measurements.
+
+        Both the raw and final data are stored from this call.
+
+        Args:
+            device_id (str): The website device_id to scrape for.
+
+        Returns:
+            A dict with 2 attributes: 'raw' and 'final', holding the raw and
+            final data respectively from the API calls.
+            Each of these datasets are stored as lists of dicts, with each list
+            entry corresponding to a unique time-point.
         """
         try:
             raw = self.api_obj.get_data(
-                sn=deviceID, final_data=False, params=dict(filter=self.query_string),
+                sn=device_id, final_data=False, params=dict(filter=self.query_string),
             )
         except quantaq.baseapi.DataReadError as ex:
             raise DataDownloadError(
@@ -71,7 +119,7 @@ class MyQuantAQ(Manufacturer):
             ) from None
         try:
             final = self.api_obj.get_data(
-                sn=deviceID, final_data=True, params=dict(filter=self.query_string),
+                sn=device_id, final_data=True, params=dict(filter=self.query_string),
             )
         except quantaq.baseapi.DataReadError as ex:
             raise DataDownloadError(
@@ -83,18 +131,40 @@ class MyQuantAQ(Manufacturer):
 
     def parse_to_csv(self, raw_data):
         """
-        TODO
-        """
-        # Raw data in format of list of dicts, each dict corresponds to a row
-        # The main thing to look out for is that while the dictionary is
-        # primarily in the format measurand: value, the 'geo' index holds a
-        # secondary dict, which contains 'lat' and 'lon'.
-        # There's also some metadata, such as 'url' and 'sn'.
+        Parses the raw data into a 2D list format.
 
-        # I don't want to hardcode the columns to include, as there are some
-        # columns here that are only present in the raw data and not the final
-        # data (i.e. no2_ae and no2_we), and it would be better to have the same
-        # code work for both raw and final data.
+        As returned from the scrape_device() method, the input
+        raw data is a dict with 2 attributes: 'raw' and 'final'.
+        Since the purpose of this project is to generate the cleaned and
+        validated air quality measurements, the 'final' dataset is used in
+        this method.
+
+        The 'final' data is stored as a list, with each entry corresponding
+        to a unique time-point. A dict is stored at each entry, mapping
+        {measurand: value}.
+
+        The key considerations here is that firstly not all of these measurands
+        are recorded values of interest: the 'url' and 'sn' entries provide
+        irrelevant metadata and so are discarded.
+        Secondly, in each time-point's dict, there is an additional dict
+        stored in the 'geo' attribute, which contains a secondary mapping
+        between 'lat' and 'lon' and their respective values.
+        It would be easier if these 'lat' and 'lon' values were stored in the
+        same level as the other measurands.
+
+        Currently the code explicitly extracts the 'lat' and 'lon'
+        measurements from within their secondary dict.
+        It could be made more generalizable by looking for the presence of
+        any other secondary dicts and extracting their contents automatically.
+
+        Args:
+            - raw_data (dict): The raw data, see above for documentation about
+                how this is stored and any considerations when parsing it.
+        Returns:
+            A 2D list representing the data in a tabular format, so that each
+            row corresponds to a unique time-point and each column holds a
+            measurand.
+        """
         raw_data = raw_data["final"]
         nrows = len(raw_data)
         if nrows < 1:
@@ -118,9 +188,7 @@ class MyQuantAQ(Manufacturer):
                 try:
                     value = raw_data[i][measurand]
                 except KeyError:
-                    # TODO Currently use empty string to denote missingness,
-                    # should we use a custom error code to help later debugging?
-                    value = ""
+                    value = "NaN"
                 row.append(value)
             row.append(raw_data[i]["geo"]["lat"])
             row.append(raw_data[i]["geo"]["lon"])

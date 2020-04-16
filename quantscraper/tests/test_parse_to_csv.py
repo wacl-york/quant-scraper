@@ -368,7 +368,7 @@ class TestQuantAQ(unittest.TestCase):
         # as each observation is directly tied to a timepoint.
         # So if a measurand isn't available for a particular timepoint, then we
         # can encode this.
-        # I'll use an empty string to denote missingness
+        # Missing values are encoded as NaN, as per Seba's request
         myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
 
         raw_data = {
@@ -388,16 +388,20 @@ class TestQuantAQ(unittest.TestCase):
         exp = [
             ["NO2", "CO2", "O3", "lat", "lon"],
             ["1", "2", "3", "3.5", "4.5"],
-            ["4", "", "6", "5.5", "6.5"],
-            ["7", "8", "", "7.5", "8.5"],
+            ["4", "NaN", "6", "5.5", "6.5"],
+            ["7", "8", "NaN", "7.5", "8.5"],
         ]
         res = myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
     def test_empty_string(self):
         # Can check parsing works when data contains empty strings
-        # This will produce the same output as if the data was available but an
-        # empty string, might want to differentiate between the 2 later on
+        # Note that an empty string in the raw data will result in an empty
+        # string in the parsed CSV data
+        # *BUT* a missing value in the raw data will result in a 'NaN' string
+        # in the parsed CSV data.
+        # This allows the validation script to differentiate between these 2
+        # types of errors, although it currently doesn't.
         myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
 
         raw_data = {
@@ -412,8 +416,8 @@ class TestQuantAQ(unittest.TestCase):
         exp = [
             ["NO2", "CO2", "O3", "lat", "lon"],
             ["1", "", "3", "", "4.5"],
-            ["4", "", "6", "5.5", "6.5"],
-            ["7", "", "", "7.5", ""],
+            ["4", "NaN", "6", "5.5", "6.5"],
+            ["7", "", "NaN", "7.5", ""],
         ]
         res = myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
