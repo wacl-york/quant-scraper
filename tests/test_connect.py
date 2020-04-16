@@ -15,7 +15,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import LoginError
-from quantscraper.tests.test_utils import build_mock_response
+from test_utils import build_mock_response
 
 # TODO Are these unit tests sufficient? Just test that error is thrown for
 # specific HTTP error codes and that login attempts with incorrect credentials

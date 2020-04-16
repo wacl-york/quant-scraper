@@ -1,22 +1,21 @@
 """
-    test_connect.py
+    test_scrape.py
     ~~~~~~~~~~~~~~~
 
-    Unit tests for Manufacturer.connect() methods.
+    Unit tests for Manufacturer.scrape_device() methods.
 """
 
 import unittest
 import configparser
-from string import Template
-from unittest.mock import patch, MagicMock, Mock, call
-from requests.exceptions import Timeout, HTTPError
+from unittest.mock import Mock, call
+from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import DataDownloadError
-from quantscraper.tests.test_utils import build_mock_response
+from test_utils import build_mock_response
 
 # Want to test that:
 #   - Any HTTP errors are raised

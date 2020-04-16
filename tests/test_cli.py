@@ -8,13 +8,11 @@
 import datetime
 import unittest
 import configparser
+import logging
+from unittest.mock import patch, MagicMock, Mock, call
+
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-import logging
-import time
-from io import StringIO
-
-from unittest.mock import patch, MagicMock, Mock, call
 
 
 class TestSetupLoggers(unittest.TestCase):

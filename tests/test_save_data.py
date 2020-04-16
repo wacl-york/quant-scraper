@@ -8,20 +8,12 @@
 
 import unittest
 import configparser
+from unittest.mock import patch, Mock, call, mock_open
 import pandas as pd
-from json.decoder import JSONDecodeError
-from string import Template
-from unittest.mock import patch, MagicMock, Mock, call, mock_open
-from requests.exceptions import Timeout, HTTPError
-from quantaq.baseapi import DataReadError
-import quantscraper.manufacturers.Manufacturer as Manufacturer
 import quantscraper.manufacturers.Aeroqual as Aeroqual
-import quantscraper.manufacturers.AQMesh as AQMesh
-import quantscraper.manufacturers.Zephyr as Zephyr
-import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 import quantscraper.utils as utils
 import quantscraper.cli as cli
-from quantscraper.tests.test_utils import build_mock_response
+from test_utils import build_mock_response
 
 
 class TestSaveCSVFile(unittest.TestCase):

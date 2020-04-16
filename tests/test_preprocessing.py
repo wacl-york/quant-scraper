@@ -1,23 +1,22 @@
 """
-    test_connect.py
-    ~~~~~~~~~~~~~~~
+    test_preprocessing.py
+    ~~~~~~~~~~~~~~~~~~~~~
 
-    Unit tests for Manufacturer.connect() methods.
+    Unit tests for the bin/daily_preprocessing.py script.
 """
 
 import unittest
 import sys
 import configparser
+from unittest.mock import patch, Mock
 import pandas as pd
 import numpy as np
-
-from unittest.mock import patch, MagicMock, Mock, call
+import quantscraper.utils as utils
 
 # As scripts are stored in a 'bin' directory that isn't part of the quantscraper
 # module, need to add the directory to PYTHONPATH so can import the script
 sys.path.extend(["bin"])
 import daily_preprocessing
-import quantscraper.utils as utils
 
 
 class TestLoadData(unittest.TestCase):
