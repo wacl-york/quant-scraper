@@ -162,9 +162,8 @@ def scrape(manufacturer):
     """
     for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
         try:
-            logging.info("Attempting to scrape data for device {}...".format(devid))
             manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
-            logging.info("Scrape successful.")
+            logging.info("Download successful for device {}.".format(devid))
         except utils.DataDownloadError:
             logging.error("Unable to download data for device {}.".format(devid))
             logging.error(traceback.format_exc())
@@ -186,39 +185,40 @@ def process(manufacturer):
     """
     for devid in manufacturer.device_ids:
 
-        logging.info("Cleaning data from device {}...".format(devid))
         if manufacturer.raw_data[devid] is None:
-            logging.warning("No available raw data.")
+            logging.warning("No available raw data for device {}.".format(devid))
             manufacturer.clean_data[devid] = None
             continue
 
         try:
-            logging.info("Attempting to parse data into CSV...")
             csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
             num_timepoints = len(csv_data) - 1
             if num_timepoints > 0:
                 logging.info(
-                    "Parse successful. Samples at {} time-points have been recorded.".format(
-                        num_timepoints
+                    "CSV parse successful for device {}. Measurements at {} time-points have been recorded.".format(
+                        devid, num_timepoints
                     )
                 )
             else:
-                logging.error("No time-points have been found in the parsed CSV.")
+                logging.error(
+                    "No time-points have been found in the parsed CSV for device {}.".format(
+                        devid
+                    )
+                )
                 manufacturer.clean_data[devid] = None
                 continue
 
-        except utils.DataParseError:
-            logging.error("Unable to parse data into CSV.")
-            logging.error(traceback.format_exc())
+        except utils.DataParseError as ex:
+            logging.error(
+                "Unable to parse data into CSV for device {}: {}".format(devid, ex)
+            )
             manufacturer.clean_data[devid] = None
             continue
 
-        logging.info("Running validation...")
         try:
             manufacturer.clean_data[devid] = manufacturer.validate_data(csv_data)
-            logging.info("Validation successful.")
-        except utils.ValidateDataError:
-            logging.error("Something went wrong during data validation.")
+        except utils.ValidateDataError as ex:
+            logging.error("Data validation error for device {}: {}".format(devid, ex))
             manufacturer.clean_data[devid] = None
 
 
@@ -270,11 +270,13 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
 
         data = manufacturer_data[devid]
         if data is None:
-            logging.warning("No raw data to save for device {}.".format(devid))
+            logging.warning(
+                "No {} data to save for device {}.".format(data_type, devid)
+            )
             continue
 
         full_path = os.path.join(folder, out_fn)
-        logging.info("Saving data to file: {}".format(full_path))
+        logging.info("Writing file: {}".format(full_path))
         saving_function(data, full_path)
         fns.append(full_path)
     return fns
@@ -361,13 +363,13 @@ def main():
             logging.error(traceback.format_exc())
             continue
 
-        logging.info("Scraping all devices.")
+        logging.info("Downloading data from all devices:")
         scrape(manufacturer)
-        logging.info("Processing raw data into validated cleaned data.")
+        logging.info("Processing raw data for all devices:")
         process(manufacturer)
 
         if cfg.getboolean("Main", "save_raw_data"):
-            logging.info("Saving raw data to file.")
+            logging.info("Saving raw data from all devices:")
             raw_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_raw_data"),
@@ -377,7 +379,7 @@ def main():
             )
 
         if cfg.getboolean("Main", "save_clean_data"):
-            logging.info("Saving clean CSV data to file.")
+            logging.info("Saving cleaned CSV data from all devices:")
             clean_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_clean_data"),

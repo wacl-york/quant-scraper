@@ -250,9 +250,10 @@ def main():
                 dataframe = get_data(
                     cfg, manufacturer.name, device, start_window, end_window
                 )
-            except utils.DataReadingError:
-                logging.error("No clean data found for device '{}'.".format(device))
-                logging.error(traceback.format_exc())
+            except utils.DataReadingError as ex:
+                logging.error(
+                    "No clean data found for device '{}': {}".format(device, ex)
+                )
                 continue
 
             dfs.append(dataframe)
@@ -275,11 +276,8 @@ def main():
                 if m["included_analysis"]
             ]
             wide_df = long_to_wide(combined_df, analysis_columns)
-        except utils.DataConversionError:
-            logging.error(
-                "Error when converting long table for this manufacturer to wide."
-            )
-            logging.error(traceback.format_exc())
+        except utils.DataConversionError as ex:
+            logging.error("Error when converting wide to long table: {}".format(ex))
             continue
 
         # Resample into same resolution
@@ -289,11 +287,12 @@ def main():
         )
         try:
             df_resampled = resample(wide_df, time_res)
-        except utils.ResamplingError:
+        except utils.ResamplingError as ex:
             logging.error(
-                "Error in resampling data, raw frequency will be used instead."
+                "Error in resampling data: {}. Original frequency will be used instead.".format(
+                    ex
+                )
             )
-            logging.error(traceback.format_exc())
             df_resampled = wide_df
 
         # Save pre-processed data frame locally
@@ -304,9 +303,8 @@ def main():
         file_path = os.path.join(local_folder, filename)
         try:
             utils.save_dataframe(df_resampled, file_path)
-        except utils.DataSavingError:
-            logging.error("Error encountered when saving file to disk.")
-            logging.error(traceback.format_exc())
+        except utils.DataSavingError as ex:
+            logging.error("Could not save file to disk: {}.".format(ex))
             continue
 
         # Upload to GoogleDrive

@@ -325,12 +325,9 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(
             cm.output,
             [
-                "INFO:root:Attempting to scrape data for device 1...",
-                "INFO:root:Scrape successful.",
-                "INFO:root:Attempting to scrape data for device 2...",
-                "INFO:root:Scrape successful.",
-                "INFO:root:Attempting to scrape data for device 3...",
-                "INFO:root:Scrape successful.",
+                "INFO:root:Download successful for device 1.",
+                "INFO:root:Download successful for device 2.",
+                "INFO:root:Download successful for device 3.",
             ],
         )
 
@@ -359,12 +356,9 @@ class TestScrape(unittest.TestCase):
         # NB: using assertIn rather than assertEqual as hard to produce the
         # expected stacktrace that will also be logged alongside the error
         # message.
-        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
-        self.assertIn("INFO:root:Scrape successful.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
+        self.assertIn("INFO:root:Download successful for device 1.", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
-        self.assertIn("INFO:root:Scrape successful.", cm.output)
+        self.assertIn("INFO:root:Download successful for device 3.", cm.output)
 
         # Assert scrape calls are as expected
         scrape_calls = mock_scrape.mock_calls
@@ -397,11 +391,8 @@ class TestScrape(unittest.TestCase):
         # NB: using assertIn rather than assertEqual as hard to produce the
         # expected stacktrace that will also be logged alongside the error
         # message.
-        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 1.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 3.", cm.output)
 
         # Assert scrape calls are as expected
@@ -451,21 +442,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(
             cm.output,
             [
-                "INFO:root:Cleaning data from device 1...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 3 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
-                "INFO:root:Cleaning data from device 2...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 2 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
-                "INFO:root:Cleaning data from device 3...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 1 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
+                "INFO:root:CSV parse successful for device 1. Measurements at 3 time-points have been recorded.",
+                "INFO:root:CSV parse successful for device 2. Measurements at 2 time-points have been recorded.",
+                "INFO:root:CSV parse successful for device 3. Measurements at 1 time-points have been recorded.",
             ],
         )
 
@@ -522,7 +501,7 @@ class TestProcess(unittest.TestCase):
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
-        self.assertIn("WARNING:root:No available raw data.", cm.output)
+        self.assertIn("WARNING:root:No available raw data for device 3.", cm.output)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -552,7 +531,7 @@ class TestProcess(unittest.TestCase):
         mock_parse = Mock(
             side_effect=[
                 [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                utils.DataParseError(""),
+                utils.DataParseError("bar"),
                 [["no2", "co2", "co"], [12, 14, 16]],
             ]
         )
@@ -577,7 +556,9 @@ class TestProcess(unittest.TestCase):
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
-        self.assertIn("ERROR:root:Unable to parse data into CSV.", cm.output)
+        self.assertIn(
+            "ERROR:root:Unable to parse data into CSV for device 2: bar", cm.output
+        )
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -633,7 +614,8 @@ class TestProcess(unittest.TestCase):
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
         self.assertIn(
-            "ERROR:root:No time-points have been found in the parsed CSV.", cm.output
+            "ERROR:root:No time-points have been found in the parsed CSV for device 2.",
+            cm.output,
         )
 
         # Assert parse_to_csv calls are as expected
@@ -670,7 +652,7 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                utils.ValidateDataError(""),
+                utils.ValidateDataError("foo"),
                 [["foo", "bar"], [4, 2], [4, 1]],
                 [["no2", "co2"], [12, 14]],
             ]
@@ -690,9 +672,7 @@ class TestProcess(unittest.TestCase):
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
-        self.assertIn(
-            "ERROR:root:Something went wrong during data validation.", cm.output
-        )
+        self.assertIn("ERROR:root:Data validation error for device 1: foo", cm.output)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls

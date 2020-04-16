@@ -156,7 +156,7 @@ class AQMesh(Manufacturer):
         try:
             data = result.json()["Data"]
         except json.decoder.JSONDecodeError:
-            raise DataDownloadError("No 'Data' attribute in downloaded json.")
+            raise DataDownloadError("No 'Data' attribute in downloaded json.") from None
 
         return data
 
