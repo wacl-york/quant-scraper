@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
     daily_preprocessing.py
     ~~~~~~~~~~~~~~~~~~~~~~
@@ -30,10 +31,7 @@ import pandas as pd
 import quantscraper.utils as utils
 import quantscraper.cli as cli
 
-from quantscraper.manufacturers.Aeroqual import Aeroqual
-from quantscraper.manufacturers.AQMesh import AQMesh
-from quantscraper.manufacturers.Zephyr import Zephyr
-from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
 def get_data(cfg, manufacturer, device_id, date_start, date_end):
@@ -237,11 +235,20 @@ def main():
     drive_analysis_id = cfg.get("GoogleAPI", "analysis_data_id")
     upload_google_drive = cfg.getboolean("Main", "upload_analysis_googledrive")
 
-    # Needs to iterate through all manufacturers
-    manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
-    for man_class in manufacturers:
-        logging.info("Manufacturer: {}".format(man_class.name))
-        manufacturer = man_class(cfg)
+    # Load all manufacturers
+    man_strings = cfg.get("Main", "manufacturers").split(",")
+    for man_class in man_strings:
+        logging.info("Manufacturer: {}".format(man_class))
+        try:
+            manufacturer = manufacturer_factory(man_class, cfg)
+        except utils.DataParseError:
+            logging.error("Error instantiating Manufacturer instance.")
+            logging.error(traceback.format_exc())
+            continue
+        except KeyError as ex:
+            logging.error("Error instantiating Manufacturer instance.")
+            logging.error(traceback.format_exc())
+            continue
 
         logging.info("Reading data from all devices...")
         dfs = []
