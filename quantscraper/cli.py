@@ -8,7 +8,6 @@
     the previous day.  This behaviour can be changed in the config.ini file,
     which is also where credentials are stored.
 """
-
 import logging
 import argparse
 import os
@@ -18,10 +17,7 @@ from datetime import date, timedelta, datetime, time
 import traceback
 
 import quantscraper.utils as utils
-from quantscraper.manufacturers.Aeroqual import Aeroqual
-from quantscraper.manufacturers.AQMesh import AQMesh
-from quantscraper.manufacturers.Zephyr import Zephyr
-from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
 def setup_loggers(logfn=None):
@@ -186,7 +182,6 @@ def process(manufacturer):
     for devid in manufacturer.device_ids:
 
         if manufacturer.raw_data[devid] is None:
-            logging.warning("No available raw data for device {}.".format(devid))
             manufacturer.clean_data[devid] = None
             continue
 
@@ -270,9 +265,6 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
 
         data = manufacturer_data[devid]
         if data is None:
-            logging.warning(
-                "No {} data to save for device {}.".format(data_type, devid)
-            )
             continue
 
         full_path = os.path.join(folder, out_fn)
@@ -344,12 +336,16 @@ def main():
     setup_scraping_timeframe(cfg)
 
     # Load all manufacturers
-    manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
-    for man_class in manufacturers:
-        logging.info("Manufacturer: {}".format(man_class.name))
+    man_strings = cfg.get("Main", "manufacturers").split(",")
+    for man_class in man_strings:
+        logging.info("Manufacturer: {}".format(man_class))
         try:
-            manufacturer = man_class(cfg)
+            manufacturer = manufacturer_factory(man_class, cfg)
         except utils.DataParseError:
+            logging.error("Error instantiating Manufacturer instance.")
+            logging.error(traceback.format_exc())
+            continue
+        except KeyError as ex:
             logging.error("Error instantiating Manufacturer instance.")
             logging.error(traceback.format_exc())
             continue
@@ -359,7 +355,9 @@ def main():
             manufacturer.connect()
             logging.info("Connection established")
         except utils.LoginError:
-            logging.error("Cannot establish connection to {}.".format(man_class.name))
+            logging.error(
+                "Cannot establish connection to {}.".format(manufacturer.name)
+            )
             logging.error(traceback.format_exc())
             continue
 
@@ -400,13 +398,13 @@ def main():
                 break
 
             if upload_raw:
-                logging.info("Uploading raw data to Google Drive.")
+                logging.info("Uploading raw data to Google Drive:")
                 upload_data_googledrive(
                     service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
                 )
 
             if upload_clean:
-                logging.info("Uploading clean CSV data to Google Drive.")
+                logging.info("Uploading clean CSV data to Google Drive:")
                 upload_data_googledrive(
                     service,
                     clean_fns,

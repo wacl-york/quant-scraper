@@ -126,6 +126,9 @@ class MyQuantAQ(Manufacturer):
                 "Cannot read data from QuantAQ's website:\n{}".format(ex)
             ) from None
 
+        if len(raw) == 0 and len(final) == 0:
+            raise DataDownloadError("No available data in the downloaded file.")
+
         data = {"raw": raw, "final": final}
         return data
 

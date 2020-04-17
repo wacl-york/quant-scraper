@@ -13,6 +13,7 @@ from unittest.mock import patch, MagicMock, Mock, call
 
 import quantscraper.cli as cli
 import quantscraper.utils as utils
+from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
 class TestSetupLoggers(unittest.TestCase):
@@ -498,11 +499,6 @@ class TestProcess(unittest.TestCase):
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
-        # Assert log is called with expected error messages
-        # Not going to try and assert equality on the full log as it contains a
-        # stack-trace
-        self.assertIn("WARNING:root:No available raw data for device 3.", cm.output)
-
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
         exp_calls = [call([1, 2, 3]), call([8, 10])]
@@ -697,3 +693,58 @@ class TestProcess(unittest.TestCase):
                 "3": [["no2", "co2"], [12, 14]],
             },
         )
+
+
+class TestManufacturerFactory(unittest.TestCase):
+    def test_aeroqual_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "Aeroqual"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_aqmesh_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "AQMesh"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_zephyr_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "Zephyr"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_quantaq_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "QuantAQ"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_key_error_raised(self):
+        # Typo on quantAQ, so factory should raise KeyError
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "quantAQ"
+
+        with self.assertRaises(KeyError):
+            res = manufacturer_factory(option, cfg)
