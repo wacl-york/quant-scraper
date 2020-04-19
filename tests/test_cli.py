@@ -423,9 +423,9 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["foo", "bar"], [4, 2], [4, 1]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["foo", "bar"], [4, 2], [4, 1]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
         man = Mock(
@@ -483,8 +483,8 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -533,8 +533,8 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -590,8 +590,8 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -649,8 +649,8 @@ class TestProcess(unittest.TestCase):
         mock_validate = Mock(
             side_effect=[
                 utils.ValidateDataError("foo"),
-                [["foo", "bar"], [4, 2], [4, 1]],
-                [["no2", "co2"], [12, 14]],
+                ([["foo", "bar"], [4, 2], [4, 1]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 

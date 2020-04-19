@@ -170,7 +170,7 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
@@ -192,7 +192,7 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
@@ -212,7 +212,7 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         with self.assertRaises(utils.ValidateDataError):
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
 
     def test_no_data(self):
         data = [
@@ -221,7 +221,7 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             exp = [["timestamp", "measurand", "value"]]
             self.assertEqual(res, exp)
         except:
@@ -232,13 +232,13 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         with self.assertRaises(utils.ValidateDataError):
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
 
     def test_None(self):
         data = None
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         with self.assertRaises(utils.ValidateDataError):
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
 
     def test_no_timestamp_col(self):
         data = [
@@ -255,7 +255,7 @@ class TestValidate(unittest.TestCase):
         ]
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         with self.assertRaises(utils.ValidateDataError):
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
 
     def test_missing_measurands(self):
         # Here are asking for measurands that aren't in the raw data. Should
@@ -292,7 +292,7 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             self.assertEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
@@ -316,7 +316,7 @@ class TestValidate(unittest.TestCase):
         ]
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             exp = [["timestamp", "measurand", "value"]]
             self.assertEqual(res, exp)
         except:
@@ -341,7 +341,7 @@ class TestValidate(unittest.TestCase):
         ]
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
-            res = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data)
             exp = [["timestamp", "measurand", "value"]]
             self.assertEqual(res, exp)
         except:
