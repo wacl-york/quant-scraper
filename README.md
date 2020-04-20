@@ -31,7 +31,7 @@ Once a suitable version of Python has been made available, the `quantscraper` pa
 
 # Running the scraper
 
-The installation processes places an executable called `quantscrape` in the user's `PATH` and is run with the following command.
+The installation processes places an executable called `quant_scrape` in the user's `PATH` and is run with the following command.
 
 `quant_scrape example.ini`
 
