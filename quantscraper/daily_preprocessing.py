@@ -25,6 +25,7 @@ import sys
 import os
 import logging
 import traceback
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -34,7 +35,7 @@ import quantscraper.cli as cli
 from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
-def get_data(cfg, manufacturer, device_id, date_start, date_end):
+def get_data(cfg, manufacturer, device_id, day):
     """
     Reads previously saved clean data into memory.
 
@@ -56,14 +57,13 @@ def get_data(cfg, manufacturer, device_id, date_start, date_end):
         - cfg (configparser.Namespace): ConfigParser object containing data parameters.
         - manufacturer (string): Manufacturer name.
         - device_id (str): Device id
-        - date_start (str): Starting time of the recording.
-        - date_end (str): Ending time of the recording.
+        - day (str): Recording date, in "YYYY-MM-DD" format.
 
     Returns:
         A pandas.DataFrame object.
     """
     data_fn = utils.CLEAN_DATA_FN.substitute(
-        man=manufacturer, device=device_id, start=date_start, end=date_end
+        man=manufacturer, device=device_id, day=day
     )
     folder = cfg.get("Main", "local_folder_clean_data")
     full_path = os.path.join(folder, data_fn)
@@ -235,6 +235,10 @@ def main():
     drive_analysis_id = cfg.get("GoogleAPI", "analysis_data_id")
     upload_google_drive = cfg.getboolean("Main", "upload_analysis_googledrive")
 
+    # Use start date to identify filename
+    start_dt = datetime.fromisoformat(start_window)
+    start_fmt = start_dt.strftime("%Y-%m-%d")
+
     # Load all manufacturers
     man_strings = cfg.get("Main", "manufacturers").split(",")
     for man_class in man_strings:
@@ -254,9 +258,7 @@ def main():
         dfs = []
         for device in manufacturer.device_ids:
             try:
-                dataframe = get_data(
-                    cfg, manufacturer.name, device, start_window, end_window
-                )
+                dataframe = get_data(cfg, manufacturer.name, device, start_fmt)
             except utils.DataReadingError as ex:
                 logging.error(
                     "No clean data found for device '{}': {}".format(device, ex)
@@ -305,7 +307,7 @@ def main():
         # Save pre-processed data frame locally
         logging.info("Saving file to disk.")
         filename = utils.ANALYSIS_DATA_FN.substitute(
-            man=manufacturer.name, start=start_window, end=end_window
+            man=manufacturer.name, day=start_fmt
         )
         file_path = os.path.join(local_folder, filename)
         try:

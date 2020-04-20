@@ -42,16 +42,12 @@ class TestLoadData(unittest.TestCase):
             mock_todt = Mock(return_value=timestamp_dt)
             mock_pd.to_datetime = mock_todt
 
-            res = daily_preprocessing.get_data(
-                cfg, "manu1", "dev1", "2012-03-12 10:23:55", "2012-04-12 10:56:09"
-            )
+            res = daily_preprocessing.get_data(cfg, "manu1", "dev1", "2012-03-12")
             print(res)
             print(exp)
 
             # Format of expected filename is given in utils.CLEAN_DATA_FN
-            mock_read.assert_called_once_with(
-                "cleanfoo/manu1_dev1_2012-03-12 10:23:55_2012-04-12 10:56:09.csv"
-            )
+            mock_read.assert_called_once_with("cleanfoo/manu1_dev1_2012-03-12.csv")
 
             # Need to use pandas built-in function for asserting data frame
             # equality
@@ -71,9 +67,7 @@ class TestLoadData(unittest.TestCase):
             mock_pd.read_csv = mock_read
 
             with self.assertRaises(utils.DataReadingError):
-                res = daily_preprocessing.get_data(
-                    cfg, "manu1", "dev1", "2012-03-12 10:23:55", "2012-04-12 10:56:09"
-                )
+                res = daily_preprocessing.get_data(cfg, "manu1", "dev1", "2012-03-12")
 
 
 class TestLongToWide(unittest.TestCase):

@@ -18,9 +18,9 @@ import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 
-RAW_DATA_FN = Template("${man}_${device}_${start}_${end}.json")
-CLEAN_DATA_FN = Template("${man}_${device}_${start}_${end}.csv")
-ANALYSIS_DATA_FN = Template("${man}_${start}_${end}.csv")
+RAW_DATA_FN = Template("${man}_${device}_${day}.json")
+CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
+ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
 
 
 class LoginError(Exception):

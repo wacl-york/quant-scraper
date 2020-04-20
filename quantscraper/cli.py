@@ -234,7 +234,7 @@ def process(manufacturer):
     return summary
 
 
-def save_data(manufacturer, folder, start_time, end_time, data_type):
+def save_data(manufacturer, folder, day, data_type):
     """
     Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
 
@@ -245,18 +245,13 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
     Args:
         - manufacturer (Manufacturer): Instance of Manufacturer.
         - folder (str): Directory where files should be saved to.
-        - start_time (str): Starting time of scraping window. In same
-            string format as INI file uses.
-        - end_time (str): End time of scraping window. In same
-            string format as INI file uses.
+        - day (str): Today's date, in YYYY-MM-DD format.
         - data_type (str): Either 'raw' or 'clean' to indicate which data is being
             saved.
 
     Returns:
         List of filenames that were successfully saved.
     """
-    # TODO Change start + end time to just a single date, as this is primary
-    # usecase?
     fns = []
 
     if data_type == "clean":
@@ -276,9 +271,7 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
         )
 
     for devid in manufacturer.device_ids:
-        out_fn = fn_template.substitute(
-            man=manufacturer.name, device=devid, start=start_time, end=end_time
-        )
+        out_fn = fn_template.substitute(man=manufacturer.name, device=devid, day=day)
 
         data = manufacturer_data[devid]
         if data is None:
@@ -470,13 +463,16 @@ def main():
         man_summary = process(manufacturer)
         summaries.append(man_summary)
 
+        # Get start time date for naming output files
+        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+        start_fmt = start_dt.strftime("%Y-%m-%d")
+
         if cfg.getboolean("Main", "save_raw_data"):
             logging.info("Saving raw data from all devices:")
             raw_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_raw_data"),
-                cfg.get("Main", "start_time"),
-                cfg.get("Main", "end_time"),
+                start_fmt,
                 "raw",
             )
 
@@ -485,8 +481,7 @@ def main():
             clean_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_clean_data"),
-                cfg.get("Main", "start_time"),
-                cfg.get("Main", "end_time"),
+                start_fmt,
                 "clean",
             )
 

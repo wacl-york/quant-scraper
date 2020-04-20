@@ -107,15 +107,14 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
+                    cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
                         call(
-                            [[1, 2, 3], [4, 5, 6]],
-                            "dummyFolder/Aeroqual_1_startT_endT.csv",
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_foobar.csv",
                         ),
-                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_startT_endT.csv"),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
                     ]
                     self.assertEqual(calls, exp_calls)
                     print(mock_isdir.mock_calls)
@@ -134,7 +133,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
+                    cli.save_data(aeroqual, "dummyFolder", "startT", "clean")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
@@ -150,12 +149,12 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "clean")
+                    cli.save_data(aeroqual, "dummyFolder", "today", "clean")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
-                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_startT_endT.csv"
+                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_today.csv"
                     )
                 except:
                     self.fail("Test raised error when should have passed.")
@@ -245,15 +244,14 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
+                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
                         call(
-                            [[1, 2, 3], [4, 5, 6]],
-                            "dummyFolder/Aeroqual_1_startT_endT.json",
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
                         ),
-                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_startT_endT.json"),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_day.json"),
                     ]
                     self.assertEqual(calls, exp_calls)
                     print(mock_isdir.mock_calls)
@@ -272,7 +270,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 with self.assertRaises(utils.DataSavingError):
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
+                    cli.save_data(aeroqual, "dummyFolder", "foobar", "raw")
 
     def test_success_None_data(self):
         # in case a dataset for a device is None, then shouldn't attempt to save
@@ -288,13 +286,12 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "startT", "endT", "raw")
+                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
-                        [[1, 2, 3], [4, 5, 6]],
-                        "dummyFolder/Aeroqual_1_startT_endT.json",
+                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
                     )
                 except:
                     self.fail("Test raised error when should have passed.")
