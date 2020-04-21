@@ -11,6 +11,7 @@
 
 from datetime import datetime, timedelta
 from string import Template
+import requests as re
 import quantaq
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
@@ -113,7 +114,7 @@ class MyQuantAQ(Manufacturer):
             raw = self.api_obj.get_data(
                 sn=device_id, final_data=False, params=dict(filter=self.query_string),
             )
-        except quantaq.baseapi.DataReadError as ex:
+        except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(
                 "Cannot read data from QuantAQ's website:\n{}".format(ex)
             ) from None
@@ -121,7 +122,7 @@ class MyQuantAQ(Manufacturer):
             final = self.api_obj.get_data(
                 sn=device_id, final_data=True, params=dict(filter=self.query_string),
             )
-        except quantaq.baseapi.DataReadError as ex:
+        except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(
                 "Cannot read data from QuantAQ's website:\n{}".format(ex)
             ) from None
