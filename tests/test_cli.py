@@ -443,9 +443,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(
             cm.output,
             [
-                "INFO:root:CSV parse successful for device 1. Measurements at 3 time-points have been recorded.",
-                "INFO:root:CSV parse successful for device 2. Measurements at 2 time-points have been recorded.",
-                "INFO:root:CSV parse successful for device 3. Measurements at 1 time-points have been recorded.",
+                "INFO:root:Parse into CSV successful for device 1.",
+                "INFO:root:Parse into CSV successful for device 2.",
+                "INFO:root:Parse into CSV successful for device 3.",
             ],
         )
 

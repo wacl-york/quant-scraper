@@ -182,8 +182,11 @@ def process(manufacturer):
         A dictionary summarising how many recordings are available for each
         device. Has the keys:
           - 'manufacturer': Provides manufacturer name as a string
-          - 'devices': A further dict mapping {device_id : num_available_timepoints}
-            If a device has no available recordings then the value is None.
+          - 'devices': A further dict mapping
+              {device_id: num_available_timepoints},
+              where num_available_timepoints is a secondary dictionary mapping
+              {measurand: # clean samples}.
+              If a device has no available recordings then this value is None.
     """
     summary = {"manufacturer": manufacturer.name, "devices": {}}
     for devid in manufacturer.device_ids:
@@ -197,11 +200,7 @@ def process(manufacturer):
             csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
             num_timepoints = len(csv_data) - 1
             if num_timepoints > 0:
-                logging.info(
-                    "CSV parse successful for device {}. Measurements at {} time-points have been recorded.".format(
-                        devid, num_timepoints
-                    )
-                )
+                logging.info("Parse into CSV successful for device {}.".format(devid))
             else:
                 logging.error(
                     "No time-points have been found in the parsed CSV for device {}.".format(
@@ -220,13 +219,16 @@ def process(manufacturer):
 
         try:
             clean_data, measurand_summary = manufacturer.validate_data(csv_data)
+            if len(clean_data) <= 1:
+                logging.error(
+                    "No clean measurements were found in the parsed CSV for {}.".format(
+                        devid
+                    )
+                )
+                continue
+
             manufacturer.clean_data[devid] = clean_data
-
-            summary["devices"][devid] = {
-                "timepoints": num_timepoints,
-                "measurands": measurand_summary,
-            }
-
+            summary["devices"][devid] = measurand_summary
         except utils.ValidateDataError as ex:
             logging.error("Data validation error for device {}: {}".format(devid, ex))
             manufacturer.clean_data[devid] = None
@@ -358,7 +360,7 @@ def summarise_run(summaries):
 
         if len(avail_devices) > 0:
             # Get header row for table, with timestamp first then alphabetically
-            measurands = list(avail_devices[0][1]["measurands"].keys())
+            measurands = list(avail_devices[0][1].keys())
             measurands.remove("timestamp")
             measurands.sort()
             measurands.insert(0, "timestamp")
@@ -379,10 +381,10 @@ def summarise_run(summaries):
             for device in avail_devices:
                 # Form a list with device ID + measurements in same order as
                 # column header
-                num_timestamps = device[1]["measurands"]["timestamp"]
+                num_timestamps = device[1]["timestamp"]
                 row = [device[0]]
                 for m in measurands:
-                    n_clean = device[1]["measurands"][m]
+                    n_clean = device[1][m]
                     if m == "timestamp":
                         col = str(n_clean)
                     else:
