@@ -219,16 +219,20 @@ def process(manufacturer):
 
         try:
             clean_data, measurand_summary = manufacturer.validate_data(csv_data)
+
             if len(clean_data) <= 1:
                 logging.error(
                     "No clean measurements were found in the parsed CSV for {}.".format(
                         devid
                     )
                 )
+                manufacturer.clean_data[devid] = None
                 continue
 
+            # Success, at least 1 clean measurement has been found
             manufacturer.clean_data[devid] = clean_data
             summary["devices"][devid] = measurand_summary
+
         except utils.ValidateDataError as ex:
             logging.error("Data validation error for device {}: {}".format(devid, ex))
             manufacturer.clean_data[devid] = None
