@@ -2,15 +2,12 @@
     test_parse_to_csv.py
     ~~~~~~~~~~~~~~~~~~~~
 
-    Unit tests for Manufacturer.parse_to_csv() methods.
+    Unit tests for cli.parse_to_csv() methods.
 """
+
 
 import unittest
 import configparser
-from string import Template
-from unittest.mock import patch, MagicMock, Mock
-from requests.exceptions import Timeout, HTTPError
-from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr

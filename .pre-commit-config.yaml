@@ -10,7 +10,7 @@ repos:
     hooks:
       - id: unittests
         name: Unit tests
-        entry: coverage run -m unittest discover -s quantscraper/tests -b
+        entry: coverage run -m unittest discover -s tests -b
         language: python
         language_version: python3.8
         pass_filenames: false

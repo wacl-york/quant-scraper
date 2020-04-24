@@ -8,13 +8,12 @@
 import datetime
 import unittest
 import configparser
+import logging
+from unittest.mock import patch, MagicMock, Mock, call
+
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-import logging
-import time
-from io import StringIO
-
-from unittest.mock import patch, MagicMock, Mock, call
+from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
 class TestSetupLoggers(unittest.TestCase):
@@ -327,12 +326,9 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(
             cm.output,
             [
-                "INFO:root:Attempting to scrape data for device 1...",
-                "INFO:root:Scrape successful.",
-                "INFO:root:Attempting to scrape data for device 2...",
-                "INFO:root:Scrape successful.",
-                "INFO:root:Attempting to scrape data for device 3...",
-                "INFO:root:Scrape successful.",
+                "INFO:root:Download successful for device 1.",
+                "INFO:root:Download successful for device 2.",
+                "INFO:root:Download successful for device 3.",
             ],
         )
 
@@ -361,12 +357,9 @@ class TestScrape(unittest.TestCase):
         # NB: using assertIn rather than assertEqual as hard to produce the
         # expected stacktrace that will also be logged alongside the error
         # message.
-        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
-        self.assertIn("INFO:root:Scrape successful.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
+        self.assertIn("INFO:root:Download successful for device 1.", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
-        self.assertIn("INFO:root:Scrape successful.", cm.output)
+        self.assertIn("INFO:root:Download successful for device 3.", cm.output)
 
         # Assert scrape calls are as expected
         scrape_calls = mock_scrape.mock_calls
@@ -399,11 +392,8 @@ class TestScrape(unittest.TestCase):
         # NB: using assertIn rather than assertEqual as hard to produce the
         # expected stacktrace that will also be logged alongside the error
         # message.
-        self.assertIn("INFO:root:Attempting to scrape data for device 1...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 1.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 2...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 2.", cm.output)
-        self.assertIn("INFO:root:Attempting to scrape data for device 3...", cm.output)
         self.assertIn("ERROR:root:Unable to download data for device 3.", cm.output)
 
         # Assert scrape calls are as expected
@@ -433,9 +423,9 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["foo", "bar"], [4, 2], [4, 1]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["foo", "bar"], [4, 2], [4, 1]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
         man = Mock(
@@ -453,21 +443,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(
             cm.output,
             [
-                "INFO:root:Cleaning data from device 1...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 3 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
-                "INFO:root:Cleaning data from device 2...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 2 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
-                "INFO:root:Cleaning data from device 3...",
-                "INFO:root:Attempting to parse data into CSV...",
-                "INFO:root:Parse successful. Samples at 1 time-points have been recorded.",
-                "INFO:root:Running validation...",
-                "INFO:root:Validation successful.",
+                "INFO:root:Parse into CSV successful for device 1.",
+                "INFO:root:Parse into CSV successful for device 2.",
+                "INFO:root:Parse into CSV successful for device 3.",
             ],
         )
 
@@ -505,8 +483,8 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -520,11 +498,6 @@ class TestProcess(unittest.TestCase):
         )
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
-
-        # Assert log is called with expected error messages
-        # Not going to try and assert equality on the full log as it contains a
-        # stack-trace
-        self.assertIn("WARNING:root:No available raw data.", cm.output)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -554,14 +527,14 @@ class TestProcess(unittest.TestCase):
         mock_parse = Mock(
             side_effect=[
                 [["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                utils.DataParseError(""),
+                utils.DataParseError("bar"),
                 [["no2", "co2", "co"], [12, 14, 16]],
             ]
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -579,7 +552,9 @@ class TestProcess(unittest.TestCase):
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
-        self.assertIn("ERROR:root:Unable to parse data into CSV.", cm.output)
+        self.assertIn(
+            "ERROR:root:Unable to parse data into CSV for device 2: bar", cm.output
+        )
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -615,8 +590,8 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                [["no2", "co2"], [12, 14]],
+                ([["a", "b"], [1, 2], [4, 5], [7, 8]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -635,7 +610,8 @@ class TestProcess(unittest.TestCase):
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
         self.assertIn(
-            "ERROR:root:No time-points have been found in the parsed CSV.", cm.output
+            "ERROR:root:No time-points have been found in the parsed CSV for device 2.",
+            cm.output,
         )
 
         # Assert parse_to_csv calls are as expected
@@ -672,9 +648,9 @@ class TestProcess(unittest.TestCase):
         )
         mock_validate = Mock(
             side_effect=[
-                utils.ValidateDataError(""),
-                [["foo", "bar"], [4, 2], [4, 1]],
-                [["no2", "co2"], [12, 14]],
+                utils.ValidateDataError("foo"),
+                ([["foo", "bar"], [4, 2], [4, 1]], ""),
+                ([["no2", "co2"], [12, 14]], ""),
             ]
         )
 
@@ -692,9 +668,7 @@ class TestProcess(unittest.TestCase):
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
         # stack-trace
-        self.assertIn(
-            "ERROR:root:Something went wrong during data validation.", cm.output
-        )
+        self.assertIn("ERROR:root:Data validation error for device 1: foo", cm.output)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -719,3 +693,58 @@ class TestProcess(unittest.TestCase):
                 "3": [["no2", "co2"], [12, 14]],
             },
         )
+
+
+class TestManufacturerFactory(unittest.TestCase):
+    def test_aeroqual_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "Aeroqual"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_aqmesh_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "AQMesh"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_zephyr_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "Zephyr"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_quantaq_success(self):
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "QuantAQ"
+
+        # Shouldn't raise any errors
+        try:
+            res = manufacturer_factory(option, cfg)
+        except:
+            self.fail("Error was unexpectedly raised.")
+
+    def test_key_error_raised(self):
+        # Typo on quantAQ, so factory should raise KeyError
+        cfg = configparser.ConfigParser()
+        cfg.read("example.ini")
+        option = "quantAQ"
+
+        with self.assertRaises(KeyError):
+            res = manufacturer_factory(option, cfg)

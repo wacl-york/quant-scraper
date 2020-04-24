@@ -13,7 +13,6 @@
     data.
 """
 
-import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 import quantscraper.utils as utils
@@ -217,20 +216,28 @@ class Manufacturer(ABC):
         """
         Runs QA validation checks on air quality data.
 
+        It isn't ideal having this function return a tuple of the clean data and
+        the validation summary dict, but it works for now.
+
         Args:
             data (2D list): Data in the CSV format as returned by parse_to_csv.
                 The values themselves will still be stored as strings.
 
         Returns:
-            The cleaned data in a long CSV format, with
-            3 columns:
-                - timestamp (str)
-                - measurand (str)
-                - value (float)
-            The first entry in the list contains the column header labels with data
-            stored in all subsequent entries.
+            A tuple with:
+                - The cleaned data in a long CSV format, with
+                    3 columns:
+                        - timestamp (str)
+                        - measurand (str)
+                        - value (float)
+                    The first entry in the list contains the column header labels with data
+                    stored in all subsequent entries.
+                - A dictionary mapping {measurand: # clean samples}
         """
-        validate_cols = [r["raw_label"] for r in self.measurands]
+        # Requested measurands in the raw label used by manufacturer and clean
+        # human-readable label
+        requested_measurands_raw = [r["raw_label"] for r in self.measurands]
+        requested_measurands_clean = [r["clean_label"] for r in self.measurands]
 
         if data is None:
             raise utils.ValidateDataError("Input data is None.")
@@ -249,9 +256,9 @@ class Manufacturer(ABC):
         for i, col in enumerate(data[0]):
             if col == self.timestamp_col:
                 timestamp_index = i
-            elif col in validate_cols:
+            elif col in requested_measurands_raw:
                 # Store this index under the clean measurand label
-                measurand_index = validate_cols.index(col)
+                measurand_index = requested_measurands_raw.index(col)
                 clean_label = self.measurands[measurand_index]["clean_label"]
                 measurand_indices[clean_label] = i
                 scaling_factors[clean_label] = self.measurands[measurand_index]["scale"]
@@ -266,7 +273,7 @@ class Manufacturer(ABC):
         available_measurands = list(measurand_indices.keys())
 
         # Store counts of number of clean values
-        n_clean_vals = {k: 0 for k in available_measurands}
+        n_clean_vals = {k: 0 for k in requested_measurands_clean}
         n_clean_vals["timestamp"] = 0
         # List to store clean data in
         clean_data = [["timestamp", "measurand", "value"]]
@@ -299,7 +306,4 @@ class Manufacturer(ABC):
                 clean_row = [timestamp_clean, measurand, val_scaled]
                 clean_data.append(clean_row)
 
-        summary = utils.summarise_validation(len(data) - 1, n_clean_vals)
-        logging.info(summary)
-
-        return clean_data
+        return clean_data, n_clean_vals

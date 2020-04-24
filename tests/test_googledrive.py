@@ -6,13 +6,11 @@
 """
 
 import unittest
-import socket
-import configparser
-from unittest.mock import patch, MagicMock, Mock, call
+from unittest.mock import patch, Mock, call
+from googleapiclient.errors import HttpError
 import quantscraper.utils as utils
 import quantscraper.cli as cli
-from googleapiclient.errors import HttpError
-from quantscraper.tests.test_utils import build_mock_response
+from test_utils import build_mock_response
 
 
 class TestAuthGoogleAPI(unittest.TestCase):

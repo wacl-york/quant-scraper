@@ -8,7 +8,6 @@
     the previous day.  This behaviour can be changed in the config.ini file,
     which is also where credentials are stored.
 """
-
 import logging
 import argparse
 import os
@@ -18,10 +17,7 @@ from datetime import date, timedelta, datetime, time
 import traceback
 
 import quantscraper.utils as utils
-from quantscraper.manufacturers.Aeroqual import Aeroqual
-from quantscraper.manufacturers.AQMesh import AQMesh
-from quantscraper.manufacturers.Zephyr import Zephyr
-from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 
 
 def setup_loggers(logfn=None):
@@ -162,9 +158,8 @@ def scrape(manufacturer):
     """
     for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
         try:
-            logging.info("Attempting to scrape data for device {}...".format(devid))
             manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
-            logging.info("Scrape successful.")
+            logging.info("Download successful for device {}.".format(devid))
         except utils.DataDownloadError:
             logging.error("Unable to download data for device {}.".format(devid))
             logging.error(traceback.format_exc())
@@ -177,52 +172,75 @@ def process(manufacturer):
     into CSV format, before running a data cleaning proecedure to store only
     valid floating point values.
 
+    Updates the Manufacturer.clean_data attribute if the CSV parse and
+    subsequent QA validation procedures are successful.
+
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
 
     Returns:
-        None, updates the Manufacturer.clean_data attribute if the CSV parse and
-        subsequent QA validation procedures are successful.
+        A dictionary summarising how many recordings are available for each
+        device. Has the keys:
+          - 'manufacturer': Provides manufacturer name as a string
+          - 'devices': A further dict mapping
+              {device_id: num_available_timepoints},
+              where num_available_timepoints is a secondary dictionary mapping
+              {measurand: # clean samples}.
+              If a device has no available recordings then this value is None.
     """
+    summary = {"manufacturer": manufacturer.name, "devices": {}}
     for devid in manufacturer.device_ids:
+        summary["devices"][devid] = None
 
-        logging.info("Cleaning data from device {}...".format(devid))
         if manufacturer.raw_data[devid] is None:
-            logging.warning("No available raw data.")
             manufacturer.clean_data[devid] = None
             continue
 
         try:
-            logging.info("Attempting to parse data into CSV...")
             csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
             num_timepoints = len(csv_data) - 1
             if num_timepoints > 0:
-                logging.info(
-                    "Parse successful. Samples at {} time-points have been recorded.".format(
-                        num_timepoints
+                logging.info("Parse into CSV successful for device {}.".format(devid))
+            else:
+                logging.error(
+                    "No time-points have been found in the parsed CSV for device {}.".format(
+                        devid
                     )
                 )
-            else:
-                logging.error("No time-points have been found in the parsed CSV.")
                 manufacturer.clean_data[devid] = None
                 continue
 
-        except utils.DataParseError:
-            logging.error("Unable to parse data into CSV.")
-            logging.error(traceback.format_exc())
+        except utils.DataParseError as ex:
+            logging.error(
+                "Unable to parse data into CSV for device {}: {}".format(devid, ex)
+            )
             manufacturer.clean_data[devid] = None
             continue
 
-        logging.info("Running validation...")
         try:
-            manufacturer.clean_data[devid] = manufacturer.validate_data(csv_data)
-            logging.info("Validation successful.")
-        except utils.ValidateDataError:
-            logging.error("Something went wrong during data validation.")
+            clean_data, measurand_summary = manufacturer.validate_data(csv_data)
+
+            if len(clean_data) <= 1:
+                logging.error(
+                    "No clean measurements were found in the parsed CSV for {}.".format(
+                        devid
+                    )
+                )
+                manufacturer.clean_data[devid] = None
+                continue
+
+            # Success, at least 1 clean measurement has been found
+            manufacturer.clean_data[devid] = clean_data
+            summary["devices"][devid] = measurand_summary
+
+        except utils.ValidateDataError as ex:
+            logging.error("Data validation error for device {}: {}".format(devid, ex))
             manufacturer.clean_data[devid] = None
 
+    return summary
 
-def save_data(manufacturer, folder, start_time, end_time, data_type):
+
+def save_data(manufacturer, folder, day, data_type):
     """
     Iterates through all a manufacturer's devices and saves their raw or clean data to disk.
 
@@ -233,18 +251,13 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
     Args:
         - manufacturer (Manufacturer): Instance of Manufacturer.
         - folder (str): Directory where files should be saved to.
-        - start_time (str): Starting time of scraping window. In same
-            string format as INI file uses.
-        - end_time (str): End time of scraping window. In same
-            string format as INI file uses.
+        - day (str): Today's date, in YYYY-MM-DD format.
         - data_type (str): Either 'raw' or 'clean' to indicate which data is being
             saved.
 
     Returns:
         List of filenames that were successfully saved.
     """
-    # TODO Change start + end time to just a single date, as this is primary
-    # usecase?
     fns = []
 
     if data_type == "clean":
@@ -264,17 +277,14 @@ def save_data(manufacturer, folder, start_time, end_time, data_type):
         )
 
     for devid in manufacturer.device_ids:
-        out_fn = fn_template.substitute(
-            man=manufacturer.name, device=devid, start=start_time, end=end_time
-        )
+        out_fn = fn_template.substitute(man=manufacturer.name, device=devid, day=day)
 
         data = manufacturer_data[devid]
         if data is None:
-            logging.warning("No raw data to save for device {}.".format(devid))
             continue
 
         full_path = os.path.join(folder, out_fn)
-        logging.info("Saving data to file: {}".format(full_path))
+        logging.info("Writing file: {}".format(full_path))
         saving_function(data, full_path)
         fns.append(full_path)
     return fns
@@ -310,6 +320,90 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
+def summarise_run(summaries):
+    """
+    Prints a summary of the run to the logger.
+
+    For each manufacturer, the following information is displayed to screen:
+        - How many devices had available data
+        - The IDs of any devices that didn't record a single clean data point
+        - A table showing the number of clean recordings of each measurand
+
+    Args:
+        summaries (list): A list of dictionaries, with each entry storing
+            information about a different manufacturer.
+            Each dictionary summarises how many recordings are available for each
+            device. Has the keys:
+              - 'manufacturer': Provides manufacturer name as a string
+              - 'devices': A further dict mapping {device_id : num_available_timepoints}
+                If a device has no available recordings then the value is None.
+
+    Returns:
+        None, prints text to the logger as a side-effect.
+    """
+    logging.info("+" * 80)
+    logging.info("Summary")
+    logging.info("-" * 80)
+    for manu in summaries:
+        logging.info(manu["manufacturer"])
+        logging.info("~" * len(manu["manufacturer"]))
+        avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
+        missing_devices = [
+            devid for devid, n_rows in manu["devices"].items() if n_rows is None
+        ]
+        logging.info(
+            "{}/{} selected devices had available data over the specified time period.".format(
+                len(avail_devices), len(manu["devices"])
+            )
+        )
+
+        if len(missing_devices) > 0:
+            logging.info(
+                "Devices with no available data: {}.".format(", ".join(missing_devices))
+            )
+
+        if len(avail_devices) > 0:
+            # Get header row for table, with timestamp first then alphabetically
+            measurands = list(avail_devices[0][1].keys())
+            measurands.remove("timestamp")
+            measurands.sort()
+            measurands.insert(0, "timestamp")
+            col_names = measurands.copy()
+            col_names[0] = "Timestamps"
+            col_names.insert(0, "Device ID")
+
+            # Give each column 11 chars, should be sufficient
+            row_format = "{:>11}|" * (len(col_names))
+
+            # Format and log header with horizontal lines above and below
+            header_row = row_format.format(*col_names)
+            logging.info("-" * len(header_row))
+            logging.info("|" + header_row)
+            logging.info("-" * len(header_row))
+
+            # Print one device on each row
+            for device in avail_devices:
+                # Form a list with device ID + measurements in same order as
+                # column header
+                num_timestamps = device[1]["timestamp"]
+                row = [device[0]]
+                for m in measurands:
+                    n_clean = device[1][m]
+                    if m == "timestamp":
+                        col = str(n_clean)
+                    else:
+                        col = "{} ({:.0f}%)".format(
+                            n_clean, n_clean / num_timestamps * 100
+                        )
+                    row.append(col)
+                # Print row to log
+                logging.info("|" + row_format.format(*row))
+        # Table end horizontal line
+        logging.info("-" * len(header_row))
+    # Summary end horizontal line
+    logging.info("+" * 80)
+
+
 def main():
     """
     Entry point into the script.
@@ -341,13 +435,19 @@ def main():
 
     setup_scraping_timeframe(cfg)
 
-    # Load all manufacturers
-    manufacturers = [Aeroqual, AQMesh, Zephyr, MyQuantAQ]
-    for man_class in manufacturers:
-        logging.info("Manufacturer: {}".format(man_class.name))
+    # Store device availability summary for each manufacturer
+    summaries = []
+
+    man_strings = cfg.get("Main", "manufacturers").split(",")
+    for man_class in man_strings:
+        logging.info("Manufacturer: {}".format(man_class))
         try:
-            manufacturer = man_class(cfg)
+            manufacturer = manufacturer_factory(man_class, cfg)
         except utils.DataParseError:
+            logging.error("Error instantiating Manufacturer instance.")
+            logging.error(traceback.format_exc())
+            continue
+        except KeyError as ex:
             logging.error("Error instantiating Manufacturer instance.")
             logging.error(traceback.format_exc())
             continue
@@ -357,32 +457,37 @@ def main():
             manufacturer.connect()
             logging.info("Connection established")
         except utils.LoginError:
-            logging.error("Cannot establish connection to {}.".format(man_class.name))
+            logging.error(
+                "Cannot establish connection to {}.".format(manufacturer.name)
+            )
             logging.error(traceback.format_exc())
             continue
 
-        logging.info("Scraping all devices.")
+        logging.info("Downloading data from all devices:")
         scrape(manufacturer)
-        logging.info("Processing raw data into validated cleaned data.")
-        process(manufacturer)
+        logging.info("Processing raw data for all devices:")
+        man_summary = process(manufacturer)
+        summaries.append(man_summary)
+
+        # Get start time date for naming output files
+        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+        start_fmt = start_dt.strftime("%Y-%m-%d")
 
         if cfg.getboolean("Main", "save_raw_data"):
-            logging.info("Saving raw data to file.")
+            logging.info("Saving raw data from all devices:")
             raw_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_raw_data"),
-                cfg.get("Main", "start_time"),
-                cfg.get("Main", "end_time"),
+                start_fmt,
                 "raw",
             )
 
         if cfg.getboolean("Main", "save_clean_data"):
-            logging.info("Saving clean CSV data to file.")
+            logging.info("Saving cleaned CSV data from all devices:")
             clean_fns = save_data(
                 manufacturer,
                 cfg.get("Main", "local_folder_clean_data"),
-                cfg.get("Main", "start_time"),
-                cfg.get("Main", "end_time"),
+                start_fmt,
                 "clean",
             )
 
@@ -398,19 +503,21 @@ def main():
                 break
 
             if upload_raw:
-                logging.info("Uploading raw data to Google Drive.")
+                logging.info("Uploading raw data to Google Drive:")
                 upload_data_googledrive(
                     service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
                 )
 
             if upload_clean:
-                logging.info("Uploading clean CSV data to Google Drive.")
+                logging.info("Uploading clean CSV data to Google Drive:")
                 upload_data_googledrive(
                     service,
                     clean_fns,
                     cfg.get("GoogleAPI", "clean_data_id"),
                     "text/csv",
                 )
+
+    summarise_run(summaries)
 
 
 if __name__ == "__main__":
