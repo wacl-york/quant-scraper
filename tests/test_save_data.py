@@ -91,8 +91,10 @@ class TestSaveCleanData(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    # Set dummy device IDs
+    # Set dummy device properties
     cfg.set("Aeroqual", "devices", "1,2")
+    cfg.set("Aeroqual", "devices_web", "1,2")
+    cfg.set("Aeroqual", "device_locations", "foo,foo")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
@@ -228,8 +230,10 @@ class TestSaveRawData(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    # Set dummy device IDs
+    # Set dummy device properties
     cfg.set("Aeroqual", "devices", "1,2")
+    cfg.set("Aeroqual", "devices_web", "1,2")
+    cfg.set("Aeroqual", "device_locations", "foo,foo")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)

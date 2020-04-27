@@ -322,7 +322,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
 
 def summarise_run(summaries):
     """
-    Generates a string summary of the run.
+    Generates a tabular summary of the run.
 
     For each manufacturer, the following information is displayed to screen:
         - How many devices had available data
@@ -367,10 +367,13 @@ def summarise_run(summaries):
             # Get header row for table, with timestamp first then alphabetically
             measurands = list(avail_devices[0][1].keys())
             measurands.remove("timestamp")
+            measurands.remove("Location")
             measurands.sort()
-            measurands.insert(0, "timestamp")
+            measurands.insert(0, "Location")
+            measurands.insert(1, "timestamp")
+            # Human readable column names
             col_names = measurands.copy()
-            col_names[0] = "Timestamps"
+            col_names[1] = "Timestamps"
             col_names.insert(0, "Device ID")
 
             # Give each column 11 chars, should be sufficient
@@ -386,11 +389,13 @@ def summarise_run(summaries):
             for device in avail_devices:
                 # Form a list with device ID + measurements in same order as
                 # column header
-                num_timestamps = device[1]["timestamp"]
                 row = [device[0]]
+                num_timestamps = device[1]["timestamp"]
                 for m in measurands:
                     n_clean = device[1][m]
-                    if m == "timestamp":
+                    # TODO Here is where would put ratio of pulled timestamps to
+                    # expected
+                    if m == "timestamp" or m == "Location":
                         col = str(n_clean)
                     else:
                         col = "{} ({:.0f}%)".format(
@@ -469,6 +474,14 @@ def main():
         scrape(manufacturer)
         logging.info("Processing raw data for all devices:")
         man_summary = process(manufacturer)
+
+        # Add device location to each device's dict so it can be included in the
+        # summary table
+        for devid, location in zip(
+            manufacturer.device_ids, manufacturer.device_locations
+        ):
+            if man_summary["devices"][devid] is not None:
+                man_summary["devices"][devid]["Location"] = location
         summaries.append(man_summary)
 
         # Get start time date for naming output files
@@ -520,9 +533,11 @@ def main():
                 )
 
     full_summary = summarise_run(summaries)
+    # Print summary to log and stdout
+    for line in full_summary:
+        logging.info(line)
     for line in full_summary:
         print(line)
-        logging.info(line)
 
 
 if __name__ == "__main__":

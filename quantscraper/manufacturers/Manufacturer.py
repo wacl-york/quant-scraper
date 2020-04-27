@@ -27,6 +27,8 @@ class Manufacturer(ABC):
         - devices (str[]): A list of human readable IDs for its devices.
         - devices_web (str[]): A list of IDs for its devices as used by the
             corresponding website for scraping data.
+        - device_locations (str[]): A list of recording locations for each device,
+            used for providing context in the output log.
         - raw_data (dict(JSON)): The raw data from the devices. The keys of the
             dict are the IDs stored in 'devices', and the entries are the
             corresponding raw data saved in a JSON-serializable format, as returned
@@ -62,20 +64,28 @@ class Manufacturer(ABC):
         """
 
     @property
-    def devices(self):
+    def device_ids(self):
         """
         A list of human readable IDs for the devices, stored as a
         list of strings.
         """
-        return self._devices
+        return self._device_ids
 
     @property
-    def devices_web(self):
+    def device_web_ids(self):
         """
         A list of IDs for its devices as used by the website for scraping data,
         stored as a list of strings.
         """
-        return self._devices_web
+        return self._device_web_ids
+
+    @property
+    def device_locations(self):
+        """
+        A list of recording locations for each device,
+        stored as a list of strings.
+        """
+        return self._device_locations
 
     @property
     def raw_data(self):
@@ -172,11 +182,11 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
-        self._devices = []
-        self._devices_web = []
+        # self._device_locations = []
 
-        self.device_ids = cfg.get(self.name, "devices").split(",")
-        self.device_web_ids = cfg.get(self.name, "devices_web").split(",")
+        self._device_ids = cfg.get(self.name, "devices").split(",")
+        self._device_web_ids = cfg.get(self.name, "devices_web").split(",")
+        self._device_locations = cfg.get(self.name, "device_locations").split(",")
         # Name of column that holds timestamp
         self.timestamp_col = cfg.get(self.name, "timestamp_column")
         # String providing the format of the timestamp
@@ -190,7 +200,18 @@ class Manufacturer(ABC):
         scales = cfg.get(self.name, "scaling_factors").split(",")
         analysis = cfg.get(self.name, "columns_to_preprocess").split(",")
 
-        # Ensure have the same number of values
+        # Ensure have the same number of values for device properties
+        lengths = [
+            len(self.device_ids),
+            len(self.device_web_ids),
+            len(self.device_locations),
+        ]
+        if len(set(lengths)) != 1:
+            raise utils.DataParseError(
+                "Options 'devices', 'devices_web' and 'device_locations' must have the same number of entries."
+            )
+
+        # Ensure have the same number of values for column properties
         lengths = [len(cols), len(labels), len(scales)]
         if len(set(lengths)) != 1:
             raise utils.DataParseError(
