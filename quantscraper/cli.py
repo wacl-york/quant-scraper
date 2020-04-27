@@ -322,7 +322,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
 
 def summarise_run(summaries):
     """
-    Prints a summary of the run to the logger.
+    Generates a string summary of the run.
 
     For each manufacturer, the following information is displayed to screen:
         - How many devices had available data
@@ -339,26 +339,27 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        None, prints text to the logger as a side-effect.
+        A list of strings, where each entry is a new line.
     """
-    logging.info("+" * 80)
-    logging.info("Summary")
-    logging.info("-" * 80)
+    output = []
+    output.append("+" * 80)
+    output.append("Summary")
+    output.append("-" * 80)
     for manu in summaries:
-        logging.info(manu["manufacturer"])
-        logging.info("~" * len(manu["manufacturer"]))
+        output.append(manu["manufacturer"])
+        output.append("~" * len(manu["manufacturer"]))
         avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
         missing_devices = [
             devid for devid, n_rows in manu["devices"].items() if n_rows is None
         ]
-        logging.info(
+        output.append(
             "{}/{} selected devices had available data over the specified time period.".format(
                 len(avail_devices), len(manu["devices"])
             )
         )
 
         if len(missing_devices) > 0:
-            logging.info(
+            output.append(
                 "Devices with no available data: {}.".format(", ".join(missing_devices))
             )
 
@@ -377,9 +378,9 @@ def summarise_run(summaries):
 
             # Format and log header with horizontal lines above and below
             header_row = row_format.format(*col_names)
-            logging.info("-" * len(header_row))
-            logging.info("|" + header_row)
-            logging.info("-" * len(header_row))
+            output.append("-" * len(header_row))
+            output.append("|" + header_row)
+            output.append("-" * len(header_row))
 
             # Print one device on each row
             for device in avail_devices:
@@ -397,11 +398,13 @@ def summarise_run(summaries):
                         )
                     row.append(col)
                 # Print row to log
-                logging.info("|" + row_format.format(*row))
+                output.append("|" + row_format.format(*row))
         # Table end horizontal line
-        logging.info("-" * len(header_row))
+        output.append("-" * len(header_row))
     # Summary end horizontal line
-    logging.info("+" * 80)
+    output.append("+" * 80)
+
+    return output
 
 
 def main():
@@ -411,8 +414,7 @@ def main():
     Args:
         - None
 
-    Returns:
-        None.
+    Returns: None.
     """
     # Setup logging, which for now just logs to stdout
     try:
@@ -517,7 +519,10 @@ def main():
                     "text/csv",
                 )
 
-    summarise_run(summaries)
+    full_summary = summarise_run(summaries)
+    for line in full_summary:
+        print(line)
+        logging.info(line)
 
 
 if __name__ == "__main__":
