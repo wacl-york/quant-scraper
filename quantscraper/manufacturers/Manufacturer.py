@@ -24,6 +24,9 @@ class Manufacturer(ABC):
 
     Attributes:
         - name (str, abstract): A human readable name for the manufacturer.
+        - recording_frequency (double): Expected recording frequency of all
+            devices from this manufacturer,
+        measured as number of measurements an hour.
         - devices (str[]): A list of human readable IDs for its devices.
         - devices_web (str[]): A list of IDs for its devices as used by the
             corresponding website for scraping data.
@@ -62,6 +65,14 @@ class Manufacturer(ABC):
         """
         A human readable name for the manufacturer as a string.
         """
+
+    @property
+    def recording_frequency(self):
+        """
+        Expected recording frequency of all devices from this manufacturer,
+        measured as number of measurements an hour.
+        """
+        return self._recording_frequency
 
     @property
     def device_ids(self):
@@ -182,11 +193,13 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
-        # self._device_locations = []
 
         self._device_ids = cfg.get(self.name, "devices").split(",")
         self._device_web_ids = cfg.get(self.name, "devices_web").split(",")
         self._device_locations = cfg.get(self.name, "device_locations").split(",")
+        self._recording_frequency = cfg.getfloat(
+            self.name, "recording_frequency_per_hour"
+        )
         # Name of column that holds timestamp
         self.timestamp_col = cfg.get(self.name, "timestamp_column")
         # String providing the format of the timestamp

@@ -198,8 +198,7 @@ def process(manufacturer):
 
         try:
             csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
-            num_timepoints = len(csv_data) - 1
-            if num_timepoints > 0:
+            if len(csv_data) > 1:
                 logging.info("Parse into CSV successful for device {}.".format(devid))
             else:
                 logging.error(
@@ -385,6 +384,9 @@ def summarise_run(summaries):
             output.append("|" + header_row)
             output.append("-" * len(header_row))
 
+            # Obtain number of expected recordings
+            exp_recordings = manu["frequency"] * 24
+
             # Print one device on each row
             for device in avail_devices:
                 # Form a list with device ID + measurements in same order as
@@ -393,9 +395,11 @@ def summarise_run(summaries):
                 num_timestamps = device[1]["timestamp"]
                 for m in measurands:
                     n_clean = device[1][m]
-                    # TODO Here is where would put ratio of pulled timestamps to
-                    # expected
-                    if m == "timestamp" or m == "Location":
+                    if m == "timestamp":
+                        col = "{} ({:.0f}%)".format(
+                            n_clean, n_clean / exp_recordings * 100
+                        )
+                    elif m == "Location":
                         col = str(n_clean)
                     else:
                         col = "{} ({:.0f}%)".format(
@@ -475,13 +479,14 @@ def main():
         logging.info("Processing raw data for all devices:")
         man_summary = process(manufacturer)
 
-        # Add device location to each device's dict so it can be included in the
-        # summary table
+        # Add device location and recording rate so can be displayed in summary
+        # table
         for devid, location in zip(
             manufacturer.device_ids, manufacturer.device_locations
         ):
             if man_summary["devices"][devid] is not None:
                 man_summary["devices"][devid]["Location"] = location
+        man_summary["frequency"] = manufacturer.recording_frequency
         summaries.append(man_summary)
 
         # Get start time date for naming output files
