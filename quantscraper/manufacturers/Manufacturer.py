@@ -13,6 +13,7 @@
     data.
 """
 
+import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 import quantscraper.utils as utils
@@ -278,6 +279,13 @@ class Manufacturer(ABC):
 
         if len(data) == 0:
             raise utils.ValidateDataError("0 errors in input data.")
+
+        # Remove duplicate rows. Set obtains unique values but only runs on
+        # hashable datatypes, such as tuples, rather than lists
+        header = data[0]
+        data_vals = [list(t) for t in set(tuple(element) for element in data[0:])]
+        data_vals.insert(0, header)
+        data = data_vals
 
         # TODO put desired output timestamp format in config?
         output_format = "%Y-%m-%d %H:%M:%S"

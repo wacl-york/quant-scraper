@@ -171,7 +171,7 @@ class TestValidate(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
         try:
             res, _ = aeroqual.validate_data(data)
-            self.assertEqual(res, exp)
+            self.assertCountEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
 
@@ -293,7 +293,7 @@ class TestValidate(unittest.TestCase):
         aeroqual = Aeroqual.Aeroqual(cfg_copy)
         try:
             res, _ = aeroqual.validate_data(data)
-            self.assertEqual(res, exp)
+            self.assertCountEqual(res, exp)
         except:
             self.fail("validate_data raised exception when it should have succeeded")
 
