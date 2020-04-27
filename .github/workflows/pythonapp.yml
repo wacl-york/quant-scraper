@@ -8,7 +8,6 @@ on:
     branches: [ master, initial-release, feature-*, feature/* ]
   pull_request:
     branches: [ master, initial-release ]
-
 jobs:
   build:
 
@@ -20,12 +19,17 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
+    - name: Cache pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip # This path is specific to Ubuntu
+        # Look to see if there is a cache hit for the corresponding requirements file
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
-        # Install testing dependencies
-        pip install coverage pylint coverage-badge
+      run: pip install -r requirements.txt
     - name: Run unittests
       run: |
         coverage run -m unittest discover -s tests -b
@@ -34,7 +38,7 @@ jobs:
         pylint --exit-zero quantscraper
     - name: Generate coverage report
       run: |
-        coverage
+        coverage report
     - name: Build coverage badge
       run: |
         coverage-badge -fq -o resources/coverage.svg
