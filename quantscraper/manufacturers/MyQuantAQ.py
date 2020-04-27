@@ -85,7 +85,7 @@ class MyQuantAQ(Manufacturer):
         # Test connection by running basic query
         try:
             self.api_obj.get_account()
-        except quantaq.baseapi.DataReadError as ex:
+        except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise LoginError(
                 "Could not connect to quantaq API.\n{}".format(ex)
             ) from None

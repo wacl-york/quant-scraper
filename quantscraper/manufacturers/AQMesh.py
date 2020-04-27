@@ -116,6 +116,10 @@ class AQMesh(Manufacturer):
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
+        except re.exceptions.ConnectionError as ex:
+            raise LoginError(
+                "Connection error when logging in\n{}".format(ex)
+            ) from None
 
         # Check for authentication
         soup = BeautifulSoup(result.text, features="html.parser")
@@ -151,6 +155,10 @@ class AQMesh(Manufacturer):
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
                 "Cannot download data.\n{}".format(str(ex))
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when downloading data.\n{}".format(str(ex))
             ) from None
 
         try:
