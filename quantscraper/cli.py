@@ -12,6 +12,7 @@ import logging
 import argparse
 import os
 import sys
+import math
 import configparser
 from datetime import date, timedelta, datetime, time
 import traceback
@@ -340,6 +341,14 @@ def summarise_run(summaries):
     Returns:
         A list of strings, where each entry is a new line.
     """
+    # Give each column 11 chars, should be sufficient
+    # Only display the number of columns that within the
+    # specified maximum width at a time
+    # TODO These params should be in config
+    column_width = 13
+    max_screen_width = 110
+    max_cols = math.floor(max_screen_width / column_width)
+
     output = []
     output.append("+" * 80)
     output.append("Summary")
@@ -363,53 +372,72 @@ def summarise_run(summaries):
             )
 
         if len(avail_devices) > 0:
-            # Get header row for table, with timestamp first then alphabetically
+            # Obtain number of expected recordings
+            exp_recordings = manu["frequency"] * 24
+
+            # Get header row for table, with timestamp, location first then alphabetically
             measurands = list(avail_devices[0][1].keys())
             measurands.remove("timestamp")
             measurands.remove("Location")
             measurands.sort()
             measurands.insert(0, "Location")
             measurands.insert(1, "timestamp")
-            # Human readable column names
-            col_names = measurands.copy()
-            col_names[1] = "Timestamps"
-            col_names.insert(0, "Device ID")
 
-            # Give each column 11 chars, should be sufficient
-            row_format = "{:>11}|" * (len(col_names))
+            # Iterate through all possible columns to be tabulated
+            # only displaying 'max_cols' in a row
+            while len(measurands) > 0:
+                row_measurands = measurands[:max_cols]
+                # Device ID isn't stored in measurands
+                n_cols = len(row_measurands) + 1
+                col_names = ["Device ID"] + [
+                    "Timestamps" if col == "timestamp" else col
+                    for col in row_measurands
+                ]
 
-            # Format and log header with horizontal lines above and below
-            header_row = row_format.format(*col_names)
-            output.append("-" * len(header_row))
-            output.append("|" + header_row)
-            output.append("-" * len(header_row))
+                # Rows are organised into same width '|' delimited cols
+                # With 2 additional bars around  device ID
+                row_format = "||{:>{}}||" + "{:>{}}|" * (n_cols - 1)
 
-            # Obtain number of expected recordings
-            exp_recordings = manu["frequency"] * 24
+                # Format and log header with horizontal lines above and below
+                # Next 2 lines form zip of (col1, col_width, col2, col_width...)
+                header_vals = zip(col_names, [column_width] * n_cols)
+                header_vals = [item for sublist in header_vals for item in sublist]
+                header_row = row_format.format(*header_vals)
+                output.append("-" * len(header_row))
+                output.append(header_row)
+                output.append("-" * len(header_row))
 
-            # Print one device on each row
-            for device in avail_devices:
-                # Form a list with device ID + measurements in same order as
-                # column header
-                row = [device[0]]
-                num_timestamps = device[1]["timestamp"]
-                for m in measurands:
-                    n_clean = device[1][m]
-                    if m == "timestamp":
-                        col = "{} ({:.0f}%)".format(
-                            n_clean, n_clean / exp_recordings * 100
-                        )
-                    elif m == "Location":
-                        col = str(n_clean)
-                    else:
-                        col = "{} ({:.0f}%)".format(
-                            n_clean, n_clean / num_timestamps * 100
-                        )
-                    row.append(col)
-                # Print row to log
-                output.append("|" + row_format.format(*row))
-        # Table end horizontal line
-        output.append("-" * len(header_row))
+                # Print one device on each row
+                for device in avail_devices:
+                    # Form a list with device ID + measurements in same order as
+                    # column header
+                    row = [device[0]]
+                    num_timestamps = device[1]["timestamp"]
+                    for m in row_measurands:
+                        n_clean = device[1][m]
+                        if m == "timestamp":
+                            col = "{} ({:.0f}%)".format(
+                                n_clean, n_clean / exp_recordings * 100
+                            )
+                        elif m == "Location":
+                            col = str(n_clean)
+                        else:
+                            col = "{} ({:.0f}%)".format(
+                                n_clean, n_clean / num_timestamps * 100
+                            )
+                        row.append(col)
+                    # Print row to log, again using zip to get flat list of
+                    # [val1, col_width, val2, col_width, ...]
+                    row_vals = zip(row, [column_width] * n_cols)
+                    row_vals = [item for sublist in row_vals for item in sublist]
+                    output.append(row_format.format(*row_vals))
+                # Now have gone through all devices, can remove these columns
+                for m in row_measurands:
+                    measurands.remove(m)
+
+                # Table end horizontal line
+                output.append("-" * len(header_row))
+
     # Summary end horizontal line
     output.append("+" * 80)
 
