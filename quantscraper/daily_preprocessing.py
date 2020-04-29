@@ -25,17 +25,67 @@ import sys
 import os
 import logging
 import traceback
-from datetime import datetime
+import json
+from datetime import date, timedelta, datetime
 
 import numpy as np
 import pandas as pd
 import quantscraper.utils as utils
 import quantscraper.cli as cli
 
-from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
+
+def setup_config(cfg_fn):
+    """
+    Loads configuration parameters from a file into memory.
+
+    Args:
+        - cfg_fn (str): Filepath of the .ini file.
+
+    Returns:
+        A Python object, parsed from JSON.
+    """
+    try:
+        with open(cfg_fn, "r") as in_file:
+            cfg = json.load(in_file)
+    except FileNotFoundError:
+        raise utils.SetupError("File not found: '{}'".format(cfg_fn))
+    except json.decoder.JSONDecodeError:
+        raise utils.SetupError("Error parsing JSON file '{}'".format(cfg_fn))
+
+    return cfg
 
 
-def get_data(cfg, manufacturer, device_id, day):
+def setup_scraping_timeframe(cfg):
+    """
+    Sets up the day to process the data for.
+
+    By default, this script attempts to collate data from yesterday,
+    although if a valid YYYY-mm-dd date is provided in the 'date' top-level
+    attribute of the config JSON file then that date is used instead.
+
+    Args:
+        - cfg (Object): Contains the script configuration
+            settings.
+
+    Returns:
+        Updated version of config with the 'date' field set as a valid
+        date if it wasn't already.
+    """
+    try:
+        date_dt = datetime.strptime(cfg["date"], "%Y-%m-%d")
+        cfg["date"] = date_dt.strftime("%Y-%m-%d")
+    except KeyError:
+        yesterday = date.today() - timedelta(days=1)
+        cfg["date"] = yesterday.strftime("%Y-%m-%d")
+    except ValueError:
+        raise utils.TimeError(
+            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(cfg["date"])
+        )
+
+    return cfg
+
+
+def get_data(folder, manufacturer, device_id, day):
     """
     Reads previously saved clean data into memory.
 
@@ -43,18 +93,8 @@ def get_data(cfg, manufacturer, device_id, day):
     This function finds the file matching these parameters.
     It then adds the manufacturer and device id name as columns to the data.
 
-    NB: If the data source switches to a database this function will
-    need modifying, but otherwise the pre-processing script should remain
-    intact.
-    Hence the inclusion of the slightly awkward date_start and date_end
-    arguments, rather than just a single day, so that when the data is stored in
-    a database the SELECT query can easily WHERE date > date_start AND date <
-    date_end, rather than needing to do any date-time calculations.
-    Likewise why cfg is passed in when all we need is the folder name, so that
-    any DB connection information can be pulled from the config object.
-
     Args:
-        - cfg (configparser.Namespace): ConfigParser object containing data parameters.
+        - folder (str): Folder where the data is saved.
         - manufacturer (string): Manufacturer name.
         - device_id (str): Device id
         - day (str): Recording date, in "YYYY-MM-DD" format.
@@ -65,7 +105,6 @@ def get_data(cfg, manufacturer, device_id, day):
     data_fn = utils.CLEAN_DATA_FN.substitute(
         man=manufacturer, device=device_id, day=day
     )
-    folder = cfg.get("Main", "local_folder_clean_data")
     full_path = os.path.join(folder, data_fn)
 
     try:
@@ -82,7 +121,7 @@ def get_data(cfg, manufacturer, device_id, day):
     return data
 
 
-def long_to_wide(long, measurands=None):
+def long_to_wide(long, measurands=None, devices=None):
     """
     Converts a table containing sensor data in long format into a wide table
     with 1 column per measurand/device pair.
@@ -103,6 +142,11 @@ def long_to_wide(long, measurands=None):
             kept. If provided then 'long' is firstly restricted to measurands in
             this list, then NaN filled columns are made for any requested measurands in
             'measurands' that don't have any observations in 'long'.
+        - devices (str[], optional): List of devices to include in the
+            output file. If not provided then all the devices in 'long' are
+            kept. If provided then 'long' is firstly restricted to devices in
+            this list, then NaN filled columns are made for any requested
+            devices in 'devices' that don't have any observations in 'long'.
 
     Returns:
         A pandas.DataFrame object with columns:
@@ -111,30 +155,33 @@ def long_to_wide(long, measurands=None):
                 <measurand_device>.
     """
 
-    # If specified measurands of interest then restrict data frame to them
+    def guard_column(col):
+        if not col in long.columns:
+            raise utils.DataConversionError(
+                "Column '{}' must be available.".format(col)
+            )
+
+    guard_column("device")
+    guard_column("measurand")
+    guard_column("timestamp")
+    guard_column("value")
+
+    # If specified measurands and/or devices, restrict data frame to them
     if measurands is not None:
-        try:
-            long = long[long["measurand"].isin(measurands)]
-        except KeyError:
-            raise utils.DataConversionError(
-                "Missing 'measurand' column in long clean data."
-            ) from None
-        # Get list of unique sensors
-        try:
-            devices = long.device.unique()
-        except AttributeError:
-            raise utils.DataConversionError(
-                "There is no 'device' column available."
-            ) from None
+        long = long[long["measurand"].isin(measurands)]
+        selected_measurands = measurands
+    else:
+        selected_measurands = long.measurand.unique()
+
+    if devices is not None:
+        long = long[long["device"].isin(devices)]
+        selected_devices = devices
+    else:
+        selected_devices = long.device.unique()
 
     # Concatenate device and measurand, removing whitespace
-    try:
-        long = long.assign(measurand=long.measurand.map(str) + "_" + long.device)
-        long["measurand"] = long.measurand.str.replace(" ", "", regex=True)
-    except AttributeError:
-        raise utils.DataConversionError(
-            "Columns 'device' and 'measurand' must be available."
-        )
+    long = long.assign(measurand=long.measurand.map(str) + "_" + long.device)
+    long["measurand"] = long.measurand.str.replace(" ", "", regex=True)
 
     # Pivot to wide table
     try:
@@ -149,13 +196,11 @@ def long_to_wide(long, measurands=None):
         raise utils.DataConversionError(
             "The long clean data should be all floats."
         ) from None
-    except KeyError:
-        raise utils.DataConversionError("Missing column in long clean data.")
 
     # Add NaN filled column for any device/measurand combination that wasn't in long data
-    if measurands is not None:
-        for measurand in measurands:
-            for device in devices:
+    if measurands is not None or devices is not None:
+        for measurand in selected_measurands:
+            for device in selected_devices:
                 # Generate combined column name
                 comb_col = measurand + "_" + device
                 comb_col = comb_col.replace(" ", "")
@@ -218,50 +263,43 @@ def main():
     # Parse args and config file
     args = cli.parse_args()
     try:
-        cfg = cli.setup_config(args.configfilepath)
+        cfg = setup_config(args.configfilepath)
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    cli.setup_scraping_timeframe(cfg)
+    # Default to yesterday's data if no parseable date provided in JSON
+    cfg = setup_scraping_timeframe(cfg)
 
     # Get useful properties from config
-    start_window = cfg.get("Main", "start_time")
-    end_window = cfg.get("Main", "end_time")
-    local_folder = cfg.get("Main", "local_folder_analysis_data")
-    credentials_fn = cfg.get("GoogleAPI", "credentials_fn")
-    drive_analysis_id = cfg.get("GoogleAPI", "analysis_data_id")
-    upload_google_drive = cfg.getboolean("Main", "upload_analysis_googledrive")
-
-    # Use start date to identify filename
-    start_dt = datetime.fromisoformat(start_window)
-    start_fmt = start_dt.strftime("%Y-%m-%d")
+    recording_date = cfg["date"]
+    local_clean_folder = cfg["local_folder_clean_data"]
+    local_analysis_folder = cfg["local_folder_analysis_data"]
+    credentials_fn = cfg["google_api_credentials_fn"]
+    drive_analysis_id = cfg["gdrive_analysis_folder_id"]
+    upload_google_drive = cfg["upload_analysis_gdrive"]
+    time_res = cfg["time_resolution"]
 
     # Load all manufacturers
-    man_strings = cfg.get("Main", "manufacturers").split(",")
-    for man_class in man_strings:
-        logging.info("Manufacturer: {}".format(man_class))
-        try:
-            manufacturer = manufacturer_factory(man_class, cfg)
-        except utils.DataParseError:
-            logging.error("Error instantiating Manufacturer instance.")
-            logging.error(traceback.format_exc())
-            continue
-        except KeyError as ex:
-            logging.error("Error instantiating Manufacturer instance.")
-            logging.error(traceback.format_exc())
-            continue
+    for manufacturer in cfg["manufacturers"]:
+
+        logging.info("Manufacturer: {}".format(manufacturer["name"]))
 
         logging.info("Reading data from all devices...")
         dfs = []
-        for device in manufacturer.device_ids:
+        for device in manufacturer["devices"]:
             try:
-                dataframe = get_data(cfg, manufacturer.name, device, start_fmt)
+                dataframe = get_data(
+                    local_clean_folder,
+                    manufacturer["name"],
+                    device["name"],
+                    recording_date,
+                )
             except utils.DataReadingError as ex:
                 logging.error(
-                    "No clean data found for device '{}': {}".format(device, ex)
+                    "No clean data found for device '{}': {}".format(device["name"], ex)
                 )
                 continue
 
@@ -272,25 +310,22 @@ def main():
             combined_df = pd.concat(dfs)
         except ValueError:
             logging.error(
-                "No clean data found for manufacturer '{}'.".format(manufacturer.name)
+                "No clean data found for manufacturer '{}'.".format(
+                    manufacturer["name"]
+                )
             )
             continue
 
         # Convert into wide table
         try:
             logging.info("Converting to wide format.")
-            analysis_columns = [
-                m["clean_label"]
-                for m in manufacturer.measurands
-                if m["included_analysis"]
-            ]
-            wide_df = long_to_wide(combined_df, analysis_columns)
+            all_devices = [dev["name"] for dev in manufacturer["devices"]]
+            wide_df = long_to_wide(combined_df, manufacturer["fields"], all_devices)
         except utils.DataConversionError as ex:
             logging.error("Error when converting wide to long table: {}".format(ex))
             continue
 
         # Resample into same resolution
-        time_res = cfg.get("Analysis", "time_resolution")
         logging.info(
             "Resampling time-series with a resolution of '{}'.".format(time_res)
         )
@@ -307,9 +342,9 @@ def main():
         # Save pre-processed data frame locally
         logging.info("Saving file to disk.")
         filename = utils.ANALYSIS_DATA_FN.substitute(
-            man=manufacturer.name, day=start_fmt
+            man=manufacturer["name"], day=recording_date
         )
-        file_path = os.path.join(local_folder, filename)
+        file_path = os.path.join(local_analysis_folder, filename)
         try:
             utils.save_dataframe(df_resampled, file_path)
         except utils.DataSavingError as ex:

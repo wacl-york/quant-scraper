@@ -6,21 +6,17 @@
 """
 
 import unittest
-import configparser
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, mock_open
 import pandas as pd
+import json
 import numpy as np
+import datetime
 import quantscraper.utils as utils
 import quantscraper.daily_preprocessing as daily_preprocessing
 
 
 class TestLoadData(unittest.TestCase):
     def test_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        # Set dummy clean folder
-        cfg.set("Main", "local_folder_clean_data", "cleanfoo")
-
         # Setup example data to return from mock read and expected function
         # output
         example_data = pd.DataFrame(
@@ -42,7 +38,9 @@ class TestLoadData(unittest.TestCase):
             mock_todt = Mock(return_value=timestamp_dt)
             mock_pd.to_datetime = mock_todt
 
-            res = daily_preprocessing.get_data(cfg, "manu1", "dev1", "2012-03-12")
+            res = daily_preprocessing.get_data(
+                "cleanfoo", "manu1", "dev1", "2012-03-12"
+            )
             print(res)
             print(exp)
 
@@ -56,18 +54,15 @@ class TestLoadData(unittest.TestCase):
     # Test for FileNotFoundError, but cannot mock
     # pd.errors.EmptyDataError
     def test_file_not_found(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        # Set dummy clean folder
-        cfg.set("Main", "local_folder_clean_data", "cleanfoo")
-
         # Mock file I/O
         with patch("quantscraper.daily_preprocessing.pd") as mock_pd:
             mock_read = Mock(side_effect=FileNotFoundError(""))
             mock_pd.read_csv = mock_read
 
             with self.assertRaises(utils.DataReadingError):
-                res = daily_preprocessing.get_data(cfg, "manu1", "dev1", "2012-03-12")
+                res = daily_preprocessing.get_data(
+                    "cleanfoo", "manu1", "dev1", "2012-03-12"
+                )
 
 
 class TestLongToWide(unittest.TestCase):
@@ -133,6 +128,95 @@ class TestLongToWide(unittest.TestCase):
         )
         pd.testing.assert_frame_equal(res, exp)
 
+    def test_adds_missing_devices(self):
+        # Have CO2 and NO2 at first timestamp, from both devices, but only CO2
+        # at first from second device, so should add no2_dev2 column filled
+        # with NaNs and second CO2 timepoint should be NaN
+        # Will also ask for a third device that don't have any measurements from
+        example_data = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:30",
+                    "2013-03-17 10:34:30",
+                ],
+                "device": ["dev1", "dev1", "dev2", "dev1", "dev1"],
+                "measurand": ["co2", "no2", "co2", "co2", "no2"],
+                "value": [2.3, 6.2, 2.6, 5.2, -23],
+            }
+        )
+
+        exp = pd.DataFrame(
+            {
+                "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
+                "co2_dev1": [2.3, 5.2],
+                "co2_dev2": [2.6, np.nan],
+                "co2_dev3": [np.nan, np.nan],
+                "no2_dev1": [6.2, -23],
+                "no2_dev2": [np.nan, np.nan],
+                "no2_dev3": [np.nan, np.nan],
+            }
+        )
+        exp = exp.set_index(["timestamp"])
+        exp.columns.name = "measurand"
+        res = daily_preprocessing.long_to_wide(
+            example_data, devices=["dev1", "dev2", "dev3"]
+        )
+        pd.testing.assert_frame_equal(res, exp)
+
+    def test_adds_missing_devices_and_measurands(self):
+        # Specify both measurands and devices that should be included in output
+        # Have CO2 and NO2 at first timestamp, from both devices, but only CO2
+        # at first from second device, so should add no2_dev2 column filled
+        # with NaNs and second CO2 timepoint should be NaN
+        # Will also ask for a third device that don't have any measurements from
+        # Also specifying which measurands should be included, will have a mix
+        # of some that don't have any recordings at all and some that have some
+        # recordings
+        example_data = pd.DataFrame(
+            {
+                "timestamp": [
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:00",
+                    "2013-03-17 10:34:30",
+                    "2013-03-17 10:34:30",
+                    "2013-03-17 10:34:30",
+                ],
+                "device": ["dev1", "dev1", "dev2", "dev1", "dev1", "dev2"],
+                "measurand": ["co2", "no2", "co2", "co2", "no2", "co"],
+                "value": [2.3, 6.2, 2.6, 5.2, -23, 23.84],
+            }
+        )
+
+        exp = pd.DataFrame(
+            {
+                "timestamp": ["2013-03-17 10:34:00", "2013-03-17 10:34:30"],
+                "co2_dev1": [2.3, 5.2],
+                "co2_dev2": [2.6, np.nan],
+                "co2_dev3": [np.nan, np.nan],
+                "co_dev1": [np.nan, np.nan],
+                "co_dev2": [np.nan, 23.84],
+                "co_dev3": [np.nan, np.nan],
+                "no2_dev1": [6.2, -23],
+                "no2_dev2": [np.nan, np.nan],
+                "no2_dev3": [np.nan, np.nan],
+                "o3_dev1": [np.nan, np.nan],
+                "o3_dev2": [np.nan, np.nan],
+                "o3_dev3": [np.nan, np.nan],
+            }
+        )
+        exp = exp.set_index(["timestamp"])
+        exp.columns.name = "measurand"
+        res = daily_preprocessing.long_to_wide(
+            example_data,
+            devices=["dev1", "dev2", "dev3"],
+            measurands=["co", "o3", "co2", "no2"],
+        )
+        pd.testing.assert_frame_equal(res, exp)
+
     def test_different_types(self):
         # CO2 has both float and string values, which shouldn't happen following
         # the QA part of the scraping script, but best to check
@@ -150,9 +234,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
+            res = daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns1(self):
         # Missing timestamp column
@@ -165,9 +247,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
+            res = daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns2(self):
         # Missing device column
@@ -184,9 +264,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
+            res = daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns3(self):
         # Missing measurand column
@@ -203,9 +281,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
+            res = daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns4(self):
         # Missing value column
@@ -222,13 +298,11 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(
-                example_data, measurands=["co", "o3", "co2", "no2"]
-            )
+            res = daily_preprocessing.long_to_wide(example_data)
 
-    def test_no_rows_no_measurands(self):
+    def test_no_rows_no_measurands_or_devices(self):
         # Test when have no clean data and haven't specified measurands
-        # that must be present. Should return an empty data frame
+        # or devices that must be present. Should return an empty data frame
         example_data = pd.DataFrame(
             {"timestamp": [], "device": [], "measurand": [], "value": [],}
         )
@@ -251,7 +325,9 @@ class TestLongToWide(unittest.TestCase):
 
     def test_no_rows_with_measurands(self):
         # Test when have no clean data but have specified measurands,
-        # should still get an empty data frame but with specified columns
+        # Should still get an empty data frame with 0 columns,
+        # because there are no available devices to use to form
+        # the <device_measurand> column name
         example_data = pd.DataFrame(
             {"timestamp": [], "device": [], "measurand": [], "value": [],}
         )
@@ -262,7 +338,9 @@ class TestLongToWide(unittest.TestCase):
         exp.index = idx
         exp.columns = pd.MultiIndex.from_tuples([], names=[None, "measurand"])
 
-        res = daily_preprocessing.long_to_wide(example_data)
+        res = daily_preprocessing.long_to_wide(
+            example_data, measurands=["co2", "co", "no2"]
+        )
 
         # Check output data frame is empty
         self.assertTrue(res.empty)
@@ -271,6 +349,78 @@ class TestLongToWide(unittest.TestCase):
         pd.testing.assert_frame_equal(
             res, exp, check_column_type=False, check_index_type=False
         )
+
+    def test_no_rows_with_devices(self):
+        # Test when have no clean data but have specified devices,
+        # Should still get an empty data frame with 0 columns,
+        # because there are no available measurands to use to form
+        # the <device_measurand> column name
+        example_data = pd.DataFrame(
+            {"timestamp": [], "device": [], "measurand": [], "value": [],}
+        )
+
+        exp = pd.DataFrame(dtype=np.float64)
+        idx = pd.Index([])
+        idx.set_names("timestamp", inplace=True)
+        exp.index = idx
+        exp.columns = pd.MultiIndex.from_tuples([], names=[None, "measurand"])
+
+        res = daily_preprocessing.long_to_wide(example_data, devices=["dev1", "dev2"])
+
+        # Check output data frame is empty
+        self.assertTrue(res.empty)
+
+        # Check it's got the same column and index types as expected
+        pd.testing.assert_frame_equal(
+            res, exp, check_column_type=False, check_index_type=False
+        )
+
+    def test_no_rows_with_devices_and_measurands(self):
+        # Test when have no clean data but have specified devices and
+        # measurands.
+        # Should still get an empty data frame but now as both devices
+        # and measurands are specified should get the required columns
+        example_data = pd.DataFrame(
+            {"timestamp": [], "device": [], "measurand": [], "value": [],}
+        )
+
+        # Setting up an empty data frame with specific columns is quite
+        # convoluted in pandas, especially as assert_frame_equal() is very
+        # through.
+        # Need to firstly set the index to 'timestamp' (not required by pandas
+        # but the expected output has this index), then also need to provide
+        # a 'MultiIndex' for the output columns with name 'measurand'
+
+        idx = pd.Index([])
+        idx.set_names("timestamp", inplace=True)
+        exp = pd.DataFrame(
+            {
+                "co2_dev1": float(),
+                "co2_dev2": float(),
+                "no2_dev1": float(),
+                "no2_dev2": float(),
+            },
+            index=idx,
+        )
+        exp.columns = pd.MultiIndex.from_tuples(
+            [("co2_dev1", ""), ("co2_dev2", ""), ("no2_dev1", ""), ("no2_dev2", "")],
+            names=[None, "measurand"],
+        )
+
+        res = daily_preprocessing.long_to_wide(
+            example_data, devices=["dev1", "dev2"], measurands=["no2", "co2"]
+        )
+
+        # Check output data frame is empty
+        self.assertTrue(res.empty)
+
+        # Check it's got the same column and index types as expected
+        pd.testing.assert_frame_equal(
+            res, exp, check_column_type=True, check_index_type=False
+        )
+
+    # TODO Add tests for when devices are specified, and also for devices +
+    # manufacturer
 
 
 class TestResample(unittest.TestCase):
@@ -442,6 +592,84 @@ class TestResample(unittest.TestCase):
 
         with self.assertRaises(utils.ResamplingError):
             res = daily_preprocessing.resample(dummy, "adsdsa")
+
+
+class TestSetupConfig(unittest.TestCase):
+
+    # Ensures the expected calls are made
+    def test_success(self):
+        m = mock_open()
+        # Patch file open
+        with patch("quantscraper.daily_preprocessing.open", m):
+            # patch JSON
+            with patch("quantscraper.daily_preprocessing.json") as mock_json:
+
+                mock_load = Mock()
+                mock_cfg_return = Mock(val=5)
+                mock_load.return_value = mock_cfg_return
+                mock_json.load = mock_load
+
+                res = daily_preprocessing.setup_config("path/to/foo.json")
+                # Check calls are as expected
+                m.assert_called_once_with("path/to/foo.json", "r")
+                mock_load.assert_called_once_with(m())
+                self.assertEqual(res, mock_cfg_return)
+
+    def test_errorraised_nofile(self):
+        m = mock_open()
+        m.side_effect = FileNotFoundError("")
+        # Patch file open
+        with patch("quantscraper.daily_preprocessing.open", m):
+            # patch JSON
+            with patch("quantscraper.daily_preprocessing.json") as mock_json:
+
+                mock_load = Mock()
+                mock_cfg_return = Mock(val=5)
+                mock_load.return_value = mock_cfg_return
+                mock_json.load = mock_load
+
+                with self.assertRaises(utils.SetupError):
+                    daily_preprocessing.setup_config("path/to/foo.json")
+
+    # Ideally would test that code raises utils.SetupError when JSON parse
+    # fails, but as has been mentioned in other testing files, I can't find
+    # a way to mock this behaviour.
+    # I have tested this functionality through integration testing, however
+
+
+class TestSetupScrapingTimeframe(unittest.TestCase):
+    def test_no_date(self):
+        # Don't pass in date, so output should have yesterday's date
+        cfg = {"foo": "bar"}
+
+        # Mock date.today() to a fixed date
+        with patch("quantscraper.daily_preprocessing.date", autospec=True) as mock_date:
+            mock_today = Mock(return_value=datetime.date(2012, 3, 17))
+            mock_date.today = mock_today
+
+            res = daily_preprocessing.setup_scraping_timeframe(cfg)
+            self.assertEqual(res["date"], "2012-03-16")
+
+    def test_date_provided(self):
+        # Providing config with valid date attribute shouldn't modify it
+        cfg = {"foo": "bar", "date": "2019-05-23"}
+        res = daily_preprocessing.setup_scraping_timeframe(cfg)
+        self.assertEqual(res["date"], "2019-05-23")
+
+    def test_invalid_date(self):
+        # Date is provided, but isn't in YYYY-mm-dd format so should raise error
+        cfg = {"foo": "bar", "date": "2020/03/04"}
+
+        with self.assertRaises(utils.TimeError):
+            daily_preprocessing.setup_scraping_timeframe(cfg)
+
+    def test_zeropadding_added(self):
+        # Valid date is provided but doesn't have zero padding, which is always
+        # present in the clean data filenames
+        cfg = {"foo": "bar", "date": "2020-3-4"}
+
+        res = daily_preprocessing.setup_scraping_timeframe(cfg)
+        self.assertEqual(res["date"], "2020-03-04")
 
 
 if __name__ == "__main__":
