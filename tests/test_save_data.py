@@ -109,7 +109,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -119,7 +119,15 @@ class TestSaveCleanData(unittest.TestCase):
                         call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
                     ]
                     self.assertEqual(calls, exp_calls)
-                    print(mock_isdir.mock_calls)
+                    # Function should output names of files that are
+                    # successfully saved
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_foobar.csv",
+                            "dummyFolder/Aeroqual_2_foobar.csv",
+                        ],
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -151,13 +159,47 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "today", "clean")
+                    res = cli.save_data(aeroqual, "dummyFolder", "today", "clean")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
                         [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_today.csv"
                     )
+                    # Function should only return filename from first file that
+                    # saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_today.csv"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # First file saves successfully but second fails as that filename
+        # already exists
+        aeroqual = Aeroqual.Aeroqual(self.cfg)
+        # Set dummy data
+        aeroqual._clean_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_foobar.csv",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.csv"])
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -248,7 +290,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
+                    res = cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -258,7 +300,14 @@ class TestSaveRawData(unittest.TestCase):
                         call([[7, 8, 9]], "dummyFolder/Aeroqual_2_day.json"),
                     ]
                     self.assertEqual(calls, exp_calls)
-                    print(mock_isdir.mock_calls)
+                    # should return both filenames as saved successfully
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_day.json",
+                            "dummyFolder/Aeroqual_2_day.json",
+                        ],
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -290,13 +339,47 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
+                    res = cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
                         [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
                     )
+                    # should return both filenames as saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_day.json"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # First file saves successfully but second fails as that filename
+        # already exists
+        aeroqual = Aeroqual.Aeroqual(self.cfg)
+        # Set dummy data
+        aeroqual._raw_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "raw")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]],
+                            "dummyFolder/Aeroqual_1_foobar.json",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.json"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.json"])
                 except:
                     self.fail("Test raised error when should have passed.")
 

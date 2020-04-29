@@ -285,8 +285,12 @@ def save_data(manufacturer, folder, day, data_type):
 
         full_path = os.path.join(folder, out_fn)
         logging.info("Writing file: {}".format(full_path))
-        saving_function(data, full_path)
-        fns.append(full_path)
+        try:
+            saving_function(data, full_path)
+            fns.append(full_path)
+        except utils.DataSavingError as ex:
+            logging.error("Unable to save file: {}".format(ex))
+
     return fns
 
 
