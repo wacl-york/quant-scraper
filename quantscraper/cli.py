@@ -12,6 +12,7 @@ import logging
 import argparse
 import os
 import sys
+import math
 import configparser
 from datetime import date, timedelta, datetime, time
 import traceback
@@ -198,8 +199,7 @@ def process(manufacturer):
 
         try:
             csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
-            num_timepoints = len(csv_data) - 1
-            if num_timepoints > 0:
+            if len(csv_data) > 1:
                 logging.info("Parse into CSV successful for device {}.".format(devid))
             else:
                 logging.error(
@@ -322,7 +322,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
 
 def summarise_run(summaries):
     """
-    Prints a summary of the run to the logger.
+    Generates a tabular summary of the run.
 
     For each manufacturer, the following information is displayed to screen:
         - How many devices had available data
@@ -339,69 +339,109 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        None, prints text to the logger as a side-effect.
+        A list of strings, where each entry is a new line.
     """
-    logging.info("+" * 80)
-    logging.info("Summary")
-    logging.info("-" * 80)
+    # Give each column 11 chars, should be sufficient
+    # Only display the number of columns that within the
+    # specified maximum width at a time
+    # TODO These params should be in config
+    column_width = 13
+    max_screen_width = 110
+    max_cols = math.floor(max_screen_width / column_width)
+
+    output = []
+    output.append("+" * 80)
+    output.append("Summary")
+    output.append("-" * 80)
     for manu in summaries:
-        logging.info(manu["manufacturer"])
-        logging.info("~" * len(manu["manufacturer"]))
+        output.append(manu["manufacturer"])
+        output.append("~" * len(manu["manufacturer"]))
         avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
         missing_devices = [
             devid for devid, n_rows in manu["devices"].items() if n_rows is None
         ]
-        logging.info(
+        output.append(
             "{}/{} selected devices had available data over the specified time period.".format(
                 len(avail_devices), len(manu["devices"])
             )
         )
 
         if len(missing_devices) > 0:
-            logging.info(
+            output.append(
                 "Devices with no available data: {}.".format(", ".join(missing_devices))
             )
 
         if len(avail_devices) > 0:
-            # Get header row for table, with timestamp first then alphabetically
+            # Obtain number of expected recordings
+            exp_recordings = manu["frequency"] * 24
+
+            # Get header row for table, with timestamp, location first then alphabetically
             measurands = list(avail_devices[0][1].keys())
             measurands.remove("timestamp")
+            measurands.remove("Location")
             measurands.sort()
-            measurands.insert(0, "timestamp")
-            col_names = measurands.copy()
-            col_names[0] = "Timestamps"
-            col_names.insert(0, "Device ID")
+            measurands.insert(0, "Location")
+            measurands.insert(1, "timestamp")
 
-            # Give each column 11 chars, should be sufficient
-            row_format = "{:>11}|" * (len(col_names))
+            # Iterate through all possible columns to be tabulated
+            # only displaying 'max_cols' in a row
+            while len(measurands) > 0:
+                row_measurands = measurands[:max_cols]
+                # Device ID isn't stored in measurands
+                n_cols = len(row_measurands) + 1
+                col_names = ["Device ID"] + [
+                    "Timestamps" if col == "timestamp" else col
+                    for col in row_measurands
+                ]
 
-            # Format and log header with horizontal lines above and below
-            header_row = row_format.format(*col_names)
-            logging.info("-" * len(header_row))
-            logging.info("|" + header_row)
-            logging.info("-" * len(header_row))
+                # Rows are organised into same width '|' delimited cols
+                # With 2 additional bars around  device ID
+                row_format = "||{:>{}}||" + "{:>{}}|" * (n_cols - 1)
 
-            # Print one device on each row
-            for device in avail_devices:
-                # Form a list with device ID + measurements in same order as
-                # column header
-                num_timestamps = device[1]["timestamp"]
-                row = [device[0]]
-                for m in measurands:
-                    n_clean = device[1][m]
-                    if m == "timestamp":
-                        col = str(n_clean)
-                    else:
-                        col = "{} ({:.0f}%)".format(
-                            n_clean, n_clean / num_timestamps * 100
-                        )
-                    row.append(col)
-                # Print row to log
-                logging.info("|" + row_format.format(*row))
-        # Table end horizontal line
-        logging.info("-" * len(header_row))
+                # Format and log header with horizontal lines above and below
+                # Next 2 lines form zip of (col1, col_width, col2, col_width...)
+                header_vals = zip(col_names, [column_width] * n_cols)
+                header_vals = [item for sublist in header_vals for item in sublist]
+                header_row = row_format.format(*header_vals)
+                output.append("-" * len(header_row))
+                output.append(header_row)
+                output.append("-" * len(header_row))
+
+                # Print one device on each row
+                for device in avail_devices:
+                    # Form a list with device ID + measurements in same order as
+                    # column header
+                    row = [device[0]]
+                    num_timestamps = device[1]["timestamp"]
+                    for m in row_measurands:
+                        n_clean = device[1][m]
+                        if m == "timestamp":
+                            col = "{} ({:.0f}%)".format(
+                                n_clean, n_clean / exp_recordings * 100
+                            )
+                        elif m == "Location":
+                            col = str(n_clean)
+                        else:
+                            col = "{} ({:.0f}%)".format(
+                                n_clean, n_clean / num_timestamps * 100
+                            )
+                        row.append(col)
+                    # Print row to log, again using zip to get flat list of
+                    # [val1, col_width, val2, col_width, ...]
+                    row_vals = zip(row, [column_width] * n_cols)
+                    row_vals = [item for sublist in row_vals for item in sublist]
+                    output.append(row_format.format(*row_vals))
+                # Now have gone through all devices, can remove these columns
+                for m in row_measurands:
+                    measurands.remove(m)
+
+                # Table end horizontal line
+                output.append("-" * len(header_row))
+
     # Summary end horizontal line
-    logging.info("+" * 80)
+    output.append("+" * 80)
+
+    return output
 
 
 def main():
@@ -411,8 +451,7 @@ def main():
     Args:
         - None
 
-    Returns:
-        None.
+    Returns: None.
     """
     # Setup logging, which for now just logs to stdout
     try:
@@ -467,6 +506,15 @@ def main():
         scrape(manufacturer)
         logging.info("Processing raw data for all devices:")
         man_summary = process(manufacturer)
+
+        # Add device location and recording rate so can be displayed in summary
+        # table
+        for devid, location in zip(
+            manufacturer.device_ids, manufacturer.device_locations
+        ):
+            if man_summary["devices"][devid] is not None:
+                man_summary["devices"][devid]["Location"] = location
+        man_summary["frequency"] = manufacturer.recording_frequency
         summaries.append(man_summary)
 
         # Get start time date for naming output files
@@ -517,7 +565,12 @@ def main():
                     "text/csv",
                 )
 
-    summarise_run(summaries)
+    full_summary = summarise_run(summaries)
+    # Print summary to log and stdout
+    for line in full_summary:
+        logging.info(line)
+    for line in full_summary:
+        print(line)
 
 
 if __name__ == "__main__":
