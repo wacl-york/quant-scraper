@@ -188,7 +188,6 @@ class Manufacturer(ABC):
         cols = cfg.get(self.name, "columns_to_validate").split(",")
         labels = cfg.get(self.name, "column_labels").split(",")
         scales = cfg.get(self.name, "scaling_factors").split(",")
-        analysis = cfg.get(self.name, "columns_to_preprocess").split(",")
 
         # Ensure have the same number of values
         lengths = [len(cols), len(labels), len(scales)]
@@ -208,7 +207,6 @@ class Manufacturer(ABC):
                 "raw_label": cols[i],
                 "clean_label": labels[i],
                 "scale": scaling_factor,
-                "included_analysis": labels[i] in analysis,
             }
             self.measurands.append(entry)
 
