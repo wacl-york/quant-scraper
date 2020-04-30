@@ -12,8 +12,10 @@ import logging
 import argparse
 import os
 import sys
+import string
 import math
 import configparser
+import re
 from datetime import date, timedelta, datetime, time
 import traceback
 
@@ -191,10 +193,28 @@ def process(manufacturer):
     """
     summary = {"manufacturer": manufacturer.name, "devices": {}}
     for devid in manufacturer.device_ids:
-        summary["devices"][devid] = None
+        # Default number of clean values is 0, useful for instances where
+        # there is an error in validating the data.
+        # Duplicated 2 lines of code with manufacturer.validate_data(), but
+        # can't a better way of handling it.
+        # If obtained this from manufacturer.validate_data() then it would
+        # mean that:
+        # a) Have to call manufacturer.validate_data() for every device,
+        #    even those that didn't have any raw data downloaded or CSV
+        #    parsed failed.
+        # b) validate_data() wouldn't be able to raise errors as would
+        # instead return this default empty count dict.
+        # This would mean either lose out on informative error messages,
+        # or having to log errors from with manufacturer.validate_data(),
+        # and I would rather keep logging outside of library code
+        summary["devices"][devid] = {
+            m["clean_label"]: 0 for m in manufacturer.measurands
+        }
+        summary["devices"][devid]["timestamp"] = 0
+
+        manufacturer.clean_data[devid] = None
 
         if manufacturer.raw_data[devid] is None:
-            manufacturer.clean_data[devid] = None
             continue
 
         try:
@@ -207,14 +227,12 @@ def process(manufacturer):
                         devid
                     )
                 )
-                manufacturer.clean_data[devid] = None
                 continue
 
         except utils.DataParseError as ex:
             logging.error(
                 "Unable to parse data into CSV for device {}: {}".format(devid, ex)
             )
-            manufacturer.clean_data[devid] = None
             continue
 
         try:
@@ -226,7 +244,6 @@ def process(manufacturer):
                         devid
                     )
                 )
-                manufacturer.clean_data[devid] = None
                 continue
 
             # Success, at least 1 clean measurement has been found
@@ -235,7 +252,6 @@ def process(manufacturer):
 
         except utils.ValidateDataError as ex:
             logging.error("Data validation error for device {}: {}".format(devid, ex))
-            manufacturer.clean_data[devid] = None
 
     return summary
 
@@ -357,6 +373,8 @@ def summarise_run(summaries):
     output.append("+" * 80)
     output.append("Summary")
     output.append("-" * 80)
+
+    tables = []
     for manu in summaries:
         output.append(manu["manufacturer"])
         output.append("~" * len(manu["manufacturer"]))
@@ -376,6 +394,9 @@ def summarise_run(summaries):
             )
 
         if len(avail_devices) > 0:
+            n_subtables = 0
+            full_header = []
+            full_rows = []
             # Obtain number of expected recordings
             exp_recordings = manu["frequency"] * 24
 
@@ -390,6 +411,8 @@ def summarise_run(summaries):
             # Iterate through all possible columns to be tabulated
             # only displaying 'max_cols' in a row
             while len(measurands) > 0:
+                n_subtables += 1
+
                 row_measurands = measurands[:max_cols]
                 # Device ID isn't stored in measurands
                 n_cols = len(row_measurands) + 1
@@ -400,7 +423,7 @@ def summarise_run(summaries):
 
                 # Rows are organised into same width '|' delimited cols
                 # With 2 additional bars around  device ID
-                row_format = "||{:>{}}||" + "{:>{}}|" * (n_cols - 1)
+                row_format = "{:>{}}|" * n_cols
 
                 # Format and log header with horizontal lines above and below
                 # Next 2 lines form zip of (col1, col_width, col2, col_width...)
@@ -411,8 +434,15 @@ def summarise_run(summaries):
                 output.append(header_row)
                 output.append("-" * len(header_row))
 
+                # On sub-tables after the first, don't need the Device ID (index
+                # 0) header again
+                if n_subtables == 1:
+                    full_header.extend(col_names)
+                else:
+                    full_header.extend(col_names[1:])
+
                 # Print one device on each row
-                for device in avail_devices:
+                for i, device in enumerate(avail_devices):
                     # Form a list with device ID + measurements in same order as
                     # column header
                     row = [device[0]]
@@ -420,21 +450,33 @@ def summarise_run(summaries):
                     for m in row_measurands:
                         n_clean = device[1][m]
                         if m == "timestamp":
-                            col = "{} ({:.0f}%)".format(
-                                n_clean, n_clean / exp_recordings * 100
-                            )
+                            try:
+                                pct = n_clean / exp_recordings * 100
+                            except ZeroDivisionError:
+                                pct = 0
+                            col = "{} ({:.0f}%)".format(n_clean, pct)
                         elif m == "Location":
                             col = str(n_clean)
                         else:
-                            col = "{} ({:.0f}%)".format(
-                                n_clean, n_clean / num_timestamps * 100
-                            )
+                            try:
+                                pct = n_clean / num_timestamps * 100
+                            except ZeroDivisionError:
+                                pct = 0
+                            col = "{} ({:.0f}%)".format(n_clean, pct)
                         row.append(col)
                     # Print row to log, again using zip to get flat list of
                     # [val1, col_width, val2, col_width, ...]
                     row_vals = zip(row, [column_width] * n_cols)
                     row_vals = [item for sublist in row_vals for item in sublist]
                     output.append(row_format.format(*row_vals))
+
+                    # On sub-tables after the first, don't need the Device ID (index
+                    # 0) header again
+                    if n_subtables == 1:
+                        full_rows.append(row)
+                    else:
+                        full_rows[i].extend(row[1:])
+
                 # Now have gone through all devices, can remove these columns
                 for m in row_measurands:
                     measurands.remove(m)
@@ -442,10 +484,134 @@ def summarise_run(summaries):
                 # Table end horizontal line
                 output.append("-" * len(header_row))
 
+            # Save manufacturer table
+            manu_table = []
+            manu_table.append(full_header)
+            manu_table.extend(full_rows)
+            tables.append(manu_table)
+
     # Summary end horizontal line
     output.append("+" * 80)
 
+    return output, tables
+
+
+def generate_manufacturer_html(template, manufacturer, table, **kwargs):
+    """
+    Builds HTML summarising a manufacturer's device status.
+
+    Args:
+        template (str): The HTML template of the manufacturer section.
+          Formatted as Python string.Template(), with $placeholder tags.
+          Expects 3 placeholders: 
+              - manufacturer: Manufacturer name
+              - header: Table header inside <tr> tags, so needs list of <th>.
+              - body: Table body inside <tbody> tags, so needs <tr> and <td>
+                tags.
+        manufacturer (str): Manufacturer name.
+        table (list): Python 2D list containing table contents. First entry is
+            the headers, and all subsequent entries are rows.
+        kwargs:
+            CSS styling parameters.
+            'th_style': Default style to apply to th tags.
+            'td_style': Default style to apply to td tags.
+            'pass_colour': Background colour for cells with 100% availability.
+            'fail_colour': Background colour for cells with 0% availability.
+            'warning_colour': Background colour for cells with <100% but >0% availability.
+
+    Returns:
+        A string containing HTML representing this manufacturer section.
+    """
+    header = table[0]
+    body = table[1:]
+
+    # Extract each cell and replace with <th> tags
+    head_tags = "\n".join(
+        ["<th style='{}'>{}</th>".format(kwargs["th_style"], val) for val in header]
+    )
+    row_tags = []
+    for row in body:
+        column_tags = []
+        for cell in row:
+            cell_style = kwargs["td_style"]
+
+            # Add background colour formatting if cell contains a % availability
+            pct_search = re.search("\(([0-9]+)\%\)", cell)
+            if pct_search:
+                raw_pct = pct_search.group(1)
+
+                # Floats can be parsed as ints in Python
+                # Saves having to write is_int() function
+                if utils.is_float(raw_pct):
+                    pct = int(raw_pct)
+                else:
+                    pct = -1
+
+                if pct == 100:
+                    cell_colour = kwargs["pass_colour"]
+                elif pct == 0:
+                    cell_colour = kwargs["fail_colour"]
+                elif pct > 0 and pct < 100:
+                    cell_colour = kwargs["warning_colour"]
+                else:
+                    cell_colour = "#ffffff"
+
+                cell_style = cell_style + "background-color: {};".format(cell_colour)
+
+            column_tags.append("<td style='{}'>{}</td>".format(cell_style, cell))
+
+        row_tags.append("<tr>{}</tr>".format("\n".join(column_tags)))
+    body_tags = "\n".join(row_tags)
+    output = template.substitute(
+        manufacturer=manufacturer, header=head_tags, body=body_tags
+    )
     return output
+
+
+def generate_html_summary(
+    manufacturers, tables, email_template, manufacturer_template, manufacturer_styles
+):
+    """
+    Generates an HTML document summarising the device availability from the
+    scraping run.
+
+    Fills in a relatively empty HTML document template with a section
+    corresponding to each manufacturer included in the scraping run.
+
+    Calls generate_manufacturer_summary() for each manufacturer and stitches
+    these HTML snippets into the main document template.
+
+    Args:
+        manufacturers (str[]): List of manufacturer names.
+        tables (list): 3D list, where each outer-most index represents the
+            summary table corresponding to each manufacturer, with the next inner
+            dimension representing a row in the table, and the final dimension being
+            columns.
+        email_template (str): The HTML template of the whole document.
+          Formatted as Python string.Template(), with $placeholder tags.
+          Expect 1 placeholders: 
+              - summary: Whatever HTML markup is going to consitute the body of
+              this document. This placeholder is located inside a <div>, which
+              is directly inside the <body> tags.
+        manufacturer_template (str): The HTML template of the manufacturer section.
+        manufacturer styles (dict): Various CSS settings to pass to
+            generate_manufacturer_summary().
+
+    Returns:
+        A string containing a fully completed HTML document.
+    """
+    # Build HTML for each manufacturer section
+    manufacturer_sections = [
+        generate_manufacturer_html(
+            manufacturer_template, manu, tab, **manufacturer_styles
+        )
+        for manu, tab in zip(manufacturers, tables)
+    ]
+    manufacturer_html = "\n".join(manufacturer_sections)
+
+    # Fill in email template
+    email_html = email_template.substitute(summary=manufacturer_html)
+    return email_html
 
 
 def main():
@@ -457,7 +623,7 @@ def main():
 
     Returns: None.
     """
-    # Setup logging, which for now just logs to stdout
+    # Setup logging, which for now just logs to stderr
     try:
         setup_loggers()
     except utils.SetupError:
@@ -569,12 +735,49 @@ def main():
                     "text/csv",
                 )
 
-    full_summary = summarise_run(summaries)
+    full_summary, tables = summarise_run(summaries)
     # Print summary to log and stdout
     for line in full_summary:
         logging.info(line)
     for line in full_summary:
         print(line)
+
+    # TODO:
+    # add tests and error handling
+    # Refactor summarise_run this to be a function that firstly generates tabular (Python
+    #   list) summary, with 2 separate functions: one to form into ASCII
+    #   table and the other in HTML
+    # Should this be in big helper function?
+
+    if cfg.getboolean("Main", "save_html_summary"):
+        email_template_fn = cfg.get("HTMLSummary", "email_template")
+        manufacturer_template_fn = cfg.get("HTMLSummary", "manufacturer_template")
+
+        # Load style options for manufacturer summary
+        styles = {
+            "th_style": cfg.get("HTMLSummary", "th_style"),
+            "td_style": cfg.get("HTMLSummary", "td_style"),
+            "pass_colour": cfg.get("HTMLSummary", "pass_colour"),
+            "fail_colour": cfg.get("HTMLSummary", "fail_colour"),
+            "warning_colour": cfg.get("HTMLSummary", "warning_colour"),
+        }
+
+        # Load both templates
+        with open(email_template_fn, "r") as infile:
+            email_template_raw = infile.read()
+        email_template = string.Template(email_template_raw)
+
+        with open(manufacturer_template_fn, "r") as infile:
+            manufacturer_template_raw = infile.read()
+        manufacturer_template = string.Template(manufacturer_template_raw)
+
+        email_html = generate_html_summary(
+            man_strings, tables, email_template, manufacturer_template, styles
+        )
+
+        fn = cfg.get("HTMLSummary", "filename")
+        with open(fn, "w") as outfile:
+            outfile.write(email_html)
 
 
 if __name__ == "__main__":
