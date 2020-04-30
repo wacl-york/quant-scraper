@@ -1,0 +1,126 @@
+{
+    "local_folder_clean_data": "foo",
+    "local_folder_analysis_data": "foo",
+    "google_api_credentials_fn": "foo.json",
+    "gdrive_analysis_folder_id": "foo",
+    "upload_analysis_gdrive": false,
+    "time_resolution": "1Min",
+    "manufacturers": [
+        {
+            "name": "Aeroqual",
+            "fields": [
+                "NO2",
+                "O3",
+                "PM2.5",
+                "PM10"
+            ],
+            "devices": [
+                {
+                    "name": "dev1"
+                },
+                {
+                    "name": "dev2"
+                },
+                {
+                    "name": "dev3"
+                },
+                {
+                    "name": "dev4"
+                },
+                {
+                    "name": "dev5"
+                },
+                {
+                    "name": "dev6"
+                }
+            ]
+        },
+        {
+            "name": "AQMesh",
+            "fields": [
+                "CO2",
+                "NO",
+                "NO2",
+                "O3",
+                "PM1",
+                "PM2.5",
+                "PM10"
+            ],
+            "devices": [
+                {
+                    "name": "dev1"
+                },
+                {
+                    "name": "dev2"
+                },
+                {
+                    "name": "dev3"
+                },
+                {
+                    "name": "dev4"
+                },
+                {
+                    "name": "dev5"
+                },
+                {
+                    "name": "dev6"
+                }
+            ]
+        },
+        {
+            "name": "Zephyr",
+            "fields": [
+                "NO",
+                "NO2",
+                "O3",
+                "PM1",
+                "PM2.5",
+                "PM10"
+            ],
+            "devices": [
+                {
+                    "name": "dev1"
+                },
+                {
+                    "name": "dev2"
+                },
+                {
+                    "name": "dev3"
+                },
+                {
+                    "name": "dev4"
+                }
+            ]
+        },
+        {
+            "name": "QuantAQ",
+            "fields": [
+                "CO",
+                "CO2",
+                "NO",
+                "NO2",
+                "O3",
+                "PM1",
+                "PM2.5",
+                "PM10"
+            ],
+            "devices": [
+                {
+                    "name": "dev1"
+                },
+                {
+                    "name": "dev2"
+                },
+                {
+                    "name": "dev3"
+                },
+                {
+                    "name": "dev4"
+                },
+                {
+                    "name": "dev5"
+                }
+            ]
+        }
+    ]
+}
