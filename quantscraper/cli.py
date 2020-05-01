@@ -342,12 +342,8 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
 
 def summarise_run(summaries):
     """
-    Generates a tabular summary of the run.
-
-    For each manufacturer, the following information is displayed to screen:
-        - How many devices had available data
-        - The IDs of any devices that didn't record a single clean data point
-        - A table showing the number of clean recordings of each measurand
+    Generates a tabular summary of the run showing the number and % of available
+    valid recordings for each measurand.
 
     Args:
         summaries (list): A list of dictionaries, with each entry storing
@@ -359,44 +355,16 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        A list of strings, where each entry is a new line.
+        A 3D list, where each outermost entry corresponds to a 2D list for 
+        each manufacturer. The 2D list represents tabular data, where the
+        outer-most dimension is a row and the inner-most a column.
     """
-    # Give each column 11 chars, should be sufficient
-    # Only display the number of columns that within the
-    # specified maximum width at a time
-    # TODO These params should be in config
-    column_width = 13
-    max_screen_width = 110
-    max_cols = math.floor(max_screen_width / column_width)
-
-    output = []
-    output.append("+" * 80)
-    output.append("Summary")
-    output.append("-" * 80)
-
     tables = []
     for manu in summaries:
-        output.append(manu["manufacturer"])
-        output.append("~" * len(manu["manufacturer"]))
         avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
-        missing_devices = [
-            devid for devid, n_rows in manu["devices"].items() if n_rows is None
-        ]
-        output.append(
-            "{}/{} selected devices had available data over the specified time period.".format(
-                len(avail_devices), len(manu["devices"])
-            )
-        )
-
-        if len(missing_devices) > 0:
-            output.append(
-                "Devices with no available data: {}.".format(", ".join(missing_devices))
-            )
 
         if len(avail_devices) > 0:
-            n_subtables = 0
-            full_header = []
-            full_rows = []
+            manu_rows = []
             # Obtain number of expected recordings
             exp_recordings = manu["frequency"] * 24
 
@@ -408,92 +376,48 @@ def summarise_run(summaries):
             measurands.insert(0, "Location")
             measurands.insert(1, "timestamp")
 
-            # Iterate through all possible columns to be tabulated
-            # only displaying 'max_cols' in a row
-            while len(measurands) > 0:
-                n_subtables += 1
+            # Device ID isn't stored in measurands
+            col_names = ["Device ID"] + [
+                "Timestamps" if col == "timestamp" else col for col in measurands
+            ]
 
-                row_measurands = measurands[:max_cols]
-                # Device ID isn't stored in measurands
-                n_cols = len(row_measurands) + 1
-                col_names = ["Device ID"] + [
-                    "Timestamps" if col == "timestamp" else col
-                    for col in row_measurands
-                ]
+            # Print one device on each row
+            for device in avail_devices:
+                # Form a list with device ID + measurements in same order as
+                # column header
+                row = [device[0]]
+                num_timestamps = device[1]["timestamp"]
+                for m in measurands:
+                    n_clean = device[1][m]
 
-                # Rows are organised into same width '|' delimited cols
-                # With 2 additional bars around  device ID
-                row_format = "{:>{}}|" * n_cols
-
-                # Format and log header with horizontal lines above and below
-                # Next 2 lines form zip of (col1, col_width, col2, col_width...)
-                header_vals = zip(col_names, [column_width] * n_cols)
-                header_vals = [item for sublist in header_vals for item in sublist]
-                header_row = row_format.format(*header_vals)
-                output.append("-" * len(header_row))
-                output.append(header_row)
-                output.append("-" * len(header_row))
-
-                # On sub-tables after the first, don't need the Device ID (index
-                # 0) header again
-                if n_subtables == 1:
-                    full_header.extend(col_names)
-                else:
-                    full_header.extend(col_names[1:])
-
-                # Print one device on each row
-                for i, device in enumerate(avail_devices):
-                    # Form a list with device ID + measurements in same order as
-                    # column header
-                    row = [device[0]]
-                    num_timestamps = device[1]["timestamp"]
-                    for m in row_measurands:
-                        n_clean = device[1][m]
-                        if m == "timestamp":
-                            try:
-                                pct = n_clean / exp_recordings * 100
-                            except ZeroDivisionError:
-                                pct = 0
-                            col = "{} ({:.0f}%)".format(n_clean, pct)
-                        elif m == "Location":
-                            col = str(n_clean)
-                        else:
-                            try:
-                                pct = n_clean / num_timestamps * 100
-                            except ZeroDivisionError:
-                                pct = 0
-                            col = "{} ({:.0f}%)".format(n_clean, pct)
-                        row.append(col)
-                    # Print row to log, again using zip to get flat list of
-                    # [val1, col_width, val2, col_width, ...]
-                    row_vals = zip(row, [column_width] * n_cols)
-                    row_vals = [item for sublist in row_vals for item in sublist]
-                    output.append(row_format.format(*row_vals))
-
-                    # On sub-tables after the first, don't need the Device ID (index
-                    # 0) header again
-                    if n_subtables == 1:
-                        full_rows.append(row)
+                    # Value is number of clean entries, except for Location
+                    # entry which is a string ('York')
+                    if m == "Location":
+                        col = str(n_clean)
                     else:
-                        full_rows[i].extend(row[1:])
+                        # Denominator is number of expected timestamps for #
+                        # timestamps, otherwise # timestamps available
+                        if m == "timestamp":
+                            denom = exp_recordings
+                        else:
+                            denom = num_timestamps
 
-                # Now have gone through all devices, can remove these columns
-                for m in row_measurands:
-                    measurands.remove(m)
+                        try:
+                            pct = n_clean / denom * 100
+                        except ZeroDivisionError:
+                            pct = 0
+                        col = "{} ({:.0f}%)".format(n_clean, pct)
 
-                # Table end horizontal line
-                output.append("-" * len(header_row))
+                    row.append(col)
+
+                manu_rows.append(row)
 
             # Save manufacturer table
-            manu_table = []
-            manu_table.append(full_header)
-            manu_table.extend(full_rows)
+            manu_table = [col_names]
+            manu_table.extend(manu_rows)
             tables.append(manu_table)
 
-    # Summary end horizontal line
-    output.append("+" * 80)
-
-    return output, tables
+    return tables
 
 
 def generate_manufacturer_html(template, manufacturer, table, **kwargs):
@@ -511,7 +435,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
         manufacturer (str): Manufacturer name.
         table (list): Python 2D list containing table contents. First entry is
             the headers, and all subsequent entries are rows.
-        kwargs:
+        kwargs (dict):
             CSS styling parameters.
             'th_style': Default style to apply to th tags.
             'td_style': Default style to apply to td tags.
@@ -612,6 +536,84 @@ def generate_html_summary(
     # Fill in email template
     email_html = email_template.substitute(summary=manufacturer_html)
     return email_html
+
+
+def generate_ascii_summary(
+    manufacturers, tables, column_width=13, max_screen_width=130
+):
+    """
+    Generates an plain-text ASCII summary of the data availability table.
+
+    If there is too much data to fit onto the screen at once (using 
+    max_screen_width argument), then the table is split into sub-tables,
+    each fitting within the desired screen width.
+
+    Args:
+        manufacturers (str[]): List of manufacturer names.
+        tables (list): 3D list, where each outer-most index represents the
+            summary table corresponding to each manufacturer, with the next inner
+            dimension representing a row in the table, and the final dimension being
+            columns.
+        column_width (int): Column width in spaces.
+        max_screen_width (int): Maximum horizontal space to use in spaces.
+
+    Returns:
+        A list of strings, where each entry is a new line.
+    """
+    # Currently the code calling this function doesn't set column_width or
+    # max_screen_width so they use the defaults. These values could be set from
+    # the config file instead, although I don't think this will be that useful
+    # so haven't implemented it
+    max_cols = math.floor(max_screen_width / column_width)
+
+    output = []
+    output.append("+" * 80)
+    output.append("Summary")
+    output.append("-" * 80)
+
+    for manufacturer, manu_table in zip(manufacturers, tables):
+        output.append(manufacturer)
+        output.append("~" * len(manufacturer))
+
+        # +/- 1 dotted everywhere are related to Device ID, as need to display
+        # this column on every subtable, as well as usual counting <-> 0-index
+        # transforms
+        num_measurands = len(manu_table[0]) - 1
+        cur_min_col = 1
+        while num_measurands > 0:
+            num_measurands_subtable = min(max_cols - 1, num_measurands)
+            cur_max_col = cur_min_col + num_measurands_subtable - 1
+            row_format = "||{:>{}}||" + "{:>{}}|" * num_measurands_subtable
+
+            # Headers
+            col_names = [manu_table[0][0]] + manu_table[0][
+                cur_min_col : (cur_max_col + 1)
+            ]
+            header_vals = zip(col_names, [column_width] * (num_measurands_subtable + 1))
+            header_vals = [item for sublist in header_vals for item in sublist]
+            header_row = row_format.format(*header_vals)
+            output.append("-" * len(header_row))
+            output.append(header_row)
+            output.append("-" * len(header_row))
+
+            # Rows
+            for raw_row in manu_table[1:]:
+                row = [raw_row[0]] + raw_row[cur_min_col : (cur_max_col + 1)]
+                row_vals = zip(row, [column_width] * (num_measurands_subtable + 1))
+                row_vals = [item for sublist in row_vals for item in sublist]
+                output.append(row_format.format(*row_vals))
+
+            # Update counters for next sub-table
+            num_measurands -= num_measurands_subtable
+            cur_min_col = cur_max_col + 1
+
+            # Table end horizontal line
+            output.append("-" * len(header_row))
+
+    # Summary end horizontal line
+    output.append("+" * 80)
+
+    return output
 
 
 def main():
@@ -735,20 +737,22 @@ def main():
                     "text/csv",
                 )
 
-    full_summary, tables = summarise_run(summaries)
+    # Summarise number of clean measurands into tabular format
+    summary_tables = summarise_run(summaries)
+
+    # Output table to screen
+    ascii_summary = generate_ascii_summary(man_strings, summary_tables)
     # Print summary to log and stdout
-    for line in full_summary:
+    for line in ascii_summary:
         logging.info(line)
-    for line in full_summary:
+    for line in ascii_summary:
         print(line)
 
     # TODO:
     # add tests and error handling
-    # Refactor summarise_run this to be a function that firstly generates tabular (Python
-    #   list) summary, with 2 separate functions: one to form into ASCII
-    #   table and the other in HTML
     # Should this be in big helper function?
 
+    # Add HTML summary if requested
     if cfg.getboolean("Main", "save_html_summary"):
         email_template_fn = cfg.get("HTMLSummary", "email_template")
         manufacturer_template_fn = cfg.get("HTMLSummary", "manufacturer_template")
@@ -772,7 +776,7 @@ def main():
         manufacturer_template = string.Template(manufacturer_template_raw)
 
         email_html = generate_html_summary(
-            man_strings, tables, email_template, manufacturer_template, styles
+            man_strings, summary_tables, email_template, manufacturer_template, styles
         )
 
         fn = cfg.get("HTMLSummary", "filename")
