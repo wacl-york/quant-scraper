@@ -700,6 +700,108 @@ class TestProcess(unittest.TestCase):
         )
 
 
+class TestSummariseRun(unittest.TestCase):
+
+    # Not going to test that input is sensible, i.e. all counts are valid positive
+    # ints, and no measurand is > timestamps...
+    # Is this fair or should I test a greater range of inputs?
+    # Likewise, what error conditions should be tested?
+    # I.e. could test that the code handles all missing dict attributes, but is
+    # this necessary, given that the input into this function is automated, and
+    # so shouldn't ever be missing any attributes. I.e. frequency and location
+    # are set in Manufacturer constructor and will have raised error there if
+    # missing
+
+    def test_success(self):
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "frequency": 5,
+                "devices": {
+                    "dev1": {"co2": 5, "no": 0, "timestamp": 10, "Location": "York"},
+                    "dev2": {"co2": 5, "no": 1, "timestamp": 10, "Location": "Sweden"},
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "o3": 1,
+                        "no": 0,
+                        "timestamp": 1,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {"o3": 0, "no": 0, "timestamp": 0, "Location": "NYC"},
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "York", "10 (8%)", "5 (50%)", "0 (0%)"],
+                ["dev2", "Sweden", "10 (8%)", "5 (50%)", "1 (10%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (100%)"],
+                ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+    def test_success2(self):
+        # Test with more clean data
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "frequency": 4,
+                "devices": {
+                    "dev1": {"co2": 48, "no": 32, "timestamp": 96, "Location": "York"},
+                    "dev2": {
+                        "co2": 68,
+                        "no": 42,
+                        "timestamp": 82,
+                        "Location": "Sweden",
+                    },
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "o3": 766,
+                        "no": 1358,
+                        "timestamp": 1358,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {
+                        "o3": 323,
+                        "no": 232,
+                        "timestamp": 829,
+                        "Location": "NYC",
+                    },
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
+                ["dev2", "Sweden", "82 (85%)", "68 (83%)", "42 (51%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+
 class TestManufacturerFactory(unittest.TestCase):
     def test_aeroqual_success(self):
         cfg = configparser.ConfigParser()

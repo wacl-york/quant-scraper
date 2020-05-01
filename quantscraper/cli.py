@@ -355,7 +355,7 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        A 3D list, where each outermost entry corresponds to a 2D list for 
+        A 3D list, where each outermost entry corresponds to a 2D list for
         each manufacturer. The 2D list represents tabular data, where the
         outer-most dimension is a row and the inner-most a column.
     """
@@ -418,124 +418,6 @@ def summarise_run(summaries):
             tables.append(manu_table)
 
     return tables
-
-
-def generate_manufacturer_html(template, manufacturer, table, **kwargs):
-    """
-    Builds HTML summarising a manufacturer's device status.
-
-    Args:
-        template (str): The HTML template of the manufacturer section.
-          Formatted as Python string.Template(), with $placeholder tags.
-          Expects 3 placeholders: 
-              - manufacturer: Manufacturer name
-              - header: Table header inside <tr> tags, so needs list of <th>.
-              - body: Table body inside <tbody> tags, so needs <tr> and <td>
-                tags.
-        manufacturer (str): Manufacturer name.
-        table (list): Python 2D list containing table contents. First entry is
-            the headers, and all subsequent entries are rows.
-        kwargs (dict):
-            CSS styling parameters.
-            'th_style': Default style to apply to th tags.
-            'td_style': Default style to apply to td tags.
-            'pass_colour': Background colour for cells with 100% availability.
-            'fail_colour': Background colour for cells with 0% availability.
-            'warning_colour': Background colour for cells with <100% but >0% availability.
-
-    Returns:
-        A string containing HTML representing this manufacturer section.
-    """
-    header = table[0]
-    body = table[1:]
-
-    # Extract each cell and replace with <th> tags
-    head_tags = "\n".join(
-        ["<th style='{}'>{}</th>".format(kwargs["th_style"], val) for val in header]
-    )
-    row_tags = []
-    for row in body:
-        column_tags = []
-        for cell in row:
-            cell_style = kwargs["td_style"]
-
-            # Add background colour formatting if cell contains a % availability
-            pct_search = re.search("\(([0-9]+)\%\)", cell)
-            if pct_search:
-                raw_pct = pct_search.group(1)
-
-                # Floats can be parsed as ints in Python
-                # Saves having to write is_int() function
-                if utils.is_float(raw_pct):
-                    pct = int(raw_pct)
-                else:
-                    pct = -1
-
-                if pct == 100:
-                    cell_colour = kwargs["pass_colour"]
-                elif pct == 0:
-                    cell_colour = kwargs["fail_colour"]
-                elif pct > 0 and pct < 100:
-                    cell_colour = kwargs["warning_colour"]
-                else:
-                    cell_colour = "#ffffff"
-
-                cell_style = cell_style + "background-color: {};".format(cell_colour)
-
-            column_tags.append("<td style='{}'>{}</td>".format(cell_style, cell))
-
-        row_tags.append("<tr>{}</tr>".format("\n".join(column_tags)))
-    body_tags = "\n".join(row_tags)
-    output = template.substitute(
-        manufacturer=manufacturer, header=head_tags, body=body_tags
-    )
-    return output
-
-
-def generate_html_summary(
-    manufacturers, tables, email_template, manufacturer_template, manufacturer_styles
-):
-    """
-    Generates an HTML document summarising the device availability from the
-    scraping run.
-
-    Fills in a relatively empty HTML document template with a section
-    corresponding to each manufacturer included in the scraping run.
-
-    Calls generate_manufacturer_summary() for each manufacturer and stitches
-    these HTML snippets into the main document template.
-
-    Args:
-        manufacturers (str[]): List of manufacturer names.
-        tables (list): 3D list, where each outer-most index represents the
-            summary table corresponding to each manufacturer, with the next inner
-            dimension representing a row in the table, and the final dimension being
-            columns.
-        email_template (str): The HTML template of the whole document.
-          Formatted as Python string.Template(), with $placeholder tags.
-          Expect 1 placeholders: 
-              - summary: Whatever HTML markup is going to consitute the body of
-              this document. This placeholder is located inside a <div>, which
-              is directly inside the <body> tags.
-        manufacturer_template (str): The HTML template of the manufacturer section.
-        manufacturer styles (dict): Various CSS settings to pass to
-            generate_manufacturer_summary().
-
-    Returns:
-        A string containing a fully completed HTML document.
-    """
-    # Build HTML for each manufacturer section
-    manufacturer_sections = [
-        generate_manufacturer_html(
-            manufacturer_template, manu, tab, **manufacturer_styles
-        )
-        for manu, tab in zip(manufacturers, tables)
-    ]
-    manufacturer_html = "\n".join(manufacturer_sections)
-
-    # Fill in email template
-    email_html = email_template.substitute(summary=manufacturer_html)
-    return email_html
 
 
 def generate_ascii_summary(
@@ -629,7 +511,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
     Args:
         template (str): The HTML template of the manufacturer section.
           Formatted as Python string.Template(), with $placeholder tags.
-          Expects 3 placeholders: 
+          Expects 3 placeholders:
               - manufacturer: Manufacturer name
               - header: Table header inside <tr> tags, so needs list of <th>.
               - body: Table body inside <tbody> tags, so needs <tr> and <td>
@@ -688,9 +570,13 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
         row_tags.append("<tr>{}</tr>".format("\n".join(column_tags)))
     body_tags = "\n".join(row_tags)
-    output = template.substitute(
-        manufacturer=manufacturer, header=head_tags, body=body_tags
-    )
+    try:
+        output = template.substitute(
+            manufacturer=manufacturer, header=head_tags, body=body_tags
+        )
+    except ValueError:
+        logging.error("Cannot fill manufacturer template placeholders.")
+        output = template.template
     return output
 
 
@@ -715,7 +601,7 @@ def generate_html_summary(
             columns.
         email_template (str): The HTML template of the whole document.
           Formatted as Python string.Template(), with $placeholder tags.
-          Expect 1 placeholders: 
+          Expect 1 placeholder:
               - summary: Whatever HTML markup is going to consitute the body of
               this document. This placeholder is located inside a <div>, which
               is directly inside the <body> tags.
@@ -736,7 +622,12 @@ def generate_html_summary(
     manufacturer_html = "\n".join(manufacturer_sections)
 
     # Fill in email template
-    email_html = email_template.substitute(summary=manufacturer_html)
+    try:
+        email_html = email_template.substitute(summary=manufacturer_html)
+    except ValueError:
+        logging.error("Cannot fill email template placeholders.")
+        email_html = email_template.template
+
     return email_html
 
 
@@ -778,11 +669,7 @@ def main():
         logging.info("Manufacturer: {}".format(man_class))
         try:
             manufacturer = manufacturer_factory(man_class, cfg)
-        except utils.DataParseError:
-            logging.error("Error instantiating Manufacturer instance.")
-            logging.error(traceback.format_exc())
-            continue
-        except KeyError as ex:
+        except (utils.DataParseError, KeyError):
             logging.error("Error instantiating Manufacturer instance.")
             logging.error(traceback.format_exc())
             continue
@@ -872,14 +759,23 @@ def main():
     for line in ascii_summary:
         print(line)
 
-    # TODO:
-    # add tests and error handling
-    # Should this be in big helper function?
-
     # Add HTML summary if requested
     if cfg.getboolean("Main", "save_html_summary"):
+
+        # Load both templates
         email_template_fn = cfg.get("HTMLSummary", "email_template")
         manufacturer_template_fn = cfg.get("HTMLSummary", "manufacturer_template")
+
+        try:
+            email_template = utils.load_html_template(email_template_fn)
+        except utils.DataReadingError as ex:
+            logging.error("Cannot load email HTML template: {}".format(ex))
+            email_template = None
+        try:
+            manufacturer_template = utils.load_html_template(manufacturer_template_fn)
+        except utils.DataReadingError as ex:
+            logging.error("Cannot load manufacturer HTML template: {}".format(ex))
+            manufacturer_template = None
 
         # Load style options for manufacturer summary
         styles = {
@@ -890,22 +786,19 @@ def main():
             "warning_colour": cfg.get("HTMLSummary", "warning_colour"),
         }
 
-        # Load both templates
-        with open(email_template_fn, "r") as infile:
-            email_template_raw = infile.read()
-        email_template = string.Template(email_template_raw)
+        if email_template is not None and manufacturer_template is not None:
+            email_html = generate_html_summary(
+                man_strings,
+                summary_tables,
+                email_template,
+                manufacturer_template,
+                styles,
+            )
 
-        with open(manufacturer_template_fn, "r") as infile:
-            manufacturer_template_raw = infile.read()
-        manufacturer_template = string.Template(manufacturer_template_raw)
-
-        email_html = generate_html_summary(
-            man_strings, summary_tables, email_template, manufacturer_template, styles
-        )
-
-        fn = cfg.get("HTMLSummary", "filename")
-        with open(fn, "w") as outfile:
-            outfile.write(email_html)
+        try:
+            utils.save_plaintext(email_html, cfg.get("HTMLSummary", "filename"))
+        except utils.DataSavingError as ex:
+            logging.error("Unable to save HTML email: {}".format(ex))
 
 
 if __name__ == "__main__":

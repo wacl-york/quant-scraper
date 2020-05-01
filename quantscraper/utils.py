@@ -275,3 +275,48 @@ def save_dataframe(data, filename):
         data.to_csv(filename)
     except FileNotFoundError as ex:
         raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+
+
+def save_plaintext(text, filename):
+    """
+    Saves string directly to disk.
+
+    Args:
+        - data (str): Text to be saved.
+        - filename (str): Location to save data to
+
+    Returns:
+        None. Saves text to disk as a side-effect.
+    """
+    if os.path.isfile(filename):
+        raise DataSavingError("File {} already exists.".format(filename))
+
+    try:
+        with open(filename, "w") as outfile:
+            outfile.write(text)
+    except FileNotFoundError as ex:
+        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+
+
+def load_html_template(filename):
+    """
+    Loads HTML template file into memory as string.Template object.
+
+    The file must use $placeholder formatting to be compatible with
+    string.Template.
+
+    Args:
+        filename (str): Location of the HTML file.
+
+    Returns:
+        A string.Template object.
+    """
+    try:
+        with open(filename, "r") as infile:
+            template_raw = infile.read()
+    except FileNotFoundError:
+        raise DataReadingError("Cannot find file {}".format(filename))
+    except IOError:
+        raise DataReadingError("Unable to read file {}.".format(filename)) from None
+
+    return Template(template_raw)

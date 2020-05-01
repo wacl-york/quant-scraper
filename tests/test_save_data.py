@@ -8,12 +8,12 @@
 
 import unittest
 import configparser
+import string
 from unittest.mock import patch, Mock, call, mock_open
 import pandas as pd
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.utils as utils
 import quantscraper.cli as cli
-from test_utils import build_mock_response
 
 
 class TestSaveCSVFile(unittest.TestCase):
@@ -416,6 +416,101 @@ class TestSaveDataFrame(unittest.TestCase):
 
                 with self.assertRaises(utils.DataSavingError):
                     utils.save_dataframe(dummy_data, "path/to/fn.csv")
+
+
+class TestSavePlaintext(unittest.TestCase):
+    # Tests utils.save_plaintext function that writes a string to disk
+    def test_success(self):
+        m = mock_open()
+        mock_write = Mock()
+        mock_outfile = Mock(write=mock_write)
+
+        dummy_text = "foobar\ncar"
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+            # Need to patch os.path to force file to not exist
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=False)
+
+                utils.save_plaintext(dummy_text, "path/to/fn.txt")
+                # Check calls are as expected
+                m.assert_called_once_with("path/to/fn.txt", "w")
+
+    def test_file_exists(self):
+        # Check that the DataSavingError is raised when file exists
+        m = mock_open()
+        dummy_text = "foobar\ncar"
+        with patch("quantscraper.utils.open", m):
+            # Mock file existing
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=True)
+
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_plaintext(dummy_text, "path/to/fn.txt")
+
+    def test_dir_doesnt_exist(self):
+        m = mock_open()
+        # open raises FileNotFoundError if dir doesn't exist
+        m.side_effect = FileNotFoundError()
+        dummy_text = "foobar\ncar"
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+            # Need to patch os.path to force file to not exist
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=False)
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_plaintext(dummy_text, "path/to/fn.txt")
+
+
+class TestLoadHTMLTemplate(unittest.TestCase):
+    # Tests that utils.load_html_tempate() can load file
+    def test_success(self):
+        m = mock_open(read_data="foo")
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+
+            res = utils.load_html_template("path/to/fn.txt")
+            # Check calls are as expected
+            m.assert_called_once_with("path/to/fn.txt", "r")
+            # Assert return value is a template and has the appropriate value
+            self.assertIsInstance(res, string.Template)
+            self.assertEqual(res.substitute(), "foo")
+
+    def test_success_with_placeholder(self):
+        m = mock_open(read_data="foo = $value")
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+
+            res = utils.load_html_template("path/to/fn.txt")
+            # Check calls are as expected
+            m.assert_called_once_with("path/to/fn.txt", "r")
+            # Assert return value is a template and has the appropriate value
+            self.assertIsInstance(res, string.Template)
+            self.assertEqual(res.substitute(value=5), "foo = 5")
+
+    def test_file_doesnt_exist(self):
+        # Check that the DataReadingError is raised when file doesn't exist
+        m = mock_open()
+        m.side_effect = FileNotFoundError("")
+        with patch("quantscraper.utils.open", m):
+            with self.assertRaises(utils.DataReadingError):
+                utils.load_html_template("path/to/fn.txt")
+
+    def test_io_error(self):
+        # Check that the DataReadingError is raised when generic IOError is
+        # encountered
+        m = mock_open()
+        m.side_effect = IOError("")
+        with patch("quantscraper.utils.open", m):
+            with self.assertRaises(utils.DataReadingError):
+                utils.load_html_template("path/to/fn.txt")
+
+    # Template() parses any string, which is what file.read() returns,
+    # so can't test that the template is correctly formatted here
 
 
 if __name__ == "__main__":
