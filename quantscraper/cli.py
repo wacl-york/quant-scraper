@@ -610,10 +610,134 @@ def generate_ascii_summary(
             # Table end horizontal line
             output.append("-" * len(header_row))
 
+            # Save manufacturer table
+            manu_table = []
+            manu_table.append(full_header)
+            manu_table.extend(full_rows)
+            tables.append(manu_table)
+
     # Summary end horizontal line
     output.append("+" * 80)
 
+    return output, tables
+
+
+def generate_manufacturer_html(template, manufacturer, table, **kwargs):
+    """
+    Builds HTML summarising a manufacturer's device status.
+
+    Args:
+        template (str): The HTML template of the manufacturer section.
+          Formatted as Python string.Template(), with $placeholder tags.
+          Expects 3 placeholders: 
+              - manufacturer: Manufacturer name
+              - header: Table header inside <tr> tags, so needs list of <th>.
+              - body: Table body inside <tbody> tags, so needs <tr> and <td>
+                tags.
+        manufacturer (str): Manufacturer name.
+        table (list): Python 2D list containing table contents. First entry is
+            the headers, and all subsequent entries are rows.
+        kwargs:
+            CSS styling parameters.
+            'th_style': Default style to apply to th tags.
+            'td_style': Default style to apply to td tags.
+            'pass_colour': Background colour for cells with 100% availability.
+            'fail_colour': Background colour for cells with 0% availability.
+            'warning_colour': Background colour for cells with <100% but >0% availability.
+
+    Returns:
+        A string containing HTML representing this manufacturer section.
+    """
+    header = table[0]
+    body = table[1:]
+
+    # Extract each cell and replace with <th> tags
+    head_tags = "\n".join(
+        ["<th style='{}'>{}</th>".format(kwargs["th_style"], val) for val in header]
+    )
+    row_tags = []
+    for row in body:
+        column_tags = []
+        for cell in row:
+            cell_style = kwargs["td_style"]
+
+            # Add background colour formatting if cell contains a % availability
+            pct_search = re.search("\(([0-9]+)\%\)", cell)
+            if pct_search:
+                raw_pct = pct_search.group(1)
+
+                # Floats can be parsed as ints in Python
+                # Saves having to write is_int() function
+                if utils.is_float(raw_pct):
+                    pct = int(raw_pct)
+                else:
+                    pct = -1
+
+                if pct == 100:
+                    cell_colour = kwargs["pass_colour"]
+                elif pct == 0:
+                    cell_colour = kwargs["fail_colour"]
+                elif pct > 0 and pct < 100:
+                    cell_colour = kwargs["warning_colour"]
+                else:
+                    cell_colour = "#ffffff"
+
+                cell_style = cell_style + "background-color: {};".format(cell_colour)
+
+            column_tags.append("<td style='{}'>{}</td>".format(cell_style, cell))
+
+        row_tags.append("<tr>{}</tr>".format("\n".join(column_tags)))
+    body_tags = "\n".join(row_tags)
+    output = template.substitute(
+        manufacturer=manufacturer, header=head_tags, body=body_tags
+    )
     return output
+
+
+def generate_html_summary(
+    manufacturers, tables, email_template, manufacturer_template, manufacturer_styles
+):
+    """
+    Generates an HTML document summarising the device availability from the
+    scraping run.
+
+    Fills in a relatively empty HTML document template with a section
+    corresponding to each manufacturer included in the scraping run.
+
+    Calls generate_manufacturer_summary() for each manufacturer and stitches
+    these HTML snippets into the main document template.
+
+    Args:
+        manufacturers (str[]): List of manufacturer names.
+        tables (list): 3D list, where each outer-most index represents the
+            summary table corresponding to each manufacturer, with the next inner
+            dimension representing a row in the table, and the final dimension being
+            columns.
+        email_template (str): The HTML template of the whole document.
+          Formatted as Python string.Template(), with $placeholder tags.
+          Expect 1 placeholders: 
+              - summary: Whatever HTML markup is going to consitute the body of
+              this document. This placeholder is located inside a <div>, which
+              is directly inside the <body> tags.
+        manufacturer_template (str): The HTML template of the manufacturer section.
+        manufacturer styles (dict): Various CSS settings to pass to
+            generate_manufacturer_summary().
+
+    Returns:
+        A string containing a fully completed HTML document.
+    """
+    # Build HTML for each manufacturer section
+    manufacturer_sections = [
+        generate_manufacturer_html(
+            manufacturer_template, manu, tab, **manufacturer_styles
+        )
+        for manu, tab in zip(manufacturers, tables)
+    ]
+    manufacturer_html = "\n".join(manufacturer_sections)
+
+    # Fill in email template
+    email_html = email_template.substitute(summary=manufacturer_html)
+    return email_html
 
 
 def main():
