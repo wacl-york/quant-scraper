@@ -702,15 +702,19 @@ class TestProcess(unittest.TestCase):
 
 class TestSummariseRun(unittest.TestCase):
 
-    # Not going to test that input is sensible, i.e. all counts are valid positive
-    # ints, and no measurand is > timestamps...
-    # Is this fair or should I test a greater range of inputs?
-    # Likewise, what error conditions should be tested?
-    # I.e. could test that the code handles all missing dict attributes, but is
-    # this necessary, given that the input into this function is automated, and
-    # so shouldn't ever be missing any attributes. I.e. frequency and location
-    # are set in Manufacturer constructor and will have raised error there if
-    # missing
+    # utils.summarise_run has limited error handling, as most of the input data
+    # is automatically generated with default values (i.e. the number of clean
+    # measurands which default to 0).
+    # The 2 pieces that derive from user input are the device locations and
+    # expected recording frequencies. Error handling for these values is
+    # provided.
+    # Basic error handling covers the remaining potential sources of error, such
+    # as if timestamps or any measurands are missing, although there aren't any
+    # further checks on the values themselves.
+    # I.e. not testing that all counts are valid positive ints, and no
+    # measurand has more clean values than available timestamps.
+
+    # Mention that measurands based on first device
 
     def test_success(self):
         summaries = [
@@ -790,6 +794,182 @@ class TestSummariseRun(unittest.TestCase):
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
+                ["dev2", "Sweden", "82 (85%)", "68 (83%)", "42 (51%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+    def test_no_frequency(self):
+        # No manufacturer frequency in input dict.
+        # Should display available timestamps without % of expected
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "devices": {
+                    "dev1": {"co2": 5, "no": 0, "timestamp": 10, "Location": "York"},
+                    "dev2": {"co2": 5, "no": 1, "timestamp": 10, "Location": "Sweden"},
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "o3": 1,
+                        "no": 0,
+                        "timestamp": 1,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {"o3": 0, "no": 0, "timestamp": 0, "Location": "NYC"},
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "York", "10", "5 (50%)", "0 (0%)"],
+                ["dev2", "Sweden", "10", "5 (50%)", "1 (10%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (100%)"],
+                ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+    def test_no_location(self):
+        # When location isn't available should just have empty column
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "frequency": 4,
+                "devices": {
+                    "dev1": {"co2": 48, "no": 32, "timestamp": 96},
+                    "dev2": {"co2": 68, "no": 42, "timestamp": 82},
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "o3": 766,
+                        "no": 1358,
+                        "timestamp": 1358,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {
+                        "o3": 323,
+                        "no": 232,
+                        "timestamp": 829,
+                        "Location": "NYC",
+                    },
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "", "96 (100%)", "48 (50%)", "32 (33%)"],
+                ["dev2", "", "82 (85%)", "68 (83%)", "42 (51%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+    def test_no_measurands(self):
+        # When measurands aren't available in dict then should just have empty
+        # columns
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "frequency": 4,
+                "devices": {
+                    "dev1": {"co2": 48, "no": 32, "timestamp": 96, "Location": "York"},
+                    "dev2": {"no": 42, "timestamp": 82, "Location": "Sweden",},
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "no": 1358,
+                        "timestamp": 1358,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {"o3": 323, "timestamp": 829, "Location": "NYC",},
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
+                ["dev2", "Sweden", "82 (85%)", "", "42 (51%)"],
+            ],
+            [
+                ["Device ID", "Location", "Timestamps", "no", "o3"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", ""],
+                ["manu2dev2", "NYC", "829 (58%)", "", "323 (39%)"],
+            ],
+        ]
+        res = cli.summarise_run(summaries)
+        self.assertEqual(res, exp)
+
+    def test_no_timestamp(self):
+        # Likewise no timestamp available should make the associated column
+        # empty and remove the %s from other measurands
+        summaries = [
+            {
+                "manufacturer": "foo",
+                "frequency": 4,
+                "devices": {
+                    "dev1": {"co2": 48, "no": 32, "Location": "York"},
+                    "dev2": {
+                        "co2": 68,
+                        "no": 42,
+                        "timestamp": 82,
+                        "Location": "Sweden",
+                    },
+                },
+            },
+            {
+                "manufacturer": "bar",
+                "frequency": 60,
+                "devices": {
+                    "manu2dev1": {
+                        "o3": 766,
+                        "no": 1358,
+                        "timestamp": 1358,
+                        "Location": "Honolulu",
+                    },
+                    "manu2dev2": {
+                        "o3": 323,
+                        "no": 232,
+                        "timestamp": 829,
+                        "Location": "NYC",
+                    },
+                },
+            },
+        ]
+        exp = [
+            [
+                ["Device ID", "Location", "Timestamps", "co2", "no"],
+                ["dev1", "York", "", "48", "32"],
                 ["dev2", "Sweden", "82 (85%)", "68 (83%)", "42 (51%)"],
             ],
             [

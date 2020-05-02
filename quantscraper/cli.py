@@ -366,12 +366,21 @@ def summarise_run(summaries):
         if len(avail_devices) > 0:
             manu_rows = []
             # Obtain number of expected recordings
-            exp_recordings = manu["frequency"] * 24
+            try:
+                exp_recordings = manu["frequency"] * 24
+            except KeyError:
+                exp_recordings = None
 
             # Get header row for table, with timestamp, location first then alphabetically
-            measurands = list(avail_devices[0][1].keys())
-            measurands.remove("timestamp")
-            measurands.remove("Location")
+            measurands = list(set([k for dev in avail_devices for k in dev[1].keys()]))
+            try:
+                measurands.remove("timestamp")
+            except ValueError:
+                pass
+            try:
+                measurands.remove("Location")
+            except ValueError:
+                pass
             measurands.sort()
             measurands.insert(0, "Location")
             measurands.insert(1, "timestamp")
@@ -386,9 +395,16 @@ def summarise_run(summaries):
                 # Form a list with device ID + measurements in same order as
                 # column header
                 row = [device[0]]
-                num_timestamps = device[1]["timestamp"]
+                try:
+                    num_timestamps = device[1]["timestamp"]
+                except KeyError:
+                    num_timestamps = None
+
                 for m in measurands:
-                    n_clean = device[1][m]
+                    try:
+                        n_clean = device[1][m]
+                    except KeyError:
+                        n_clean = ""
 
                     # Value is number of clean entries, except for Location
                     # entry which is a string ('York')
@@ -406,7 +422,13 @@ def summarise_run(summaries):
                             pct = n_clean / denom * 100
                         except ZeroDivisionError:
                             pct = 0
-                        col = "{} ({:.0f}%)".format(n_clean, pct)
+                        except TypeError:
+                            pct = None
+
+                        if pct is not None:
+                            col = "{} ({:.0f}%)".format(n_clean, pct)
+                        else:
+                            col = str(n_clean)
 
                     row.append(col)
 
@@ -421,7 +443,7 @@ def summarise_run(summaries):
 
 
 def generate_ascii_summary(
-    manufacturers, tables, column_width=13, max_screen_width=130
+    manufacturers, tables, column_width=13, max_screen_width=100
 ):
     """
     Generates an plain-text ASCII summary of the data availability table.
@@ -492,16 +514,10 @@ def generate_ascii_summary(
             # Table end horizontal line
             output.append("-" * len(header_row))
 
-            # Save manufacturer table
-            manu_table = []
-            manu_table.append(full_header)
-            manu_table.extend(full_rows)
-            tables.append(manu_table)
-
     # Summary end horizontal line
     output.append("+" * 80)
 
-    return output, tables
+    return output
 
 
 def generate_manufacturer_html(template, manufacturer, table, **kwargs):
