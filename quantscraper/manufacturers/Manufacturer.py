@@ -272,11 +272,17 @@ class Manufacturer(ABC):
         requested_measurands_raw = [r["raw_label"] for r in self.measurands]
         requested_measurands_clean = [r["clean_label"] for r in self.measurands]
 
+        # Store counts of number of clean values
+        n_clean_vals = {k: 0 for k in requested_measurands_clean}
+        n_clean_vals["timestamp"] = 0
+        # List to store clean data in
+        clean_data = [["timestamp", "measurand", "value"]]
+
         if data is None:
             raise utils.ValidateDataError("Input data is None.")
 
         if len(data) == 0:
-            raise utils.ValidateDataError("0 errors in input data.")
+            raise utils.ValidateDataError("0 rows in input data.")
 
         # Remove duplicate rows. Set obtains unique values but only runs on
         # hashable datatypes, such as tuples, rather than lists
@@ -311,12 +317,6 @@ class Manufacturer(ABC):
             )
 
         available_measurands = list(measurand_indices.keys())
-
-        # Store counts of number of clean values
-        n_clean_vals = {k: 0 for k in requested_measurands_clean}
-        n_clean_vals["timestamp"] = 0
-        # List to store clean data in
-        clean_data = [["timestamp", "measurand", "value"]]
 
         # Start at 1 to skip header
         for i in range(1, nrows):
