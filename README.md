@@ -25,9 +25,9 @@ And can be used through
 
 # Installing QUANTscraper
 
-Once a suitable version of Python has been made available, the `quantscraper` package can be installed from GitHub by using the following command (NB: this URL will be changed to use a stable release tag, or master branch rather than current development branch).
+Once a suitable version of Python has been made available, the `quantscraper` package can be installed from GitHub by using the following command.
 
-`pip install git+https://github.com/wacl-york/QUANTscraper.git@initial-release`
+`pip install git+https://github.com/wacl-york/QUANTscraper.git@master`
 
 # Running the scraper
 
