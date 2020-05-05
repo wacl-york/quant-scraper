@@ -411,15 +411,8 @@ def summarise_run(summaries):
                     if m == "Location":
                         col = str(n_clean)
                     else:
-                        # Denominator is number of expected timestamps for #
-                        # timestamps, otherwise # timestamps available
-                        if m == "timestamp":
-                            denom = exp_recordings
-                        else:
-                            denom = num_timestamps
-
                         try:
-                            pct = n_clean / denom * 100
+                            pct = n_clean / exp_recordings * 100
                         except ZeroDivisionError:
                             pct = 0
                         except TypeError:

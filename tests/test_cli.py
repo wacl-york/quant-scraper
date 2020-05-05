@@ -743,12 +743,12 @@ class TestSummariseRun(unittest.TestCase):
         exp = [
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
-                ["dev1", "York", "10 (8%)", "5 (50%)", "0 (0%)"],
-                ["dev2", "Sweden", "10 (8%)", "5 (50%)", "1 (10%)"],
+                ["dev1", "York", "10 (8%)", "5 (4%)", "0 (0%)"],
+                ["dev2", "Sweden", "10 (8%)", "5 (4%)", "1 (1%)"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (100%)"],
+                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (0%)"],
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
         ]
@@ -794,12 +794,12 @@ class TestSummariseRun(unittest.TestCase):
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
-                ["dev2", "Sweden", "82 (85%)", "68 (83%)", "42 (51%)"],
+                ["dev2", "Sweden", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
-                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
         ]
         res = cli.summarise_run(summaries)
@@ -833,12 +833,12 @@ class TestSummariseRun(unittest.TestCase):
         exp = [
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
-                ["dev1", "York", "10", "5 (50%)", "0 (0%)"],
-                ["dev2", "Sweden", "10", "5 (50%)", "1 (10%)"],
+                ["dev1", "York", "10", "5", "0"],
+                ["dev2", "Sweden", "10", "5", "1"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (100%)"],
+                ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (0%)"],
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
         ]
@@ -879,12 +879,12 @@ class TestSummariseRun(unittest.TestCase):
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "", "96 (100%)", "48 (50%)", "32 (33%)"],
-                ["dev2", "", "82 (85%)", "68 (83%)", "42 (51%)"],
+                ["dev2", "", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
-                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
         ]
         res = cli.summarise_run(summaries)
@@ -919,12 +919,12 @@ class TestSummariseRun(unittest.TestCase):
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
-                ["dev2", "Sweden", "82 (85%)", "", "42 (51%)"],
+                ["dev2", "Sweden", "82 (85%)", "", "42 (44%)"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", ""],
-                ["manu2dev2", "NYC", "829 (58%)", "", "323 (39%)"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", ""],
+                ["manu2dev2", "NYC", "829 (58%)", "", "323 (22%)"],
             ],
         ]
         res = cli.summarise_run(summaries)
@@ -969,13 +969,13 @@ class TestSummariseRun(unittest.TestCase):
         exp = [
             [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
-                ["dev1", "York", "", "48", "32"],
-                ["dev2", "Sweden", "82 (85%)", "68 (83%)", "42 (51%)"],
+                ["dev1", "York", "", "48 (50%)", "32 (33%)"],
+                ["dev2", "Sweden", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
             [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (100%)", "766 (56%)"],
-                ["manu2dev2", "NYC", "829 (58%)", "232 (28%)", "323 (39%)"],
+                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
+                ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
         ]
         res = cli.summarise_run(summaries)
