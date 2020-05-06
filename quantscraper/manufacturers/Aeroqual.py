@@ -120,6 +120,10 @@ class Aeroqual(Manufacturer):
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
+        except re.exceptions.ConnectionError as ex:
+            raise LoginError(
+                "Connection error when logging in\n{}".format(ex)
+            ) from None
 
         # Check for authentication
         soup = BeautifulSoup(result.text, features="html.parser")
@@ -153,6 +157,10 @@ class Aeroqual(Manufacturer):
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError("Cannot select device.\n{}".format(ex)) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when selecting device.\n{}".format(ex)
+            ) from None
 
         try:
             result = self.session.post(
@@ -166,12 +174,20 @@ class Aeroqual(Manufacturer):
                 msg = "Unable to generate data for selected date range."
             msg = msg + "\n" + str(ex)
             raise DataDownloadError(msg) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when generating data.\n{}".format(ex)
+            ) from None
 
         try:
             result = self.session.get(self.dl_url, headers=self.dl_headers)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError("Cannot download data\n{}".format(ex)) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when downloading data.\n{}".format(ex)
+            ) from None
 
         raw = result.text
         return raw

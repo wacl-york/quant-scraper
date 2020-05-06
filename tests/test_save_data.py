@@ -8,12 +8,12 @@
 
 import unittest
 import configparser
+import string
 from unittest.mock import patch, Mock, call, mock_open
 import pandas as pd
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.utils as utils
 import quantscraper.cli as cli
-from test_utils import build_mock_response
 
 
 class TestSaveCSVFile(unittest.TestCase):
@@ -91,8 +91,10 @@ class TestSaveCleanData(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    # Set dummy device IDs
+    # Set dummy device properties
     cfg.set("Aeroqual", "devices", "1,2")
+    cfg.set("Aeroqual", "devices_web", "1,2")
+    cfg.set("Aeroqual", "device_locations", "foo,foo")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
@@ -107,7 +109,7 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -117,7 +119,15 @@ class TestSaveCleanData(unittest.TestCase):
                         call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
                     ]
                     self.assertEqual(calls, exp_calls)
-                    print(mock_isdir.mock_calls)
+                    # Function should output names of files that are
+                    # successfully saved
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_foobar.csv",
+                            "dummyFolder/Aeroqual_2_foobar.csv",
+                        ],
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -149,13 +159,47 @@ class TestSaveCleanData(unittest.TestCase):
             with patch("quantscraper.utils.save_csv_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "today", "clean")
+                    res = cli.save_data(aeroqual, "dummyFolder", "today", "clean")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
                         [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_today.csv"
                     )
+                    # Function should only return filename from first file that
+                    # saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_today.csv"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # First file saves successfully but second fails as that filename
+        # already exists
+        aeroqual = Aeroqual.Aeroqual(self.cfg)
+        # Set dummy data
+        aeroqual._clean_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "clean")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_foobar.csv",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.csv"])
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -228,8 +272,10 @@ class TestSaveRawData(unittest.TestCase):
     cfg = configparser.ConfigParser()
     cfg.read("example.ini")
 
-    # Set dummy device IDs
+    # Set dummy device properties
     cfg.set("Aeroqual", "devices", "1,2")
+    cfg.set("Aeroqual", "devices_web", "1,2")
+    cfg.set("Aeroqual", "device_locations", "foo,foo")
 
     def test_success(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg)
@@ -244,7 +290,7 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
+                    res = cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     calls = mock_save.mock_calls
                     exp_calls = [
@@ -254,7 +300,14 @@ class TestSaveRawData(unittest.TestCase):
                         call([[7, 8, 9]], "dummyFolder/Aeroqual_2_day.json"),
                     ]
                     self.assertEqual(calls, exp_calls)
-                    print(mock_isdir.mock_calls)
+                    # should return both filenames as saved successfully
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_day.json",
+                            "dummyFolder/Aeroqual_2_day.json",
+                        ],
+                    )
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -286,13 +339,47 @@ class TestSaveRawData(unittest.TestCase):
             with patch("quantscraper.utils.save_json_file") as mock_save:
 
                 try:
-                    cli.save_data(aeroqual, "dummyFolder", "day", "raw")
+                    res = cli.save_data(aeroqual, "dummyFolder", "day", "raw")
 
                     # This inner function should only be called once on account
                     # of second device not having data
                     mock_save.assert_called_once_with(
                         [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
                     )
+                    # should return both filenames as saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_day.json"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # First file saves successfully but second fails as that filename
+        # already exists
+        aeroqual = Aeroqual.Aeroqual(self.cfg)
+        # Set dummy data
+        aeroqual._raw_data = {"1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8, 9]]}
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(aeroqual, "dummyFolder", "foobar", "raw")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]],
+                            "dummyFolder/Aeroqual_1_foobar.json",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.json"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.json"])
                 except:
                     self.fail("Test raised error when should have passed.")
 
@@ -329,6 +416,101 @@ class TestSaveDataFrame(unittest.TestCase):
 
                 with self.assertRaises(utils.DataSavingError):
                     utils.save_dataframe(dummy_data, "path/to/fn.csv")
+
+
+class TestSavePlaintext(unittest.TestCase):
+    # Tests utils.save_plaintext function that writes a string to disk
+    def test_success(self):
+        m = mock_open()
+        mock_write = Mock()
+        mock_outfile = Mock(write=mock_write)
+
+        dummy_text = "foobar\ncar"
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+            # Need to patch os.path to force file to not exist
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=False)
+
+                utils.save_plaintext(dummy_text, "path/to/fn.txt")
+                # Check calls are as expected
+                m.assert_called_once_with("path/to/fn.txt", "w")
+
+    def test_file_exists(self):
+        # Check that the DataSavingError is raised when file exists
+        m = mock_open()
+        dummy_text = "foobar\ncar"
+        with patch("quantscraper.utils.open", m):
+            # Mock file existing
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=True)
+
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_plaintext(dummy_text, "path/to/fn.txt")
+
+    def test_dir_doesnt_exist(self):
+        m = mock_open()
+        # open raises FileNotFoundError if dir doesn't exist
+        m.side_effect = FileNotFoundError()
+        dummy_text = "foobar\ncar"
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+            # Need to patch os.path to force file to not exist
+            with patch("quantscraper.utils.os.path") as mock_path:
+                mock_path.isfile = Mock(return_value=False)
+                with self.assertRaises(utils.DataSavingError):
+                    utils.save_plaintext(dummy_text, "path/to/fn.txt")
+
+
+class TestLoadHTMLTemplate(unittest.TestCase):
+    # Tests that utils.load_html_tempate() can load file
+    def test_success(self):
+        m = mock_open(read_data="foo")
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+
+            res = utils.load_html_template("path/to/fn.txt")
+            # Check calls are as expected
+            m.assert_called_once_with("path/to/fn.txt", "r")
+            # Assert return value is a template and has the appropriate value
+            self.assertIsInstance(res, string.Template)
+            self.assertEqual(res.substitute(), "foo")
+
+    def test_success_with_placeholder(self):
+        m = mock_open(read_data="foo = $value")
+
+        # Save file to specified folder with filename template:
+        with patch("quantscraper.utils.open", m):
+
+            res = utils.load_html_template("path/to/fn.txt")
+            # Check calls are as expected
+            m.assert_called_once_with("path/to/fn.txt", "r")
+            # Assert return value is a template and has the appropriate value
+            self.assertIsInstance(res, string.Template)
+            self.assertEqual(res.substitute(value=5), "foo = 5")
+
+    def test_file_doesnt_exist(self):
+        # Check that the DataReadingError is raised when file doesn't exist
+        m = mock_open()
+        m.side_effect = FileNotFoundError("")
+        with patch("quantscraper.utils.open", m):
+            with self.assertRaises(utils.DataReadingError):
+                utils.load_html_template("path/to/fn.txt")
+
+    def test_io_error(self):
+        # Check that the DataReadingError is raised when generic IOError is
+        # encountered
+        m = mock_open()
+        m.side_effect = IOError("")
+        with patch("quantscraper.utils.open", m):
+            with self.assertRaises(utils.DataReadingError):
+                utils.load_html_template("path/to/fn.txt")
+
+    # Template() parses any string, which is what file.read() returns,
+    # so can't test that the template is correctly formatted here
 
 
 if __name__ == "__main__":

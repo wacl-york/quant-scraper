@@ -1,5 +1,5 @@
 ![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=master)
-![Test coverage](resources/coverage.svg)
+![Test coverage](https://webfiles.york.ac.uk/WACL/QUANT/QUANTscraper/resources/coverage.svg)
 
 # QUANTscraper
 
@@ -25,9 +25,9 @@ And can be used through
 
 # Installing QUANTscraper
 
-Once a suitable version of Python has been made available, the `quantscraper` package can be installed from GitHub by using the following command (NB: this URL will be changed to use a stable release tag, or master branch rather than current development branch).
+Once a suitable version of Python has been made available, the `quantscraper` package can be installed from GitHub by using the following command.
 
-`pip install git+https://github.com/wacl-york/QUANTscraper.git@initial-release`
+`pip install git+https://github.com/wacl-york/QUANTscraper.git@master`
 
 # Running the scraper
 
@@ -53,9 +53,14 @@ In addition to the CLI scraping program there is a pre-processing script, which 
 In particular, it converts the data from being saved in long format with 1 file per device, into wide format with 1 file per manufacturer.
 It also resamples the time-series so that the air quality data from all manufacturers is saved at the same sampling rate.
 
-This program likewise requires the same configuration ini file as the scraper, as is run with:
+The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation and accepts a JSON configuration file. 
+The JSON file specifies which manufacturers and devices should be scraped, along with other settings similar to the `.ini` file used by the scraper.
+An example file is provided in this repo for reference.
 
-`quant_preprocess example.ini`
+`quant_preprocess example_preprocessing.json`
+
+By default the program pre-processes the previous day's cleaned data, although this behaviour can be configured by specifying the date at the top level of the JSON file, i.e. `'date': '2020-03-17'`.
+If provided, it must be in YYYY-mm-dd format.
 
 # Contributing to development
 

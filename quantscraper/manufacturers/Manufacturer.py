@@ -13,6 +13,7 @@
     data.
 """
 
+import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
 import quantscraper.utils as utils
@@ -24,9 +25,14 @@ class Manufacturer(ABC):
 
     Attributes:
         - name (str, abstract): A human readable name for the manufacturer.
+        - recording_frequency (double): Expected recording frequency of all
+            devices from this manufacturer,
+        measured as number of measurements an hour.
         - devices (str[]): A list of human readable IDs for its devices.
         - devices_web (str[]): A list of IDs for its devices as used by the
             corresponding website for scraping data.
+        - device_locations (str[]): A list of recording locations for each device,
+            used for providing context in the output log.
         - raw_data (dict(JSON)): The raw data from the devices. The keys of the
             dict are the IDs stored in 'devices', and the entries are the
             corresponding raw data saved in a JSON-serializable format, as returned
@@ -62,20 +68,36 @@ class Manufacturer(ABC):
         """
 
     @property
-    def devices(self):
+    def recording_frequency(self):
+        """
+        Expected recording frequency of all devices from this manufacturer,
+        measured as number of measurements an hour.
+        """
+        return self._recording_frequency
+
+    @property
+    def device_ids(self):
         """
         A list of human readable IDs for the devices, stored as a
         list of strings.
         """
-        return self._devices
+        return self._device_ids
 
     @property
-    def devices_web(self):
+    def device_web_ids(self):
         """
         A list of IDs for its devices as used by the website for scraping data,
         stored as a list of strings.
         """
-        return self._devices_web
+        return self._device_web_ids
+
+    @property
+    def device_locations(self):
+        """
+        A list of recording locations for each device,
+        stored as a list of strings.
+        """
+        return self._device_locations
 
     @property
     def raw_data(self):
@@ -172,11 +194,13 @@ class Manufacturer(ABC):
         """
         self._raw_data = {}
         self._clean_data = {}
-        self._devices = []
-        self._devices_web = []
 
-        self.device_ids = cfg.get(self.name, "devices").split(",")
-        self.device_web_ids = cfg.get(self.name, "devices_web").split(",")
+        self._device_ids = cfg.get(self.name, "devices").split(",")
+        self._device_web_ids = cfg.get(self.name, "devices_web").split(",")
+        self._device_locations = cfg.get(self.name, "device_locations").split(",")
+        self._recording_frequency = cfg.getfloat(
+            self.name, "recording_frequency_per_hour"
+        )
         # Name of column that holds timestamp
         self.timestamp_col = cfg.get(self.name, "timestamp_column")
         # String providing the format of the timestamp
@@ -188,9 +212,19 @@ class Manufacturer(ABC):
         cols = cfg.get(self.name, "columns_to_validate").split(",")
         labels = cfg.get(self.name, "column_labels").split(",")
         scales = cfg.get(self.name, "scaling_factors").split(",")
-        analysis = cfg.get(self.name, "columns_to_preprocess").split(",")
 
-        # Ensure have the same number of values
+        # Ensure have the same number of values for device properties
+        lengths = [
+            len(self.device_ids),
+            len(self.device_web_ids),
+            len(self.device_locations),
+        ]
+        if len(set(lengths)) != 1:
+            raise utils.DataParseError(
+                "Options 'devices', 'devices_web' and 'device_locations' must have the same number of entries."
+            )
+
+        # Ensure have the same number of values for column properties
         lengths = [len(cols), len(labels), len(scales)]
         if len(set(lengths)) != 1:
             raise utils.DataParseError(
@@ -208,7 +242,6 @@ class Manufacturer(ABC):
                 "raw_label": cols[i],
                 "clean_label": labels[i],
                 "scale": scaling_factor,
-                "included_analysis": labels[i] in analysis,
             }
             self.measurands.append(entry)
 
@@ -239,11 +272,24 @@ class Manufacturer(ABC):
         requested_measurands_raw = [r["raw_label"] for r in self.measurands]
         requested_measurands_clean = [r["clean_label"] for r in self.measurands]
 
+        # Store counts of number of clean values
+        n_clean_vals = {k: 0 for k in requested_measurands_clean}
+        n_clean_vals["timestamp"] = 0
+        # List to store clean data in
+        clean_data = [["timestamp", "measurand", "value"]]
+
         if data is None:
             raise utils.ValidateDataError("Input data is None.")
 
         if len(data) == 0:
-            raise utils.ValidateDataError("0 errors in input data.")
+            raise utils.ValidateDataError("0 rows in input data.")
+
+        # Remove duplicate rows. Set obtains unique values but only runs on
+        # hashable datatypes, such as tuples, rather than lists
+        header = data[0]
+        data_vals = [list(t) for t in set(tuple(element) for element in data[0:])]
+        data_vals.insert(0, header)
+        data = data_vals
 
         # TODO put desired output timestamp format in config?
         output_format = "%Y-%m-%d %H:%M:%S"
@@ -271,12 +317,6 @@ class Manufacturer(ABC):
             )
 
         available_measurands = list(measurand_indices.keys())
-
-        # Store counts of number of clean values
-        n_clean_vals = {k: 0 for k in requested_measurands_clean}
-        n_clean_vals["timestamp"] = 0
-        # List to store clean data in
-        clean_data = [["timestamp", "measurand", "value"]]
 
         # Start at 1 to skip header
         for i in range(1, nrows):
