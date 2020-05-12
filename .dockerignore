@@ -1,5 +1,9 @@
-config.ini
-preprocessing.json
+# Application configuration
+*.ini
+*.json
+run_docker_cusom.sh
+run_docker_daily.sh
+
 __pycache__/*
 *.swp
 data/*
@@ -16,6 +20,3 @@ data/*
 # Testing related outputs
 .coverage
 .coverage.*
-
-# GoogleAPI
-googleapi_credentials.json
