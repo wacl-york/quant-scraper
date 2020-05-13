@@ -13,8 +13,8 @@ from unittest.mock import patch, MagicMock, Mock, call
 
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
 from test_utils import build_mock_today
+from quantscraper.manufacturers.Manufacturer import Device
 
 
 class TestSetupLoggers(unittest.TestCase):
@@ -70,11 +70,23 @@ class TestParseArgs(unittest.TestCase):
 
             self.assertEqual(res, mock_args)
             mock_ArgumentParser.assert_called_once_with(description="QUANT scraper")
-            mock_addargument.assert_called_once_with(
-                "configfilepath",
-                metavar="FILE",
-                help="Location of INI configuration file",
-            )
+
+            actual_addargument_calls = mock_addargument.mock_calls
+            exp_addargument_calls = [
+                call(
+                    "configfilepath",
+                    metavar="FILE",
+                    help="Location of INI configuration file",
+                ),
+                call(
+                    "--devices",
+                    metavar="DEVICES",
+                    nargs="+",
+                    help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+                ),
+            ]
+            self.assertEqual(actual_addargument_calls, exp_addargument_calls)
+
             mock_parseargs.assert_called_once_with()
 
 
@@ -287,12 +299,12 @@ class TestScrape(unittest.TestCase):
     def test_success_all_ids(self):
         # Test success on all devices
         mock_scrape = Mock(side_effect=["foo", "bar", "cat"])
-        man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={},
-            scrape_device=mock_scrape,
-        )
+        man = Mock(scrape_device=mock_scrape,)
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.scrape(man)
 
@@ -312,17 +324,19 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly
-        self.assertEqual(man.raw_data, {"1": "foo", "2": "bar", "3": "cat"})
+        self.assertEqual(dev1.raw_data, "foo")
+        self.assertEqual(dev2.raw_data, "bar")
+        self.assertEqual(dev3.raw_data, "cat")
 
     def test_mixed_success(self):
         # 2nd device raises utils.DataDownloadError
         mock_scrape = Mock(side_effect=["foo", utils.DataDownloadError(""), "cat"])
-        man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={},
-            scrape_device=mock_scrape,
-        )
+        man = Mock(scrape_device=mock_scrape,)
+
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
 
         with self.assertLogs(level="INFO") as cm:
             cli.scrape(man)
@@ -341,7 +355,9 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly
-        self.assertEqual(man.raw_data, {"1": "foo", "2": None, "3": "cat"})
+        self.assertEqual(dev1.raw_data, "foo")
+        self.assertEqual(dev2.raw_data, None)
+        self.assertEqual(dev3.raw_data, "cat")
 
     def test_all_failure(self):
         # all devices fail to download data
@@ -352,12 +368,11 @@ class TestScrape(unittest.TestCase):
                 utils.DataDownloadError(""),
             ]
         )
-        man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={},
-            scrape_device=mock_scrape,
-        )
+        man = Mock(scrape_device=mock_scrape,)
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
 
         with self.assertLogs(level="INFO") as cm:
             cli.scrape(man)
@@ -376,7 +391,9 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly
-        self.assertEqual(man.raw_data, {"1": None, "2": None, "3": None})
+        self.assertEqual(dev1.raw_data, None)
+        self.assertEqual(dev2.raw_data, None)
+        self.assertEqual(dev3.raw_data, None)
 
 
 class TestProcess(unittest.TestCase):
@@ -403,14 +420,18 @@ class TestProcess(unittest.TestCase):
             ]
         )
         man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
-            clean_data={},
-            measurands=[{"clean_label": 5, "raw_label": 8}],
+            measurands=[{"id": 5, "webid": 8}],
             parse_to_csv=mock_parse,
             validate_data=mock_validate,
         )
+        dev1 = Device("1", "4", "foo")
+        dev1.raw_data = [1, 2, 3]
+        dev2 = Device("2", "5", "foo")
+        dev2.raw_data = [8, 10]
+        dev3 = Device("3", "6", "foo")
+        dev3.raw_data = ["foo", "bar"]
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
@@ -439,14 +460,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(validate_calls, exp_calls)
 
         # And that the clean data fields are set accordingly
-        self.assertEqual(
-            man.clean_data,
-            {
-                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                "2": [["foo", "bar"], [4, 2], [4, 1]],
-                "3": [["no2", "co2"], [12, 14]],
-            },
-        )
+        self.assertEqual(dev1.clean_data, [["a", "b"], [1, 2], [4, 5], [7, 8]])
+        self.assertEqual(dev2.clean_data, [["foo", "bar"], [4, 2], [4, 1]])
+        self.assertEqual(dev3.clean_data, [["no2", "co2"], [12, 14]])
 
     def test_no_raw_data(self):
         # Device 3 has no raw data
@@ -464,14 +480,18 @@ class TestProcess(unittest.TestCase):
         )
 
         man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": None},
-            measurands=[{"clean_label": 5, "raw_label": 8}],
-            clean_data={},
+            measurands=[{"id": 5, "webid": 8}],
             parse_to_csv=mock_parse,
             validate_data=mock_validate,
         )
+        dev1 = Device("1", "4", "foo")
+        dev1.raw_data = [1, 2, 3]
+        dev2 = Device("2", "5", "foo")
+        dev2.raw_data = [8, 10]
+        dev3 = Device("3", "6", "foo")
+        dev3.raw_data = None
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
@@ -489,14 +509,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(validate_calls, exp_calls)
 
         # And that the clean data fields are set accordingly
-        self.assertEqual(
-            man.clean_data,
-            {
-                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                "2": [["no2", "co2"], [12, 14]],
-                "3": None,
-            },
-        )
+        self.assertEqual(dev1.clean_data, [["a", "b"], [1, 2], [4, 5], [7, 8]])
+        self.assertEqual(dev2.clean_data, [["no2", "co2"], [12, 14]])
+        self.assertEqual(dev3.clean_data, None)
 
     def test_parse_failure(self):
         # Device 2 fails in parsing to CSV
@@ -515,14 +530,18 @@ class TestProcess(unittest.TestCase):
         )
 
         man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
-            measurands=[{"clean_label": 5, "raw_label": 8}],
-            clean_data={},
+            measurands=[{"id": 5, "webid": 8}],
             parse_to_csv=mock_parse,
             validate_data=mock_validate,
         )
+        dev1 = Device("1", "4", "foo")
+        dev1.raw_data = [1, 2, 3]
+        dev2 = Device("2", "5", "foo")
+        dev2.raw_data = [8, 10]
+        dev3 = Device("3", "6", "foo")
+        dev3.raw_data = ["foo", "bar"]
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
@@ -547,14 +566,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(validate_calls, exp_calls)
 
         # And that the clean data fields are set accordingly
-        self.assertEqual(
-            man.clean_data,
-            {
-                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                "2": None,
-                "3": [["no2", "co2"], [12, 14]],
-            },
-        )
+        self.assertEqual(dev1.clean_data, [["a", "b"], [1, 2], [4, 5], [7, 8]])
+        self.assertEqual(dev2.clean_data, None)
+        self.assertEqual(dev3.clean_data, [["no2", "co2"], [12, 14]])
 
     def test_no_rows(self):
         # Device 2 parses to CSV, but has no rows of data
@@ -573,14 +587,18 @@ class TestProcess(unittest.TestCase):
         )
 
         man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
-            measurands=[{"clean_label": 5, "raw_label": 8}],
-            clean_data={},
+            measurands=[{"id": 5, "webid": 8}],
             parse_to_csv=mock_parse,
             validate_data=mock_validate,
         )
+        dev1 = Device("1", "4", "foo")
+        dev1.raw_data = [1, 2, 3]
+        dev2 = Device("2", "5", "foo")
+        dev2.raw_data = [8, 10]
+        dev3 = Device("3", "6", "foo")
+        dev3.raw_data = ["foo", "bar"]
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
@@ -605,15 +623,9 @@ class TestProcess(unittest.TestCase):
         ]
         self.assertEqual(validate_calls, exp_calls)
 
-        # And that the clean data fields are set accordingly
-        self.assertEqual(
-            man.clean_data,
-            {
-                "1": [["a", "b"], [1, 2], [4, 5], [7, 8]],
-                "2": None,
-                "3": [["no2", "co2"], [12, 14]],
-            },
-        )
+        self.assertEqual(dev1.clean_data, [["a", "b"], [1, 2], [4, 5], [7, 8]])
+        self.assertEqual(dev2.clean_data, None)
+        self.assertEqual(dev3.clean_data, [["no2", "co2"], [12, 14]])
 
     def test_validate_failure(self):
         # Device 1 fails in validation call
@@ -633,14 +645,18 @@ class TestProcess(unittest.TestCase):
         )
 
         man = Mock(
-            device_ids=["1", "2", "3"],
-            device_web_ids=["4", "5", "6"],
-            raw_data={"1": [1, 2, 3], "2": [8, 10], "3": ["foo", "bar"]},
-            measurands=[{"clean_label": 5, "raw_label": 8}],
-            clean_data={},
+            measurands=[{"id": 5, "webid": 8}],
             parse_to_csv=mock_parse,
             validate_data=mock_validate,
         )
+        dev1 = Device("1", "4", "foo")
+        dev1.raw_data = [1, 2, 3]
+        dev2 = Device("2", "5", "foo")
+        dev2.raw_data = [8, 10]
+        dev3 = Device("3", "6", "foo")
+        dev3.raw_data = ["foo", "bar"]
+        man.devices = [dev1, dev2, dev3]
+
         with self.assertLogs(level="INFO") as cm:
             cli.process(man)
 
@@ -664,14 +680,9 @@ class TestProcess(unittest.TestCase):
         self.assertEqual(validate_calls, exp_calls)
 
         # And that the clean data fields are set accordingly
-        self.assertEqual(
-            man.clean_data,
-            {
-                "1": None,
-                "2": [["foo", "bar"], [4, 2], [4, 1]],
-                "3": [["no2", "co2"], [12, 14]],
-            },
-        )
+        self.assertEqual(dev1.clean_data, None)
+        self.assertEqual(dev2.clean_data, [["foo", "bar"], [4, 2], [4, 1]])
+        self.assertEqual(dev3.clean_data, [["no2", "co2"], [12, 14]])
 
 
 class TestSummariseRun(unittest.TestCase):
@@ -954,58 +965,3 @@ class TestSummariseRun(unittest.TestCase):
         ]
         res = cli.summarise_run(summaries)
         self.assertEqual(res, exp)
-
-
-class TestManufacturerFactory(unittest.TestCase):
-    def test_aeroqual_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        option = "Aeroqual"
-
-        # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(option, cfg)
-        except:
-            self.fail("Error was unexpectedly raised.")
-
-    def test_aqmesh_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        option = "AQMesh"
-
-        # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(option, cfg)
-        except:
-            self.fail("Error was unexpectedly raised.")
-
-    def test_zephyr_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        option = "Zephyr"
-
-        # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(option, cfg)
-        except:
-            self.fail("Error was unexpectedly raised.")
-
-    def test_quantaq_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        option = "QuantAQ"
-
-        # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(option, cfg)
-        except:
-            self.fail("Error was unexpectedly raised.")
-
-    def test_key_error_raised(self):
-        # Typo on quantAQ, so factory should raise KeyError
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        option = "quantAQ"
-
-        with self.assertRaises(KeyError):
-            res = manufacturer_factory(option, cfg)

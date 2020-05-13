@@ -8,6 +8,7 @@
     the previous day.  This behaviour can be changed in the config.ini file,
     which is also where credentials are stored.
 """
+
 import logging
 import argparse
 import os
@@ -17,9 +18,10 @@ import configparser
 import re
 from datetime import date, timedelta, datetime
 import traceback
+from dotenv import load_dotenv
 
 import quantscraper.utils as utils
-from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
+from quantscraper.factories import setup_manufacturers
 
 
 def setup_loggers(logfn=None):
@@ -68,6 +70,12 @@ def parse_args():
     parser.add_argument(
         "configfilepath", metavar="FILE", help="Location of INI configuration file"
     )
+    parser.add_argument(
+        "--devices",
+        metavar="DEVICES",
+        nargs="+",
+        help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+    )
     args = parser.parse_args()
     return args
 
@@ -107,13 +115,14 @@ def setup_scraping_timeframe(cfg):
             settings.
 
     Returns:
-        None. Updates cfg by reference as a side-effect.
+        A tuple containg the (start, end) limits of the scraping window, stored
+        as datetime objects.
     """
     error_msg = "Unable to parse {} as date in YYYY-mm-dd format."
 
     yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
     try:
-        cfg.get("Main", "start_time")
+        start_time = datetime.fromisoformat(cfg.get("Main", "start_time"))
     except configparser.NoOptionError:
         cfg["Main"]["start_time"] = yesterday
     try:
@@ -134,9 +143,11 @@ def setup_scraping_timeframe(cfg):
     if start_dt > end_dt:
         raise utils.TimeError(
             "Start date must be earlier than end date. ({} - {})".format(
-                cfg.get("Main", "start_time"), cfg.get("Main", "end_time")
+                start_time, end_time
             )
         )
+
+    return (start_time, end_time)
 
 
 def scrape(manufacturer):
@@ -147,17 +158,19 @@ def scrape(manufacturer):
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
 
     Returns:
-        None, updates the Manufacturer.raw_data attribute if the download is
+        None, updates the raw_data attribute of a Device if the download is
         successful.
     """
-    for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
+    for device in manufacturer.devices:
         try:
-            manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
-            logging.info("Download successful for device {}.".format(devid))
+            device.raw_data = manufacturer.scrape_device(device.web_id)
+            logging.info("Download successful for device {}.".format(device.device_id))
         except utils.DataDownloadError:
-            logging.error("Unable to download data for device {}.".format(devid))
+            logging.error(
+                "Unable to download data for device {}.".format(device.device_id)
+            )
             logging.error(traceback.format_exc())
-            manufacturer.raw_data[devid] = None
+            device.raw_data = None
 
 
 def process(manufacturer):
@@ -166,7 +179,7 @@ def process(manufacturer):
     into CSV format, before running a data cleaning proecedure to store only
     valid floating point values.
 
-    Updates the Manufacturer.clean_data attribute if the CSV parse and
+    Updates the Device.clean_data attribute if the CSV parse and
     subsequent QA validation procedures are successful.
 
     Args:
@@ -183,7 +196,7 @@ def process(manufacturer):
               If a device has no available recordings then this value is None.
     """
     summary = {"manufacturer": manufacturer.name, "devices": {}}
-    for devid in manufacturer.device_ids:
+    for device in manufacturer.devices:
         # Default number of clean values is 0, useful for instances where
         # there is an error in validating the data.
         # Duplicated 2 lines of code with manufacturer.validate_data(), but
@@ -198,18 +211,16 @@ def process(manufacturer):
         # This would mean either lose out on informative error messages,
         # or having to log errors from with manufacturer.validate_data(),
         # and I would rather keep logging outside of library code
-        summary["devices"][devid] = {
-            m["clean_label"]: 0 for m in manufacturer.measurands
-        }
+        devid = device.device_id
+
+        summary["devices"][devid] = {m["id"]: 0 for m in manufacturer.measurands}
         summary["devices"][devid]["timestamp"] = 0
 
-        manufacturer.clean_data[devid] = None
-
-        if manufacturer.raw_data[devid] is None:
+        if device.raw_data is None:
             continue
 
         try:
-            csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
+            csv_data = manufacturer.parse_to_csv(device.raw_data)
             if len(csv_data) > 1:
                 logging.info("Parse into CSV successful for device {}.".format(devid))
             else:
@@ -238,7 +249,7 @@ def process(manufacturer):
                 continue
 
             # Success, at least 1 clean measurement has been found
-            manufacturer.clean_data[devid] = clean_data
+            device.clean_data = clean_data
             summary["devices"][devid] = measurand_summary
 
         except utils.ValidateDataError as ex:
@@ -269,11 +280,11 @@ def save_data(manufacturer, folder, day, data_type):
 
     if data_type == "clean":
         fn_template = utils.CLEAN_DATA_FN
-        manufacturer_data = manufacturer.clean_data
+        get_data = lambda x: x.clean_data
         saving_function = utils.save_csv_file
     elif data_type == "raw":
         fn_template = utils.RAW_DATA_FN
-        manufacturer_data = manufacturer.raw_data
+        get_data = lambda x: x.raw_data
         saving_function = utils.save_json_file
     else:
         raise utils.DataSavingError("Unknown data type '{}'.".format(data_type))
@@ -283,10 +294,12 @@ def save_data(manufacturer, folder, day, data_type):
             "Folder {} doesn't exist, cannot save raw data.".format(folder)
         )
 
-    for devid in manufacturer.device_ids:
-        out_fn = fn_template.substitute(man=manufacturer.name, device=devid, day=day)
+    for device in manufacturer.devices:
+        out_fn = fn_template.substitute(
+            man=manufacturer.name, device=device.device_id, day=day
+        )
 
-        data = manufacturer_data[devid]
+        data = get_data(device)
         if data is None:
             continue
 
@@ -640,6 +653,11 @@ def main():
 
     Returns: None.
     """
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
+
     # Setup logging, which for now just logs to stderr
     try:
         setup_loggers()
@@ -651,6 +669,7 @@ def main():
 
     # Parse args and config file
     args = parse_args()
+
     try:
         cfg = setup_config(args.configfilepath)
     except utils.SetupError:
@@ -659,20 +678,26 @@ def main():
         logging.error("Terminating program")
         sys.exit()
 
-    setup_scraping_timeframe(cfg)
+    start_time, end_time = setup_scraping_timeframe(cfg)
+
+    # TODO Refactor into own function
+    device_fn = cfg.get("Main", "device_list")
+    with open(device_fn, "r") as infile:
+        device_config = json.load(infile)
+
+    # TODO move start_time from constructor into scrape_device
+    manufacturers, _ = setup_manufacturers(
+        device_config["manufacturers"], start_time, end_time, args.devices
+    )
 
     # Store device availability summary for each manufacturer
     summaries = []
+    # TODO Find better way of getting man strings
+    man_strings = []
 
-    man_strings = cfg.get("Main", "manufacturers").split(",")
-    for man_class in man_strings:
-        logging.info("Manufacturer: {}".format(man_class))
-        try:
-            manufacturer = manufacturer_factory(man_class, cfg)
-        except (utils.DataParseError, KeyError):
-            logging.error("Error instantiating Manufacturer instance.")
-            logging.error(traceback.format_exc())
-            continue
+    for manufacturer in manufacturers:
+        man_strings.append(manufacturer.name)
+        logging.info("Manufacturer: {}".format(manufacturer.name))
 
         try:
             logging.info("Attempting to connect...")
@@ -692,11 +717,9 @@ def main():
 
         # Add device location and recording rate so can be displayed in summary
         # table
-        for devid, location in zip(
-            manufacturer.device_ids, manufacturer.device_locations
-        ):
-            if man_summary["devices"][devid] is not None:
-                man_summary["devices"][devid]["Location"] = location
+        for device in manufacturer.devices:
+            if man_summary["devices"][device.device_id] is not None:
+                man_summary["devices"][device.device_id]["Location"] = device.location
         man_summary["frequency"] = manufacturer.recording_frequency
         summaries.append(man_summary)
 

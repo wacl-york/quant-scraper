@@ -7,6 +7,8 @@
 
 
 import unittest
+from unittest.mock import MagicMock
+from collections import defaultdict
 import configparser
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
@@ -24,65 +26,88 @@ class TestAeroqual(unittest.TestCase):
     # \r\n delimiting lines and , delimiting columns
     # However, it has 6 empty header lines containing metadata
 
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
+    start_dt = MagicMock()
+    end_dt = MagicMock()
+    cfg = defaultdict(str)
+    cfg["lines_skip"] = 6
+    fields = []
+    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
 
     def test_success(self):
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = aeroqual.parse_to_csv(raw_data)
+        res = self.aeroqual.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_lines_skip_low(self):
+        # Ensure that lines_skip is appropiately used. Here it is reduced,
+        # meaning will throw error as have mismatched column sizes
+        cfg_copy = self.cfg.copy()
+        cfg_copy["lines_skip"] = 4
+        aeroqual2 = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+        exp = [
+            ["header5"],
+            ["header6"],
+            ["NO2", "CO2", "O3"],
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+        ]
+        with self.assertRaises(DataParseError):
+            aeroqual2.parse_to_csv(raw_data)
+
+    def test_lines_skip_high(self):
+        # Ensure that lines_skip is appropiately used. Here it is increased,
+        # meaning will lose actual data rows
+        cfg_copy = self.cfg.copy()
+        cfg_copy["lines_skip"] = 8
+        aeroqual2 = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+
+        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+        exp = [["4", "5", "6"], ["7", "8", "9"]]
+        res = aeroqual2.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
     def test_empty_string(self):
         # If have empty value (2 consecutive commas) then should get empty
         # string in output CSV data.
         # Have removed 2, 4, and 9
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
         exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        res = aeroqual.parse_to_csv(raw_data)
+        res = self.aeroqual.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
     def test_fewer_lines_headers(self):
         # What happens if have fewer lines available than headers to skip?
-        self.cfg.set("Aeroqual", "lines_skip", "6")
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4"
         with self.assertRaises(DataParseError):
-            aeroqual.parse_to_csv(raw_data)
+            self.aeroqual.parse_to_csv(raw_data)
 
     def test_no_data(self):
         # What happens if have sufficient headers, but no data?
-        self.cfg.set("Aeroqual", "lines_skip", "6")
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6"
         with self.assertRaises(DataParseError):
-            aeroqual.parse_to_csv(raw_data)
+            self.aeroqual.parse_to_csv(raw_data)
 
     def test_missing_data(self):
         # Expect error to be thrown if have unbalanced columns
         # Have set third row to only have 2 values (7 & 8)
         # This is an error as have no way of knowing if this missing value is
         # from NO2, CO2, or O3
-        self.cfg.set("Aeroqual", "lines_skip", "6")
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
         with self.assertRaises(DataParseError):
-            res = aeroqual.parse_to_csv(raw_data)
+            self.aeroqual.parse_to_csv(raw_data)
 
     def test_one_column(self):
         # Will want code to throw error if have just 1 column of data, as
         # could indicate the delimiter is wrong. It is also unlikely we'd ever
         # be in a situation with a single column of data being returned.
         # Better to warn user of this behaviour than to silently pass
-        self.cfg.set("Aeroqual", "lines_skip", "6")
-        aeroqual = Aeroqual.Aeroqual(self.cfg)
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
         with self.assertRaises(DataParseError):
-            aeroqual.parse_to_csv(raw_data)
+            self.aeroqual.parse_to_csv(raw_data)
 
 
 class TestAQMesh(unittest.TestCase):
@@ -93,14 +118,13 @@ class TestAQMesh(unittest.TestCase):
     # Headers is a list of dicts, where each entry in the list is a column, and
     #   each entry in the dict contains metadata. We want the 'Header' field which
     #   holds the field name.
-
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
+    start_dt = MagicMock()
+    end_dt = MagicMock()
+    cfg = defaultdict(str)
+    fields = []
+    aqmesh = AQMesh.AQMesh(start_dt, end_dt, cfg, fields)
 
     def test_success(self):
-        aqmesh = AQMesh.AQMesh(self.cfg)
         raw_headers = [
             {"Header": "NO2", "Unit": "ug/m3"},
             {"Header": "CO2", "Unit": "ug/m3"},
@@ -110,14 +134,13 @@ class TestAQMesh(unittest.TestCase):
         raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = aqmesh.parse_to_csv(raw_combined)
+        res = self.aqmesh.parse_to_csv(raw_combined)
         self.assertEqual(res, exp)
 
     def test_empty_string(self):
         # If have empty strings but commas still present then should be
         # parsable.
         # Have removed 2, 4, and 9
-        aqmesh = AQMesh.AQMesh(self.cfg)
         raw_headers = [
             {"Header": "NO2", "Unit": "ug/m3"},
             {"Header": "CO2", "Unit": "ug/m3"},
@@ -127,13 +150,12 @@ class TestAQMesh(unittest.TestCase):
         raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
         exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        res = aqmesh.parse_to_csv(raw_combined)
+        res = self.aqmesh.parse_to_csv(raw_combined)
         self.assertEqual(res, exp)
 
     def test_unbalanced_headers_and_rows(self):
         # What happens if there are a different number of headers to rows
         # Have 2 headers but 3 columns
-        aqmesh = AQMesh.AQMesh(self.cfg)
         raw_headers = [
             {"Header": "NO2", "Unit": "ug/m3"},
             {"Header": "O3", "Unit": "ug/m3"},
@@ -142,14 +164,13 @@ class TestAQMesh(unittest.TestCase):
         raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
         with self.assertRaises(DataParseError):
-            aqmesh.parse_to_csv(raw_combined)
+            self.aqmesh.parse_to_csv(raw_combined)
 
     def test_missing_data(self):
         # What happens if there are a different number of columns?
         # Second row only has 2 columns
         # This should throw an error as have no way of knowing which value is
         # missing. Is it NO2, or CO2 or O3? Cannot tell so need to alert user
-        aqmesh = AQMesh.AQMesh(self.cfg)
         raw_headers = [
             {"Header": "NO2", "Unit": "ug/m3"},
             {"Header": "CO2", "Unit": "ug/m3"},
@@ -159,7 +180,7 @@ class TestAQMesh(unittest.TestCase):
         raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
         with self.assertRaises(DataParseError):
-            aqmesh.parse_to_csv(raw_combined)
+            self.aqmesh.parse_to_csv(raw_combined)
 
 
 class TestZephyr(unittest.TestCase):
@@ -176,17 +197,15 @@ class TestZephyr(unittest.TestCase):
     # here is the CSVOrder int.
     # 'data' is the list of values, and 'data_hash' is just a hash
 
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
-    # Going to hardcode Unaveraged windowing and slot B
-    cfg.set("Zephyr", "averaging_window", "Unaveraged")
-    cfg.set("Zephyr", "slot", "slotB")
+    start_dt = MagicMock()
+    end_dt = MagicMock()
+    cfg = defaultdict(str)
+    cfg["averaging_window"] = "Unaveraged"
+    cfg["slot"] = "slotB"
+    fields = []
+    zephyr = Zephyr.Zephyr(start_dt, end_dt, cfg, fields)
 
     def test_success(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
-
         # Put measurands in out of order to ensure the CSVOrder flag is used
         raw = {
             "foo": "bar",
@@ -212,12 +231,10 @@ class TestZephyr(unittest.TestCase):
         }
 
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = zephyr.parse_to_csv(raw)
+        res = self.zephyr.parse_to_csv(raw)
         self.assertEqual(res, exp)
 
     def test_can_use_alternative_slot(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
-
         # Put data in non-selected slot A, code should be able to recognise this
         raw = {
             "foo": "bar",
@@ -243,14 +260,12 @@ class TestZephyr(unittest.TestCase):
         }
 
         exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = zephyr.parse_to_csv(raw)
+        res = self.zephyr.parse_to_csv(raw)
         self.assertEqual(res, exp)
 
     def test_empty_strings(self):
         # Test with empty strings
         # Have removed 2, 4, 9
-        zephyr = Zephyr.Zephyr(self.cfg)
-
         # Put data in non-selected slot A, code should be able to recognise this
         raw = {
             "foo": "bar",
@@ -276,11 +291,10 @@ class TestZephyr(unittest.TestCase):
         }
 
         exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        res = zephyr.parse_to_csv(raw)
+        res = self.zephyr.parse_to_csv(raw)
         self.assertEqual(res, exp)
 
     def test_missing_data(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         # O3 has 1 fewer observation
         # This is an error as we aren't sure which timepoint is missing, and so
         # cannot even add a 'missing data' flag for this observation.
@@ -308,24 +322,22 @@ class TestZephyr(unittest.TestCase):
         }
 
         with self.assertRaises(DataParseError):
-            zephyr.parse_to_csv(raw)
+            self.zephyr.parse_to_csv(raw)
 
 
 class TestQuantAQ(unittest.TestCase):
     # The JSON returned by quantaq's API call is in the format of a list of
     # dicts, where each entry in the list is a row.
     # The function I've produced has had to, by necessity, hardcode lat and lon
-
-    # TODO Should config be mocked too, or is it fair enough to use the example
-    # config that is bundled with the source code?
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
+    start_dt = MagicMock()
+    end_dt = MagicMock()
+    cfg = defaultdict(str)
+    fields = []
+    myquantaq = MyQuantAQ.MyQuantAQ(start_dt, end_dt, cfg, fields)
 
     def test_success(self):
         # Currently not a very robust function, as it will error
         # if it doesn't have the 'geo' dict available
-        myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
-
         raw_data = {
             "raw": "foo",
             "final": [
@@ -356,7 +368,7 @@ class TestQuantAQ(unittest.TestCase):
             ["4", "5", "6", "5.5", "6.5"],
             ["7", "8", "9", "7.5", "8.5"],
         ]
-        res = myquantaq.parse_to_csv(raw_data)
+        res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
     def test_missing_data(self):
@@ -366,8 +378,6 @@ class TestQuantAQ(unittest.TestCase):
         # So if a measurand isn't available for a particular timepoint, then we
         # can encode this.
         # Missing values are encoded as NaN, as per Seba's request
-        myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
-
         raw_data = {
             "raw": "foo",
             "final": [
@@ -388,7 +398,7 @@ class TestQuantAQ(unittest.TestCase):
             ["4", "NaN", "6", "5.5", "6.5"],
             ["7", "8", "NaN", "7.5", "8.5"],
         ]
-        res = myquantaq.parse_to_csv(raw_data)
+        res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
     def test_empty_string(self):
@@ -399,7 +409,6 @@ class TestQuantAQ(unittest.TestCase):
         # in the parsed CSV data.
         # This allows the validation script to differentiate between these 2
         # types of errors, although it currently doesn't.
-        myquantaq = MyQuantAQ.MyQuantAQ(self.cfg)
 
         raw_data = {
             "raw": "foo",
@@ -416,7 +425,7 @@ class TestQuantAQ(unittest.TestCase):
             ["4", "NaN", "6", "5.5", "6.5"],
             ["7", "", "NaN", "7.5", ""],
         ]
-        res = myquantaq.parse_to_csv(raw_data)
+        res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
 

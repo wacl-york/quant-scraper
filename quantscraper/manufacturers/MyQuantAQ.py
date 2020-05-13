@@ -11,6 +11,7 @@
 
 from datetime import datetime, timedelta, date
 from string import Template
+import os
 import requests as re
 import quantaq
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -31,30 +32,33 @@ class MyQuantAQ(Manufacturer):
 
     name = "QuantAQ"
 
-    def __init__(self, cfg):
+    def __init__(self, start_datetime, end_datetime, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - start_datetime (datetime): The start of the scraping window.
+            - end_datetime (datetime): The end of the scraping window.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None
         """
         self.api_obj = None
-        self.api_token = cfg.get(self.name, "api_token")
+        self.api_token = os.environ["QUANTAQ_API_TOKEN"]
 
         # Load start and end scraping datetimes
-        start_date = date.fromisoformat(cfg.get("Main", "start_time"))
-        end_date = date.fromisoformat(cfg.get("Main", "end_time"))
-        start_fmt = start_date.strftime("%Y-%m-%d")
+        start_date = start_datetime.strftime("%Y-%m-%d")
         # Notice how we add on 1 day here.
         # Although there is a "less than or equal to" filter,
         # if you use ">= start_date and <= end_date" where start_date=end_date,
         # i.e. the common scenario in our usage, then it raises an error.
         # The solution is to add a day onto the end_date,
         # and use < rather than <=
-        end_fmt = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        end_date = (end_datetime + timedelta(days=1)).strftime("%Y-%m-%d")
 
         # This would be more easily saved as a dict as that's how it gets used
         # later, but the quantaq package does some funny dict updating by
@@ -62,7 +66,7 @@ class MyQuantAQ(Manufacturer):
         raw = Template("timestamp,ge,${start};timestamp,lt,${end}")
         self.query_string = raw.substitute(start=start_fmt, end=end_fmt)
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """

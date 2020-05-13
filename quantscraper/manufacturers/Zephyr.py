@@ -7,7 +7,8 @@
 """
 
 import logging
-from datetime import datetime, date, timedelta, time
+from datetime import datetime, timedelta, time
+import os
 from string import Template
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -25,28 +26,33 @@ class Zephyr(Manufacturer):
 
     name = "Zephyr"
 
-    def __init__(self, cfg):
+    def __init__(self, start_datetime, end_datetime, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - start_datetime (datetime): The start of the scraping window.
+            - end_datetime (datetime): The end of the scraping window.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None
         """
         self.session = None
-        self.auth_url = cfg.get(self.name, "auth_url")
-        self.averaging_window = cfg.get(self.name, "averaging_window")
-        self.slot = cfg.get(self.name, "slot")
+        self.auth_url = cfg["auth_url"]
+        self.averaging_window = cfg["averaging_window"]
+        self.slot = cfg["slot"]
 
         # Authentication
         self.auth_params = {
-            "username": cfg.get(self.name, "username"),
-            "password": cfg.get(self.name, "password"),
+            "username": os.environ["ZEPHYR_USER"],
+            "password": os.environ["ZEPHYR_PW"],
             "grant_type": "password",
         }
-        self.auth_headers = {"referer": cfg.get(self.name, "auth_referer")}
+        self.auth_headers = {"referer": cfg["auth_referer"]}
 
         # Download data
         self.data_headers = {"content-type": "application/json; charset=UTF-8"}
@@ -56,16 +62,14 @@ class Zephyr(Manufacturer):
         # the start day, and end day as midnight of day AFTER required end day.
         # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
         # 59th minute worth of data
-        start_date = date.fromisoformat(cfg.get("Main", "start_time"))
-        end_date = date.fromisoformat(cfg.get("Main", "end_time"))
-        start_dt = datetime.combine(start_date, time.min)
-        end_dt = datetime.combine((end_date + timedelta(days=1)), time.min)
+        start_dt = datetime.combine(start_datetime, time.min)
+        end_dt = datetime.combine((end_datetime + timedelta(days=1)), time.min)
         start_fmt = start_dt.strftime("%Y%m%d%H%M%S")
         end_fmt = end_dt.strftime("%Y%m%d%H%M%S")
         self.start_date = start_fmt
         self.end_date = end_fmt
 
-        raw_data_url = cfg.get(self.name, "data_url")
+        raw_data_url = cfg["data_url"]
         self.data_url = Template(
             raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"
         )
@@ -73,7 +77,7 @@ class Zephyr(Manufacturer):
         # This field gets set in self.connect()
         self.api_token = None
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """
