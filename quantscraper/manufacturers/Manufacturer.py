@@ -28,28 +28,13 @@ class Manufacturer(ABC):
         - recording_frequency (double): Expected recording frequency of all
             devices from this manufacturer,
         measured as number of measurements an hour.
-        - devices (str[]): A list of human readable IDs for its devices.
-        - devices_web (str[]): A list of IDs for its devices as used by the
-            corresponding website for scraping data.
-        - device_locations (str[]): A list of recording locations for each device,
-            used for providing context in the output log.
-        - raw_data (dict(JSON)): The raw data from the devices. The keys of the
-            dict are the IDs stored in 'devices', and the entries are the
-            corresponding raw data saved in a JSON-serializable format, as returned
-            from the download.
-        - clean_data (dict(2D list)): The clean data from the devices. The keys of the
-            dict are the IDs stored in 'devices', and the entries are the
-            corresponding cleaned and validated data in a long CSV format, with
-            3 columns:
-                - timestamp (str)
-                - measurand (str)
-                - value (float)
-            The first entry in the list contains the column header labels with data
-            stored in all subsequent entries.
+        - devices (Device[]): A list of Device objects that are owned by this
+            manufacturer.
 
     Methods:
         - __init__: Constructor that reads in the configuration object and sets
             appropriate instance attributes.
+        - add_device: Adds a Device object to the Manufacturer's 'devices' list.
         - connect (abstract): Establishes a connection to the manufacturer's
             website and handles any required authentication.
         - scrape_device (abstract): Downloads the data for a given device.
@@ -76,57 +61,12 @@ class Manufacturer(ABC):
         return self._recording_frequency
 
     @property
-    def device_ids(self):
+    def devices(self):
         """
-        A list of human readable IDs for the devices, stored as a
-        list of strings.
+        A list of Devices representing the physical instrumentation devices
+        owned by this company.
         """
-        return self._device_ids
-
-    @property
-    def device_web_ids(self):
-        """
-        A list of IDs for its devices as used by the website for scraping data,
-        stored as a list of strings.
-        """
-        return self._device_web_ids
-
-    @property
-    def device_locations(self):
-        """
-        A list of recording locations for each device,
-        stored as a list of strings.
-        """
-        return self._device_locations
-
-    @property
-    def raw_data(self):
-        """
-        The raw data from the devices stored as JSON inside a dict().
-
-        The keys of the dict are the IDs stored in 'devices', and the entries are the
-        corresponding raw data saved in a JSON-serializable format, as returned
-        from the download.
-        """
-        return self._raw_data
-
-    @property
-    def clean_data(self):
-        """
-         The cleaned and validated data from the devices stored as a 2D list
-         inside a dict().
-
-         The keys of the dict are the IDs stored in 'devices', and the entries
-         are the corresponding cleaned and validated data in a long CSV format,
-         with 3 columns:
-                - timestamp (str)
-                - measurand (str)
-                - value (float)
-
-        The first entry in the list contains the column header labels with data
-        stored in all subsequent entries.
-        """
-        return self._clean_data
+        return self._devices
 
     @abstractmethod
     def connect(self):
@@ -182,68 +122,40 @@ class Manufacturer(ABC):
             measurand.
         """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None, sets many instance attributes.
         """
-        self._raw_data = {}
-        self._clean_data = {}
+        self._devices = []
 
-        self._device_ids = cfg.get(self.name, "devices").split(",")
-        self._device_web_ids = cfg.get(self.name, "devices_web").split(",")
-        self._device_locations = cfg.get(self.name, "device_locations").split(",")
-        self._recording_frequency = cfg.getfloat(
-            self.name, "recording_frequency_per_hour"
-        )
+        self._recording_frequency = cfg["recording_frequency_per_hour"]
         # Name of column that holds timestamp
-        self.timestamp_col = cfg.get(self.name, "timestamp_column")
+        self.timestamp_col = cfg["timestamp_column"]
         # String providing the format of the timestamp
-        self.timestamp_format = cfg.get(self.name, "timestamp_format")
+        self.timestamp_format = cfg["timestamp_format"]
+        # Information about measurands parsed by this manufacturer
+        self.measurands = fields
 
-        # Setup the measurand metadata, so have a record of which measurands to
-        # expect in raw data, what labels to reassign them, and if they need
-        # scaling at all. Store all this in a list of dicts
-        cols = cfg.get(self.name, "columns_to_validate").split(",")
-        labels = cfg.get(self.name, "column_labels").split(",")
-        scales = cfg.get(self.name, "scaling_factors").split(",")
+    def add_device(self, device):
+        """
+        Adds a Device object to the Manufacturer's 'devices' list.
 
-        # Ensure have the same number of values for device properties
-        lengths = [
-            len(self.device_ids),
-            len(self.device_web_ids),
-            len(self.device_locations),
-        ]
-        if len(set(lengths)) != 1:
-            raise utils.DataParseError(
-                "Options 'devices', 'devices_web' and 'device_locations' must have the same number of entries."
-            )
+        Args:
+            - device (Device): New device to be added.
 
-        # Ensure have the same number of values for column properties
-        lengths = [len(cols), len(labels), len(scales)]
-        if len(set(lengths)) != 1:
-            raise utils.DataParseError(
-                "Options 'columns_to_validate', 'column_labels' and 'scaling_factors' must have the same number of entries."
-            )
-
-        self.measurands = []
-        for i in range(lengths[0]):
-            scaling_factor = scales[i]
-            if not utils.is_float(scaling_factor):
-                scaling_factor = 1
-            else:
-                scaling_factor = float(scaling_factor)
-            entry = {
-                "raw_label": cols[i],
-                "clean_label": labels[i],
-                "scale": scaling_factor,
-            }
-            self.measurands.append(entry)
+        Returns:
+            None, populates the 'devices' attribute as a side-effect.
+        """
+        self._devices.append(device)
 
     def validate_data(self, data):
         """
@@ -269,8 +181,8 @@ class Manufacturer(ABC):
         """
         # Requested measurands in the raw label used by manufacturer and clean
         # human-readable label
-        requested_measurands_raw = [r["raw_label"] for r in self.measurands]
-        requested_measurands_clean = [r["clean_label"] for r in self.measurands]
+        requested_measurands_raw = [r["webid"] for r in self.measurands]
+        requested_measurands_clean = [r["id"] for r in self.measurands]
 
         # Store counts of number of clean values
         n_clean_vals = {k: 0 for k in requested_measurands_clean}
@@ -305,7 +217,7 @@ class Manufacturer(ABC):
             elif col in requested_measurands_raw:
                 # Store this index under the clean measurand label
                 measurand_index = requested_measurands_raw.index(col)
-                clean_label = self.measurands[measurand_index]["clean_label"]
+                clean_label = self.measurands[measurand_index]["id"]
                 measurand_indices[clean_label] = i
                 scaling_factors[clean_label] = self.measurands[measurand_index]["scale"]
             else:
@@ -347,3 +259,93 @@ class Manufacturer(ABC):
                 clean_data.append(clean_row)
 
         return clean_data, n_clean_vals
+
+
+class Device:
+    """
+    Represents a physical instrumentation device that records air quality data.
+
+    Attributes:
+        - device_id (str): A human readable ID used to refer to this device.
+        - web_id (str): An ID used by the device manufacturer to refer to the
+            device.
+        - location (str): A label describing where the device is located.
+        - Any other key-value properties are set from the device's JSON
+            description.
+        - raw_data (JSON): The raw data saved in a JSON-serializable format,
+            as returned from the download.
+        - clean_data (2D list): The cleaned and validated data in a long CSV
+            format, with 3 columns:
+                - timestamp (str)
+                - measurand (str)
+                - value (float)
+            The first entry in the list contains the column header labels with data
+            stored in all subsequent entries.
+
+    Methods:
+        None.
+    """
+
+    @property
+    def raw_data(self):
+        """
+        The raw data from the device stored as JSON.
+
+        The raw data is stored in a JSON-serializable format, as returned
+        directly from the download.
+        """
+        return self._raw_data
+
+    @raw_data.setter
+    def raw_data(self, val):
+        """
+        Sets the raw_data field.
+        """
+        self._raw_data = val
+
+    @property
+    def clean_data(self):
+        """
+         The cleaned and validated data from the device. stored as a 2D list.
+
+         The data is organised in a long CSV format with 3 columns:
+                - timestamp (str)
+                - measurand (str)
+                - value (float)
+
+        The first entry in the list contains the column header labels with data
+        stored in all subsequent entries.
+        """
+        return self._clean_data
+
+    @clean_data.setter
+    def clean_data(self, val):
+        """
+        Sets the clean_data field.
+        """
+        self._clean_data = val
+
+    def __init__(self, id, webid, location, **kwargs):
+        """
+        Constructor.
+
+        Args:
+            - id (str): A human readable ID used to refer to this device.
+            - web_id (str): An ID used by the device manufacturer to refer to the
+                device.
+            - location (str): A label describing where the device is located.
+            - kwargs (dict): Any other properties relevant to this device, that
+                are set as instance attributes.
+
+        Returns:
+            A new Device instance.
+        """
+        self.device_id = id
+        self.web_id = webid
+        self.location = location
+        self._raw_data = None
+        self._clean_data = None
+
+        # Set any additional properties
+        for k, v in kwargs.items():
+            setattr(self, k, v)

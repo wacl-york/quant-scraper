@@ -6,9 +6,9 @@
     quality instrumentation device manufacturer.
 """
 
-from datetime import datetime
 from string import Template
 import csv
+import os
 import requests as re
 from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -26,27 +26,32 @@ class Aeroqual(Manufacturer):
 
     name = "Aeroqual"
 
-    def __init__(self, cfg):
+    def __init__(self, start_datetime, end_datetime, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - start_datetime (datetime): The start of the scraping window.
+            - end_datetime (datetime): The end of the scraping window.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None.
         """
         self.session = None
-        self.auth_url = cfg.get(self.name, "auth_url")
-        self.select_device_url = cfg.get(self.name, "select_device_url")
-        self.data_url = cfg.get(self.name, "data_url")
-        self.dl_url = cfg.get(self.name, "dl_url")
-        self.lines_skip = cfg.getint(self.name, "lines_skip")
+        self.auth_url = cfg["auth_url"]
+        self.select_device_url = cfg["select_device_url"]
+        self.data_url = cfg["data_url"]
+        self.dl_url = cfg["dl_url"]
+        self.lines_skip = cfg["lines_skip"]
 
         # Authentication
         self.auth_params = {
-            "Username": cfg.get(self.name, "Username"),
-            "Password": cfg.get(self.name, "Password"),
+            "Username": os.environ["AEROQUAL_USER"],
+            "Password": os.environ["AEROQUAL_PW"],
             "RememberMe": "true",
         }
         self.auth_headers = {
@@ -70,12 +75,6 @@ class Aeroqual(Manufacturer):
             "connection": "keep-alive",
         }
 
-        # Load start and end scraping datetimes
-        start_datetime = cfg.get("Main", "start_time")
-        start_datetime = datetime.fromisoformat(start_datetime)
-        end_datetime = cfg.get("Main", "end_time")
-        end_datetime = datetime.fromisoformat(end_datetime)
-
         # Can't specify times for scraping window, just dates.
         # Will just convert datetime to date and doesn't matter too much since
         # Aeroqual treats limits as inclusive, so will scrape too much data
@@ -85,14 +84,14 @@ class Aeroqual(Manufacturer):
 
         self.data_params = {
             "Period": "{} to {}".format(start_date, end_date),
-            "AvgMinutes": cfg.get(self.name, "averaging_window"),
-            "IncludeJournal": cfg.get(self.name, "include_journal"),
+            "AvgMinutes": cfg["averaging_window"],
+            "IncludeJournal": cfg["include_journal"],
         }
 
         # Download data
         self.dl_headers = {"content-type": "text/csv"}
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """

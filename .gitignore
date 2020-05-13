@@ -1,8 +1,10 @@
 config.ini
 preprocessing.json
+devices.json
 __pycache__/*
 *.swp
 data/*
+*.env
 
 # Compiled python modules.
 *.pyc
