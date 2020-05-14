@@ -7,7 +7,6 @@
 
 import datetime
 import unittest
-import configparser
 from collections import defaultdict
 import logging
 import os
@@ -87,9 +86,44 @@ class TestParseArgs(unittest.TestCase):
             exp_addargument_calls = [
                 call(
                     "--devices",
-                    metavar="DEVICES",
+                    metavar="DEVICE1 DEVICE2 ... DEVICEN",
                     nargs="+",
                     help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+                ),
+                call(
+                    "--start",
+                    metavar="DATE",
+                    help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to midnight of the previous day.",
+                ),
+                call(
+                    "--end",
+                    metavar="DATE",
+                    help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to 1 second before midnight of the current day.",
+                ),
+                call(
+                    "--save-raw",
+                    action="store_true",
+                    help="Saves raw data to local file storage. Required in order to later upload to GoogleDrive.",
+                ),
+                call(
+                    "--save-clean",
+                    action="store_true",
+                    help="Saves clean data to local file storage. Required in order to later upload to GoogleDrive.",
+                ),
+                call(
+                    "--upload-raw",
+                    action="store_true",
+                    help="Uploads raw data to Google Drive. Data must be either already available locally, or saved during the run with the save-raw flag.",
+                ),
+                call(
+                    "--upload-clean",
+                    action="store_true",
+                    help="Uploads clean data to Google Drive. Data must be either already available locally, or saved during the run with the save-clean flag.",
+                ),
+                call(
+                    "--html",
+                    metavar="FN",
+                    help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
                 ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
@@ -101,172 +135,118 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_no_start_end_times(self):
         # Don't pass in start time or end time, so the output time should be
         # yesterday midnight to 1 second before following midnight
-
-        # Provide config without start or end time specified
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.remove_option("Main", "start_time")
-        cfg.remove_option("Main", "end_time")
-
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2012, 3, 17)):
             cli.setup_scraping_timeframe(cfg)
+            start, end = cli.setup_scraping_timeframe()
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2012-03-16")
-            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-16")
+            self.assertEqual(start, "2012-03-16")
+            self.assertEqual(end, "2012-03-16")
 
     def test_no_end_time(self):
         # Don't pass in end time, so the output time should be
         # specified time to 1 second before today's midnight
 
-        # Provide config without start or end time specified
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2012-02-28")
-        cfg.remove_option("Main", "end_time")
-
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2012, 3, 16)):
-            cli.setup_scraping_timeframe(cfg)
+            start, end = cli.setup_scraping_timeframe(start="2012-02-28")
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2012-02-28")
-            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-15")
+            self.assertEqual(start, "2012-02-28")
+            self.assertEqual(end, "2012-03-15")
 
     def test_no_start_time(self):
         # Don't pass in start time, so the output time should be
         # yesterday's midnight to specified end time
 
-        # Provide config without start or end time specified
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2035-10-12")
-
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
-            cli.setup_scraping_timeframe(cfg)
+            start, end = cli.setup_scraping_timeframe(end="2035-10-12")
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11")
-            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12")
+            self.assertEqual(start, "2035-10-11")
+            self.assertEqual(end, "2035-10-12")
 
     def test_both_times_specified(self):
         # Both start and end times are specified in config file
-
-        # Provide config without start or end time specified
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-11")
-        cfg.set("Main", "end_time", "2035-10-12")
-
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             cli.setup_scraping_timeframe(cfg)
+            start, end = cli.setup_scraping_timeframe(
+                start="2035-10-11", end="2035-10-12"
+            )
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11")
-            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12")
+            self.assertEqual(start, "2035-10-11")
+            self.assertEqual(end, "2035-10-12")
 
     def test_start_later_end_both_passed_in(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here both are passed in
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-13")
-        cfg.set("Main", "end_time", "2035-10-12")
 
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+                cli.setup_scraping_timeframe(
+                    start="2035-10-13", end="2035-10-12"
+                )
 
     def test_start_later_end_start_assumed(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here just the end date is passed in and start date is taken as default
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2019-08-15")
 
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+                cli.setup_scraping_timeframe(end="2019-08-15")
 
     def test_start_later_end_end_assumed(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here just the start date is passed in and end date is taken as default
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2019-08-17")
-        cfg.remove_option("Main", "end_time")
-
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+                cli.setup_scraping_timeframe(start="2019-08-17")
 
     def test_start_equal_end_both_passed_in(self):
         # Here start date is equal to end. Shouldn't be allowed!
-        # Here start date is equal to end, should pass and set both dates the
-        # same. Both are passed in.
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-13")
-        cfg.set("Main", "end_time", "2035-10-13")
-
-        # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
-            cli.setup_scraping_timeframe(cfg)
-            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-13")
-            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-13")
-
-    def test_start_equal_end_start_assumed(self):
-        # Here start date is equal to end, should pass and set both dates the
-        # same. Start date is taken as default
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2019-08-16")
-
-        # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-            cli.setup_scraping_timeframe(cfg)
-            self.assertEqual(cfg.get("Main", "start_time"), "2019-08-16")
-            self.assertEqual(cfg.get("Main", "end_time"), "2019-08-16")
-
-    def test_start_equal_end_end_assumed(self):
-        # Here start date is equal to end, should pass and set both dates the
-        # same. End date is taken as default
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2019-08-16")
-        cfg.remove_option("Main", "end_time")
-
-        # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-            cli.setup_scraping_timeframe(cfg)
-
-            self.assertEqual(cfg.get("Main", "start_time"), "2019-08-16")
-            self.assertEqual(cfg.get("Main", "end_time"), "2019-08-16")
-
-    def test_formatting_error_start(self):
-        # Pass in a poorly specified time format to start time
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2012/03/04")
+        # Here both are passed in
 
         # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+                cli.setup_scraping_timeframe(
+                    start="2035-10-13", end="2035-10-13"
+                )
+
+    def test_start_equal_end_start_assumed(self):
+        # Here start date is equal to end. Shouldn't be allowed!
+        # Here just the end date is passed in and start date is taken as default
+
+        # Mock date.today() to a fixed date
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
+            with self.assertRaises(utils.TimeError):
+                cli.setup_scraping_timeframe(end="2019-08-16")
+
+    def test_start_equal_end_end_assumed(self):
+        # Here start date is equal to end. Shouldn't be allowed!
+        # Here just the start date is passed in and end date is taken as default
+
+        # Mock date.today() to a fixed date
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
+            with self.assertRaises(utils.TimeError):
+                cli.setup_scraping_timeframe(start="2019-08-16")
+
+    def test_formatting_error_start(self):
+        # Pass in a poorly specified time format to start time
+        # Mock date.today() to a fixed date
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
+            with self.assertRaises(utils.TimeError):
+                cli.setup_scraping_timeframe(start="2012/03/04 15:32")
 
 
 class TestScrape(unittest.TestCase):
@@ -1019,9 +999,9 @@ class TestSaveCleanData(unittest.TestCase):
     def test_success(self):
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.clean_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._clean_data = [[7, 8, 9]]
+        dev2.clean_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1058,9 +1038,9 @@ class TestSaveCleanData(unittest.TestCase):
     def test_dir_doesnt_exist(self):
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.clean_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._clean_data = [[7, 8, 9]]
+        dev2.clean_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1077,9 +1057,9 @@ class TestSaveCleanData(unittest.TestCase):
         # in case a dataset for a device is None, then shouldn't attempt to save
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.clean_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._clean_data = None
+        dev2.clean_data = None
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1108,9 +1088,9 @@ class TestSaveCleanData(unittest.TestCase):
         # in case a file already exists then shouldn't save
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.clean_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._clean_data = [[7, 8, 9]]
+        dev2.clean_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1151,9 +1131,9 @@ class TestSaveRawData(unittest.TestCase):
         # Set dummy data
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.raw_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._raw_data = [[7, 8, 9]]
+        dev2.raw_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1190,9 +1170,9 @@ class TestSaveRawData(unittest.TestCase):
         # Set dummy data
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.raw_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._raw_data = [[7, 8, 9]]
+        dev2.raw_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 
@@ -1200,7 +1180,7 @@ class TestSaveRawData(unittest.TestCase):
         with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
             mock_isdir.return_value = False
 
-            with patch("quantscraper.utils.save_json_file") as mock_save:
+            with patch("quantscraper.utils.save_json_file"):
 
                 with self.assertRaises(utils.DataSavingError):
                     cli.save_data(self.aeroqual, "dummyFolder", "foobar", "raw")
@@ -1241,9 +1221,9 @@ class TestSaveRawData(unittest.TestCase):
         # Set dummy data
         self.aeroqual._devices = []
         dev1 = Device(id="1", webid="1", location="foo")
-        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev1.raw_data = [[1, 2, 3], [4, 5, 6]]
         dev2 = Device(id="2", webid="2", location="bar")
-        dev2._raw_data = [[7, 8, 9]]
+        dev2.raw_data = [[7, 8, 9]]
         self.aeroqual.add_device(dev1)
         self.aeroqual.add_device(dev2)
 

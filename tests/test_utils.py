@@ -7,7 +7,7 @@
 
 import unittest
 import string
-from unittest.mock import patch, MagicMock, Mock, mock_open
+from unittest.mock import patch, Mock, mock_open
 import pandas as pd
 from googleapiclient.errors import HttpError
 from utils import build_mock_response
@@ -42,7 +42,7 @@ class TestSetupConfig(unittest.TestCase):
             mock_cp.ConfigParser = mock_ConfigParser
 
             with self.assertRaises(utils.SetupError):
-                res = utils.setup_config("foo.ini")
+                utils.setup_config("foo.ini")
 
 
 class TestIsFloat(unittest.TestCase):
@@ -399,11 +399,10 @@ class TestSaveDataFrame(unittest.TestCase):
 
 
 class TestSavePlaintext(unittest.TestCase):
+
     # Tests utils.save_plaintext function, which writes a string to disk
     def test_success(self):
         m = mock_open()
-        mock_write = Mock()
-        mock_outfile = Mock(write=mock_write)
 
         dummy_text = "foobar\ncar"
 
@@ -445,6 +444,7 @@ class TestSavePlaintext(unittest.TestCase):
 
 
 class TestLoadHTMLTemplate(unittest.TestCase):
+
     # Tests that utils.load_html_tempate() can load file
     def test_success(self):
         m = mock_open(read_data="foo")

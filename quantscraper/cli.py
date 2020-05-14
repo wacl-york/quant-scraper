@@ -14,9 +14,8 @@ import argparse
 import os
 import sys
 import math
-import configparser
 import re
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, time
 import traceback
 from dotenv import load_dotenv
 
@@ -72,28 +71,72 @@ def parse_args():
     parser = argparse.ArgumentParser(description="QUANT scraper")
     parser.add_argument(
         "--devices",
-        metavar="DEVICES",
+        metavar="DEVICE1 DEVICE2 ... DEVICEN",
         nargs="+",
         help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
     )
+
+    parser.add_argument(
+        "--start",
+        metavar="DATE",
+        help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to midnight of the previous day.",
+    )
+
+    parser.add_argument(
+        "--end",
+        metavar="DATE",
+        help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to 1 second before midnight of the current day.",
+    )
+
+    parser.add_argument(
+        "--save-raw",
+        action="store_true",
+        help="Saves raw data to local file storage. Required in order to later upload to GoogleDrive.",
+    )
+
+    parser.add_argument(
+        "--save-clean",
+        action="store_true",
+        help="Saves clean data to local file storage. Required in order to later upload to GoogleDrive.",
+    )
+
+    parser.add_argument(
+        "--upload-raw",
+        action="store_true",
+        help="Uploads raw data to Google Drive. Data must be either already available locally, or saved during the run with the save-raw flag.",
+    )
+
+    parser.add_argument(
+        "--upload-clean",
+        action="store_true",
+        help="Uploads clean data to Google Drive. Data must be either already available locally, or saved during the run with the save-clean flag.",
+    )
+
+    parser.add_argument(
+        "--html",
+        metavar="FN",
+        help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+    )
+
     args = parser.parse_args()
     return args
 
 
-def setup_scraping_timeframe(cfg):
+def setup_scraping_timeframe(start=None, end=None):
     """
     Sets up the scraping timeframe for the scraping run.
 
-    By default, this script attempts to scrape the previous day.
+    By default, this function sets the window from midnight of the day prior to
+    the script being executed, to 1 second before the following midnight.
     I.e. if the script is run at 2020-01-08 15:36:00, then the default scraping
     window is between 2020-01-07 00:00:00 and 2020-01-07 23:59:59.
 
-    If the Main.start_time and Main.end_time configuration parameters in the
-    ini file are supplied then this default behaviour is overruled.
-
     Args:
-        - cfg (configparser.Namespace): Contains the script configuration
-            settings.
+        - start (str, optional): The start of the scraping window, formatted as
+            a valid ISO datetime. Defaults to midnight of the previous day.
+        - end (str, optional): The end of the scraping window, formatted as
+            a valid ISO datetime. Defaults to 1 second before midnight of the
+            current day.
 
     Returns:
         A tuple containg the (start, end) limits of the scraping window, stored
@@ -101,34 +144,30 @@ def setup_scraping_timeframe(cfg):
     """
     error_msg = "Unable to parse {} as date in YYYY-mm-dd format."
 
-    yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-    try:
-        start_time = datetime.fromisoformat(cfg.get("Main", "start_time"))
-    except configparser.NoOptionError:
-        cfg["Main"]["start_time"] = yesterday
-    try:
-        cfg.get("Main", "end_time")
-    except configparser.NoOptionError:
-        cfg["Main"]["end_time"] = yesterday
+    yesterday = date.today() - timedelta(days=1)
 
-    # Confirm that both dates are valid
-    try:
-        start_dt = date.fromisoformat(cfg.get("Main", "start_time"))
-    except ValueError:
-        raise utils.TimeError(error_msg.format(cfg.get("Main", "start_time")))
-    try:
-        end_dt = date.fromisoformat(cfg.get("Main", "end_time"))
-    except ValueError:
-        raise utils.TimeError(error_msg.format(cfg.get("Main", "end_time")))
+    if start is None:
+        start = datetime.combine(yesterday, time.min).isoformat()
 
-    if start_dt > end_dt:
+    if end is None:
+        end = datetime.combine(yesterday, time.max).isoformat()
+
+    # Parse strings as datetime objects
+    try:
+        start_dt = datetime.fromisoformat(start)
+    except ValueError:
+        raise utils.TimeError(error_msg.format(input=start, url=docs_url)) from None
+    try:
+        end_dt = datetime.fromisoformat(end)
+    except ValueError:
+        raise utils.TimeError(error_msg.format(input=end, url=docs_url)) from None
+
+    if start_dt >= end_dt:
         raise utils.TimeError(
-            "Start date must be earlier than end date. ({} - {})".format(
-                start_time, end_time
-            )
+            "Start date must be earlier than end date. ({} - {})".format(start, end)
         )
 
-    return (start_time, end_time)
+    return (start_dt, end_dt)
 
 
 def scrape(manufacturer, start, end):
@@ -180,6 +219,8 @@ def process(manufacturer):
     """
     summary = {"manufacturer": manufacturer.name, "devices": {}}
     for device in manufacturer.devices:
+        devid = device.device_id
+
         # Default number of clean values is 0, useful for instances where
         # there is an error in validating the data.
         # Duplicated 2 lines of code with manufacturer.validate_data(), but
@@ -194,8 +235,6 @@ def process(manufacturer):
         # This would mean either lose out on informative error messages,
         # or having to log errors from with manufacturer.validate_data(),
         # and I would rather keep logging outside of library code
-        devid = device.device_id
-
         summary["devices"][devid] = {m["id"]: 0 for m in manufacturer.measurands}
         summary["devices"][devid]["timestamp"] = 0
 
@@ -383,10 +422,6 @@ def tabular_summary(summaries):
                 # Form a list with device ID + measurements in same order as
                 # column header
                 row = [device[0]]
-                try:
-                    num_timestamps = device[1]["timestamp"]
-                except KeyError:
-                    num_timestamps = None
 
                 for m in measurands:
                     try:
@@ -427,7 +462,7 @@ def generate_ascii_summary(tables, column_width=13, max_screen_width=100):
     """
     Generates an plain-text ASCII summary of the data availability table.
 
-    If there is too much data to fit onto the screen at once (using 
+    If there is too much data to fit onto the screen at once (using
     max_screen_width argument), then the table is split into sub-tables,
     each fitting within the desired screen width.
 
@@ -662,7 +697,7 @@ def main():
     with open(DEVICES_FN, "r") as infile:
         device_config = json.load(infile)
 
-    start_time, end_time = setup_scraping_timeframe(cfg)
+    start_time, end_time = setup_scraping_timeframe(args.start, args.end)
 
     manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
 
@@ -701,7 +736,7 @@ def main():
         # TODO Use start_end unless have start == end
         start_fmt = start_dt.strftime("%Y-%m-%d")
 
-        if cfg.getboolean("Main", "save_raw_data"):
+        if args.save_raw:
             logging.info("Saving raw data from all devices:")
             raw_fns = save_data(
                 manufacturer,
@@ -710,7 +745,7 @@ def main():
                 "raw",
             )
 
-        if cfg.getboolean("Main", "save_clean_data"):
+        if args.save_clean:
             logging.info("Saving cleaned CSV data from all devices:")
             clean_fns = save_data(
                 manufacturer,
@@ -719,10 +754,7 @@ def main():
                 "clean",
             )
 
-        upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")
-        upload_clean = cfg.getboolean("Main", "upload_clean_googledrive")
-
-        if upload_raw or upload_clean:
+        if args.upload_raw or args.upload_clean:
             try:
                 service = utils.auth_google_api(cfg.get("GoogleAPI", "credentials_fn"))
             except utils.GoogleAPIError:
@@ -730,13 +762,13 @@ def main():
                 logging.error(traceback.format_exc())
                 break
 
-            if upload_raw:
+            if args.upload_raw:
                 logging.info("Uploading raw data to Google Drive:")
                 upload_data_googledrive(
                     service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
                 )
 
-            if upload_clean:
+            if args.upload_clean:
                 logging.info("Uploading clean CSV data to Google Drive:")
                 upload_data_googledrive(
                     service,
@@ -757,7 +789,7 @@ def main():
         print(line)
 
     # Add HTML summary if requested
-    if cfg.getboolean("Main", "save_html_summary"):
+    if args.html is not None:
 
         # Load both templates
         email_template_fn = cfg.get("HTMLSummary", "email_template")
@@ -789,7 +821,7 @@ def main():
             )
 
         try:
-            utils.save_plaintext(email_html, cfg.get("HTMLSummary", "filename"))
+            utils.save_plaintext(email_html, args.html)
         except utils.DataSavingError as ex:
             logging.error("Unable to save HTML email: {}".format(ex))
 

@@ -7,11 +7,8 @@
 
 from collections import defaultdict
 import unittest
-from unittest.mock import Mock, MagicMock
-import configparser
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.utils as utils
-from utils import build_mock_response
 
 
 class TestValidate(unittest.TestCase):
@@ -123,13 +120,13 @@ class TestValidate(unittest.TestCase):
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            res, _ = aeroqual.validate_data(data)
+            aeroqual.validate_data(data)
 
     def test_None(self):
         data = None
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            res, _ = aeroqual.validate_data(data)
+            aeroqual.validate_data(data)
 
     def test_no_timestamp_col(self):
         data = [
@@ -146,7 +143,7 @@ class TestValidate(unittest.TestCase):
         ]
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            res, _ = aeroqual.validate_data(data)
+            aeroqual.validate_data(data)
 
     def test_missing_measurands(self):
         # Here are asking for measurands that aren't in the raw data. Should

@@ -8,6 +8,7 @@
 import unittest
 from collections import defaultdict
 from unittest.mock import Mock, MagicMock, call
+from datetime import datetime
 from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
@@ -16,7 +17,6 @@ import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import DataDownloadError
 from test_utils import build_mock_response
-from datetime import datetime
 
 # Want to test that:
 #   - Any HTTP errors are raised
@@ -251,7 +251,7 @@ class TestAQMesh(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
+            self.aqmesh.scrape_device("123", mock_start, mock_end)
 
     def test_404(self):
         mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
@@ -262,7 +262,7 @@ class TestAQMesh(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
+            self.aqmesh.scrape_device("123", mock_start, mock_end)
 
     def test_403(self):
         mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
@@ -273,7 +273,7 @@ class TestAQMesh(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
+            self.aqmesh.scrape_device("123", mock_start, mock_end)
 
     def test_401(self):
         mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
@@ -284,7 +284,7 @@ class TestAQMesh(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
+            self.aqmesh.scrape_device("123", mock_start, mock_end)
 
 
 class TestZephyr(unittest.TestCase):
@@ -330,7 +330,7 @@ class TestZephyr(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123", mock_start, mock_end)
+            self.zephyr.scrape_device("123", mock_start, mock_end)
 
     def test_404(self):
         mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
@@ -341,7 +341,7 @@ class TestZephyr(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123", mock_start, mock_end)
+            self.zephyr.scrape_device("123", mock_start, mock_end)
 
     def test_403(self):
         mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
@@ -352,7 +352,7 @@ class TestZephyr(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123", mock_start, mock_end)
+            self.zephyr.scrape_device("123", mock_start, mock_end)
 
     def test_401(self):
         mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
@@ -363,7 +363,7 @@ class TestZephyr(unittest.TestCase):
         mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123", mock_start, mock_end)
+            self.zephyr.scrape_device("123", mock_start, mock_end)
 
 
 class TestMyQuantAQ(unittest.TestCase):
@@ -407,7 +407,7 @@ class TestMyQuantAQ(unittest.TestCase):
         mock_start = MagicMock()
         mock_end = MagicMock()
         with self.assertRaises(DataDownloadError):
-            res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
+            self.myquantaq.scrape_device("foo", mock_start, mock_end)
 
 
 if __name__ == "__main__":

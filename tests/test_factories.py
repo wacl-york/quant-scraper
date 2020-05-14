@@ -9,7 +9,6 @@ import unittest
 from copy import deepcopy
 import os
 from collections import defaultdict
-from unittest.mock import patch, MagicMock
 from quantscraper.factories import (
     manufacturer_factory,
     device_factory,
@@ -99,19 +98,19 @@ class TestDeviceFactory(unittest.TestCase):
         props = {"webid": "bar", "location": "york", "a": "too"}
 
         with self.assertRaises(KeyError):
-            dev = device_factory(props)
+            device_factory(props)
 
     def test_miss_webid(self):
         props = {"id": "foo", "location": "york", "a": "too"}
 
         with self.assertRaises(KeyError):
-            dev = device_factory(props)
+            device_factory(props)
 
     def test_miss_location(self):
         props = {"id": "foo", "webid": "bar", "a": "too"}
 
         with self.assertRaises(KeyError):
-            dev = device_factory(props)
+            device_factory(props)
 
 
 class TestSetupManufacturers(unittest.TestCase):
@@ -288,7 +287,7 @@ class TestSetupManufacturers(unittest.TestCase):
     def test_empty_device_list(self):
         # Have asked for a device that doesn't exist in the Device definition
         devs = []
-        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
+        res, _ = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 0)
 
     def test_mispelt_manufacturer(self):
@@ -338,5 +337,3 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(res[1].devices[1].web_id, "Zep22-f")
         self.assertEqual(res[1].devices[1].location, "frank")
         self.assertEqual(dev_list, ["AQM18"])
-
-    # TODO How to error handle and log in combined factory?

@@ -109,7 +109,7 @@ def setup_manufacturers(manufacturer_config, device_list=None):
     for man_dict in manufacturer_config:
         try:
             man_inst = manufacturer_factory(man_dict)
-        except KeyError as ex:
+        except KeyError:
             continue
 
         try:
@@ -130,8 +130,8 @@ def setup_manufacturers(manufacturer_config, device_list=None):
             device_inst = device_factory(device_dict)
             man_inst.add_device(device_inst)
 
-            # TODO When add error handling and logging can this keeping track of
-            # the list and returning it
+            # TODO When add error handling and logging can remove this keeping
+            # track of the list and returning it
             if device_list is not None:
                 device_list.remove(dev_id)
 

@@ -9,7 +9,7 @@
     any conflict with QuantAQ's own API, which has a QuantAQ class.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import timedelta
 from string import Template
 import os
 import requests as re
