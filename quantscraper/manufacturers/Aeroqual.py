@@ -26,13 +26,11 @@ class Aeroqual(Manufacturer):
 
     name = "Aeroqual"
 
-    def __init__(self, start_datetime, end_datetime, cfg, fields):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - start_datetime (datetime): The start of the scraping window.
-            - end_datetime (datetime): The end of the scraping window.
             - cfg (dict): Keyword-argument properties set in the Manufacturer's
                 'properties' attribute.
             - fields (list): List of dicts detailing the measurands available
@@ -75,15 +73,8 @@ class Aeroqual(Manufacturer):
             "connection": "keep-alive",
         }
 
-        # Can't specify times for scraping window, just dates.
-        # Will just convert datetime to date and doesn't matter too much since
-        # Aeroqual treats limits as inclusive, so will scrape too much data
-        # Needs to be in US format MM/DD/YYYY
-        start_date = start_datetime.strftime("%m/%d/%Y")
-        end_date = end_datetime.strftime("%m/%d/%Y")
-
         self.data_params = {
-            "Period": "{} to {}".format(start_date, end_date),
+            "Period": Template("${start} to ${end}"),
             "AvgMinutes": cfg["averaging_window"],
             "IncludeJournal": cfg["include_journal"],
         }
@@ -131,7 +122,7 @@ class Aeroqual(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, device_id):
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
@@ -141,12 +132,25 @@ class Aeroqual(Manufacturer):
             - A GET call to obtain the data.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (datetime): The start of the scraping window.
+            - end (datetime): The end of the scraping window.
 
         Returns:
             A string containing the raw data in CSV format, i.e. rows are
             delimited by '\r\n' characters and columns by ','.
         """
+        # Can't specify times for scraping window, just dates.
+        # Will just convert datetime to date and doesn't matter too much since
+        # Aeroqual treats limits as inclusive, so will scrape too much data
+        # Needs to be in US format MM/DD/YYYY
+        start_fmt = start.strftime("%m/%d/%Y")
+        end_fmt = end.strftime("%m/%d/%Y")
+        this_params = self.data_params.copy()
+        this_params["Period"] = this_params["Period"].substitute(
+            start=start_fmt, end=end_fmt
+        )
         try:
             result = self.session.post(
                 self.select_device_url,
@@ -163,7 +167,7 @@ class Aeroqual(Manufacturer):
 
         try:
             result = self.session.post(
-                self.data_url, data=self.data_params, headers=self.data_headers
+                self.data_url, data=this_params, headers=self.data_headers
             )
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:

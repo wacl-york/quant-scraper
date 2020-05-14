@@ -158,12 +158,14 @@ def setup_scraping_timeframe(cfg):
     return (start_time, end_time)
 
 
-def scrape(manufacturer):
+def scrape(manufacturer, start, end):
     """
     Scrapes data for all devices belonging to a manufacturer.
 
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+        - start (datetime): The start of the scraping window.
+        - end (datetime): The end of the scraping window.
 
     Returns:
         None, updates the raw_data attribute of a Device if the download is
@@ -171,7 +173,7 @@ def scrape(manufacturer):
     """
     for device in manufacturer.devices:
         try:
-            device.raw_data = manufacturer.scrape_device(device.web_id)
+            device.raw_data = manufacturer.scrape_device(device.web_id, start, end)
             logging.info("Download successful for device {}.".format(device.device_id))
         except utils.DataDownloadError:
             logging.error(
@@ -693,14 +695,13 @@ def main():
     with open(device_fn, "r") as infile:
         device_config = json.load(infile)
 
-    # TODO move start_time from constructor into scrape_device
-    manufacturers, _ = setup_manufacturers(
-        device_config["manufacturers"], start_time, end_time, args.devices
-    )
+    manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
 
     # Store device availability summary for each manufacturer
     summaries = []
-    # TODO Find better way of getting man strings
+    # TODO Find better way of getting man strings. Probably store summaries as
+    # ordered dict with manufacturer giving the Key and the Value being the
+    # summary
     man_strings = []
 
     for manufacturer in manufacturers:
@@ -719,7 +720,7 @@ def main():
             continue
 
         logging.info("Downloading data from all devices:")
-        scrape(manufacturer)
+        scrape(manufacturer, start_time, end_time)
         logging.info("Processing raw data for all devices:")
         man_summary = process(manufacturer)
 

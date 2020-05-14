@@ -133,8 +133,6 @@ class TestValidate(unittest.TestCase):
     # The input data type should be uniformly CSV, as this validate_data method
     # is called after parse_to_csv has been run.
 
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     cfg["timestamp_column"] = "timestamp"
     cfg["timestamp_format"] = "%Y-%m-%d %H:%M"
@@ -170,7 +168,7 @@ class TestValidate(unittest.TestCase):
             ["2040-12-31 00:28:00", "bar", 90.2],
         ]
 
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         try:
             res, _ = aeroqual.validate_data(data)
             self.assertCountEqual(res, exp)
@@ -192,7 +190,7 @@ class TestValidate(unittest.TestCase):
             ["2019-03-02 15:30:00", "car", 1e5],
         ]
 
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         try:
             res, _ = aeroqual.validate_data(data)
             self.assertEqual(res, exp)
@@ -212,7 +210,7 @@ class TestValidate(unittest.TestCase):
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
 
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
             res, _ = aeroqual.validate_data(data)
 
@@ -221,7 +219,7 @@ class TestValidate(unittest.TestCase):
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
         ]
 
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         try:
             res, _ = aeroqual.validate_data(data)
             exp = [["timestamp", "measurand", "value"]]
@@ -232,13 +230,13 @@ class TestValidate(unittest.TestCase):
     def test_empty_list(self):
         data = []
 
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
             res, _ = aeroqual.validate_data(data)
 
     def test_None(self):
         data = None
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
             res, _ = aeroqual.validate_data(data)
 
@@ -255,7 +253,7 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, self.fields)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
             res, _ = aeroqual.validate_data(data)
 
@@ -265,7 +263,7 @@ class TestValidate(unittest.TestCase):
         # from same manufacturer have different sensor equipped
         fields_copy = self.fields.copy()
         fields_copy.append({"id": "donkey", "webid": "donkey", "scale": 1})
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, self.cfg, fields_copy)
+        aeroqual = Aeroqual.Aeroqual(self.cfg, fields_copy)
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
             ["5", "2", "2019-03-02 15:30", "23.9", "5.0", "bar"],
@@ -302,7 +300,7 @@ class TestValidate(unittest.TestCase):
         # will get empty output
         cfg_copy = self.cfg.copy()
         cfg_copy["timestamp_format"] = "Y-m-d H:M"
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+        aeroqual = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
@@ -328,7 +326,7 @@ class TestValidate(unittest.TestCase):
         # then should also find no valid timestamps
         cfg_copy = self.cfg.copy()
         cfg_copy["timestamp_format"] = "%%y-%%m-%%d %%H:%%M"
-        aeroqual = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+        aeroqual = Aeroqual.Aeroqual(cfg_copy, self.fields)
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
             ["5", "2", "2019-03-02 15:30", "23.9", "5.0", "bar"],

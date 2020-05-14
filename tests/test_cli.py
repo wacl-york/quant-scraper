@@ -346,9 +346,11 @@ class TestScrape(unittest.TestCase):
         dev2 = Device("2", "5", "foo")
         dev3 = Device("3", "6", "foo")
         man.devices = [dev1, dev2, dev3]
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertLogs(level="INFO") as cm:
-            cli.scrape(man)
+            cli.scrape(man, mock_start, mock_end)
 
         # Assert log is called with expected messages
         self.assertEqual(
@@ -362,7 +364,11 @@ class TestScrape(unittest.TestCase):
 
         # Assert scrape calls are as expected
         scrape_calls = mock_scrape.mock_calls
-        exp_calls = [call("4"), call("5"), call("6")]
+        exp_calls = [
+            call("4", mock_start, mock_end),
+            call("5", mock_start, mock_end),
+            call("6", mock_start, mock_end),
+        ]
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly
@@ -379,9 +385,11 @@ class TestScrape(unittest.TestCase):
         dev2 = Device("2", "5", "foo")
         dev3 = Device("3", "6", "foo")
         man.devices = [dev1, dev2, dev3]
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertLogs(level="INFO") as cm:
-            cli.scrape(man)
+            cli.scrape(man, mock_start, mock_end)
 
         # Assert log is called with expected messages
         # NB: using assertIn rather than assertEqual as hard to produce the
@@ -393,7 +401,11 @@ class TestScrape(unittest.TestCase):
 
         # Assert scrape calls are as expected
         scrape_calls = mock_scrape.mock_calls
-        exp_calls = [call("4"), call("5"), call("6")]
+        exp_calls = [
+            call("4", mock_start, mock_end),
+            call("5", mock_start, mock_end),
+            call("6", mock_start, mock_end),
+        ]
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly
@@ -414,10 +426,12 @@ class TestScrape(unittest.TestCase):
         dev1 = Device("1", "4", "foo")
         dev2 = Device("2", "5", "foo")
         dev3 = Device("3", "6", "foo")
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         man.devices = [dev1, dev2, dev3]
 
         with self.assertLogs(level="INFO") as cm:
-            cli.scrape(man)
+            cli.scrape(man, mock_start, mock_end)
 
         # Assert log is called with expected messages
         # NB: using assertIn rather than assertEqual as hard to produce the
@@ -429,7 +443,11 @@ class TestScrape(unittest.TestCase):
 
         # Assert scrape calls are as expected
         scrape_calls = mock_scrape.mock_calls
-        exp_calls = [call("4"), call("5"), call("6")]
+        exp_calls = [
+            call("4", mock_start, mock_end),
+            call("5", mock_start, mock_end),
+            call("6", mock_start, mock_end),
+        ]
         self.assertEqual(scrape_calls, exp_calls)
 
         # And that the raw data fields are set accordingly

@@ -12,7 +12,7 @@ from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
 from quantscraper.manufacturers.Manufacturer import Device
 
 
-def manufacturer_factory(config, start_datetime, end_datetime):
+def manufacturer_factory(config):
     """
     Returns an instance of the specified Manufacturer sub-class.
 
@@ -20,8 +20,6 @@ def manufacturer_factory(config, start_datetime, end_datetime):
         - cfg (dict): Attributes of the manufacturer, given by the corresponding
             object containing the 'name', 'fields', 'devices' etc... attributes
             in the devices JSON file.
-        - start_datetime (datetime): The start of the scraping window.
-        - end_datetime (datetime): The end of the scraping window.
 
     Returns:
         An instance of the specified Manufacturer sub-class.
@@ -47,7 +45,7 @@ def manufacturer_factory(config, start_datetime, end_datetime):
         ) from None
 
     try:
-        inst = cls(start_datetime, end_datetime, config["properties"], config["fields"])
+        inst = cls(config["properties"], config["fields"])
     except KeyError as ex:
         raise KeyError("Cannot instantiate {}: {}".format(option, ex)) from None
 
@@ -85,9 +83,7 @@ def device_factory(config):
     return dev
 
 
-def setup_manufacturers(
-    manufacturer_config, start_datetime, end_datetime, device_list=None
-):
+def setup_manufacturers(manufacturer_config, device_list=None):
     """
     Instanties Manufacturer and specified Device objects.
 
@@ -98,8 +94,6 @@ def setup_manufacturers(
         - manufacturer_config (dict): A list of dicts that define the
             manufacturers in our study. Corresponds to the 'manufacturers' list in
             the devices JSON file.
-        - start_datetime (datetime): The start of the scraping window.
-        - end_datetime (datetime): The end of the scraping window.
         - device_list (str[], optional): A list of strings giving the device names to be
             instantiated. If not supplied, then all the devices in
             manufacturer_config are loaded.
@@ -114,7 +108,7 @@ def setup_manufacturers(
     manufacturers = []
     for man_dict in manufacturer_config:
         try:
-            man_inst = manufacturer_factory(man_dict, start_datetime, end_datetime)
+            man_inst = manufacturer_factory(man_dict)
         except KeyError as ex:
             continue
 

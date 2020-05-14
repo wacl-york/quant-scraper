@@ -16,6 +16,7 @@ import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import DataDownloadError
 from test_utils import build_mock_response
+from datetime import datetime
 
 # Want to test that:
 #   - Any HTTP errors are raised
@@ -34,21 +35,27 @@ class TestAeroqual(unittest.TestCase):
     #   - post to select device
     #   - post to generate data
     #   - get to download data
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     def test_200_success(self):
         # Mock 200 response on both posts and get
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200))
+
+        mock_start = datetime(2020, 4, 3, 15, 35, 00)
+        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+
         session_return = Mock(post=mock_post, get=mock_get)
         self.aeroqual.session = session_return
         try:
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
+            exp_params = self.aeroqual.data_params.copy()
+            exp_params["Period"] = exp_params["Period"].substitute(
+                start="04/03/2020", end="05/03/2020"
+            )
             exp_post_calls = [
                 call(
                     self.aeroqual.select_device_url,
@@ -57,7 +64,7 @@ class TestAeroqual(unittest.TestCase):
                 ),
                 call(
                     self.aeroqual.data_url,
-                    data=self.aeroqual.data_params,
+                    data=exp_params,
                     headers=self.aeroqual.data_headers,
                 ),
             ]
@@ -73,10 +80,18 @@ class TestAeroqual(unittest.TestCase):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200, text="DummyData"))
+        mock_start = datetime(2020, 4, 3, 15, 35, 00)
+        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+
+        exp_params = self.aeroqual.data_params.copy()
+        exp_params["Period"] = exp_params["Period"].substitute(
+            start="04/03/2020", end="05/03/2020"
+        )
+
         session_return = Mock(post=mock_post, get=mock_get)
         self.aeroqual.session = session_return
         try:
-            resp = self.aeroqual.scrape_device("foo")
+            resp = self.aeroqual.scrape_device("foo", mock_start, mock_end)
             self.assertEqual(resp, "DummyData")
             exp_post_calls = [
                 call(
@@ -86,7 +101,7 @@ class TestAeroqual(unittest.TestCase):
                 ),
                 call(
                     self.aeroqual.data_url,
-                    data=self.aeroqual.data_params,
+                    data=exp_params,
                     headers=self.aeroqual.data_headers,
                 ),
             ]
@@ -103,12 +118,14 @@ class TestAeroqual(unittest.TestCase):
             build_mock_response(status=200),
         ]
         mock_get = build_mock_response(status=200)
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
     # Don't need to test all non-200 responses, will just do 400 + 404
     def test_select_device_failure_404(self):
@@ -120,9 +137,11 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
     def test_generate_data_failure_400(self):
         mock_posts = [
@@ -133,9 +152,11 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
     def test_generate_data_failure_404(self):
         mock_posts = [
@@ -146,9 +167,11 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
     def test_download_data_failure_400(self):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
@@ -156,9 +179,11 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
     def test_download_data_failure_404(self):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
@@ -166,20 +191,21 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
-            self.aeroqual.scrape_device("foo")
+            self.aeroqual.scrape_device("foo", mock_start, mock_end)
 
 
 class TestAQMesh(unittest.TestCase):
 
     # AQMesh just runs a single GET request to get the data,
     # which is returned in the 'Data' attribute of the resultant JSON
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
+    cfg["timezone"] = "+02:00"
     fields = []
-    aqmesh = AQMesh.AQMesh(start_dt, end_dt, cfg, fields)
+    aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
         mock_get_resp = build_mock_response(
@@ -194,9 +220,17 @@ class TestAQMesh(unittest.TestCase):
         mock_params = self.aqmesh.data_params.copy()
         mock_params["UniqueId"] = mock_params["UniqueId"].substitute(device="123")
         mock_params["Channels"] = mock_params["Channels"].substitute(device="123")
+        mock_params["Start"] = mock_params["Start"].substitute(
+            start="2020-04-03T15:35:00 +02:00"
+        )
+        mock_params["End"] = mock_params["End"].substitute(
+            end="2020-05-03T16:28:29 +02:00"
+        )
 
+        mock_start = datetime(2020, 4, 3, 15, 35, 00)
+        mock_end = datetime(2020, 5, 3, 16, 28, 29)
         try:
-            res = self.aqmesh.scrape_device("123")
+            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
             self.assertEqual(res, [1, 2, 3])
             mock_get.assert_called_once_with(
                 self.aqmesh.data_url,
@@ -213,45 +247,51 @@ class TestAQMesh(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123")
+            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
 
     def test_404(self):
         mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123")
+            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
 
     def test_403(self):
         mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123")
+            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
 
-    def test_403(self):
+    def test_401(self):
         mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.aqmesh.scrape_device("123")
+            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
 
 
 class TestZephyr(unittest.TestCase):
     # Zephyr just requires a single GET request to obtain the data
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    zephyr = Zephyr.Zephyr(start_dt, end_dt, cfg, fields)
+    zephyr = Zephyr.Zephyr(cfg, fields)
 
     def test_success(self):
         mock_get_resp = build_mock_response(
@@ -260,6 +300,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
+        mock_start = datetime(2020, 4, 3, 15, 35, 00)
+        mock_end = datetime(2020, 5, 3, 16, 28, 29)
 
         # Make same substitution with device ID into the GET params and assert
         # that these are used in the function call
@@ -267,11 +309,11 @@ class TestZephyr(unittest.TestCase):
         mock_url = mock_url.substitute(
             device="123",
             token=self.zephyr.api_token,
-            start=self.zephyr.start_date,
-            end=self.zephyr.end_date,
+            start="20200403153500",
+            end="20200503162829",
         )
         try:
-            res = self.zephyr.scrape_device("123")
+            res = self.zephyr.scrape_device("123", mock_start, mock_end)
             self.assertEqual(res, {"CO2": [1, 2, 3], "NO": [4, 5, 6]})
             mock_get.assert_called_once_with(mock_url, headers=self.zephyr.data_headers)
         except:
@@ -284,54 +326,62 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123")
+            res = self.zephyr.scrape_device("123", mock_start, mock_end)
 
     def test_404(self):
         mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123")
+            res = self.zephyr.scrape_device("123", mock_start, mock_end)
 
     def test_403(self):
         mock_get_resp = build_mock_response(status=403, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123")
+            res = self.zephyr.scrape_device("123", mock_start, mock_end)
 
-    def test_403(self):
+    def test_401(self):
         mock_get_resp = build_mock_response(status=401, raise_for_status=HTTPError())
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
+        mock_start = MagicMock()
+        mock_end = MagicMock()
 
         with self.assertRaises(DataDownloadError):
-            res = self.zephyr.scrape_device("123")
+            res = self.zephyr.scrape_device("123", mock_start, mock_end)
 
 
 class TestMyQuantAQ(unittest.TestCase):
     # Can't test HTTP errors with QuantAQ as it wraps them up for us in their
     # API. Instead can test their errors are handled appropriately
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    myquantaq = MyQuantAQ.MyQuantAQ(start_dt, end_dt, cfg, fields)
+    myquantaq = MyQuantAQ.MyQuantAQ(cfg, fields)
 
     def test_success(self):
         mock_resp = {"CO2": [1, 2, 3], "NO2": [4, 5, 6]}
         mock_get_data = Mock(return_value=mock_resp)
         mock_api_obj = Mock(get_data=mock_get_data)
         self.myquantaq.api_obj = mock_api_obj
+        mock_start = datetime(2020, 4, 3, 15, 35, 00)
+        mock_end = datetime(2020, 5, 3, 16, 28, 29)
         try:
-            res = self.myquantaq.scrape_device("foo")
+            res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
             self.assertEqual(
                 res,
                 {
@@ -339,17 +389,12 @@ class TestMyQuantAQ(unittest.TestCase):
                     "final": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
                 },
             )
+            exp_filter = self.myquantaq.query_string.substitute(
+                start="2020-04-03", end="2020-05-04"
+            )
             exp_calls = [
-                call(
-                    sn="foo",
-                    final_data=False,
-                    params=dict(filter=self.myquantaq.query_string),
-                ),
-                call(
-                    sn="foo",
-                    final_data=True,
-                    params=dict(filter=self.myquantaq.query_string),
-                ),
+                call(sn="foo", final_data=False, params=dict(filter=exp_filter)),
+                call(sn="foo", final_data=True, params=dict(filter=exp_filter)),
             ]
             self.assertEqual(mock_get_data.mock_calls, exp_calls)
         except:
@@ -359,8 +404,10 @@ class TestMyQuantAQ(unittest.TestCase):
         mock_get_data = Mock(side_effect=DataReadError)
         mock_api_obj = Mock(get_data=mock_get_data)
         self.myquantaq.api_obj = mock_api_obj
+        mock_start = MagicMock()
+        mock_end = MagicMock()
         with self.assertRaises(DataDownloadError):
-            res = self.myquantaq.scrape_device("foo")
+            res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
 
 
 if __name__ == "__main__":

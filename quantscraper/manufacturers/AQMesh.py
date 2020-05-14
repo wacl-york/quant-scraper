@@ -26,13 +26,11 @@ class AQMesh(Manufacturer):
 
     name = "AQMesh"
 
-    def __init__(self, start_datetime, end_datetime, cfg, fields):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - start_datetime (datetime): The start of the scraping window.
-            - end_datetime (datetime): The end of the scraping window.
             - cfg (dict): Keyword-argument properties set in the Manufacturer's
                 'properties' attribute.
             - fields (list): List of dicts detailing the measurands available
@@ -58,13 +56,7 @@ class AQMesh(Manufacturer):
             "referer": cfg["data_referer"],
         }
 
-        # Convert start and end times into required format of
-        # YYYY-mm-ddTHH:mm:ss TZ:TZ
-        # Where TZ:TZ is in HH:MM format
-        # Making assumption here that have no timezone!
-        timezone = cfg["timezone"]
-        start_fmt = start_datetime.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
-        end_fmt = end_datetime.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
+        self.timezone = cfg["timezone"]
 
         self.data_params = {
             "CRUD": "READ",
@@ -73,9 +65,9 @@ class AQMesh(Manufacturer):
             "Channels": Template(
                 "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
             ),
-            "Start": start_fmt,
-            "End": end_fmt,
-            "TimeZone": timezone,
+            "Start": Template("${start}"),
+            "End": Template("${end}"),
+            "TimeZone": self.timezone,
             "Average": cfg["averaging_window"],
             "TimeConvention": "timebeginning",
             "Units": cfg["units"],
@@ -129,7 +121,7 @@ class AQMesh(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, device_id):
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
@@ -137,16 +129,27 @@ class AQMesh(Manufacturer):
         The raw data is held in the 'Data' attribute of the response JSON.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (datetime): The start of the scraping window.
+            - end (datetime): The end of the scraping window.
 
         Returns:
             The data stored in a hierarchical format comprising dicts and lists.
             At the top level, the data has 2 attributes, 'Headers' and 'Rows',
             which hold the column labels and data respectively.
         """
+        # Convert start and end times into required format of
+        # YYYY-mm-ddTHH:mm:ss TZ:TZ
+        # Where TZ:TZ is in HH:MM format
+        start_fmt = start.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        end_fmt = end.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+
         this_params = self.data_params.copy()
         this_params["UniqueId"] = this_params["UniqueId"].substitute(device=device_id)
         this_params["Channels"] = this_params["Channels"].substitute(device=device_id)
+        this_params["Start"] = this_params["Start"].substitute(start=start_fmt)
+        this_params["End"] = this_params["End"].substitute(end=end_fmt)
 
         try:
             result = self.session.get(

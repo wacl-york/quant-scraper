@@ -26,12 +26,10 @@ class TestAeroqual(unittest.TestCase):
     # \r\n delimiting lines and , delimiting columns
     # However, it has 6 empty header lines containing metadata
 
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     cfg["lines_skip"] = 6
     fields = []
-    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     def test_success(self):
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
@@ -44,7 +42,7 @@ class TestAeroqual(unittest.TestCase):
         # meaning will throw error as have mismatched column sizes
         cfg_copy = self.cfg.copy()
         cfg_copy["lines_skip"] = 4
-        aeroqual2 = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+        aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         exp = [
@@ -63,7 +61,7 @@ class TestAeroqual(unittest.TestCase):
         # meaning will lose actual data rows
         cfg_copy = self.cfg.copy()
         cfg_copy["lines_skip"] = 8
-        aeroqual2 = Aeroqual.Aeroqual(self.start_dt, self.end_dt, cfg_copy, self.fields)
+        aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
         exp = [["4", "5", "6"], ["7", "8", "9"]]
@@ -118,11 +116,9 @@ class TestAQMesh(unittest.TestCase):
     # Headers is a list of dicts, where each entry in the list is a column, and
     #   each entry in the dict contains metadata. We want the 'Header' field which
     #   holds the field name.
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aqmesh = AQMesh.AQMesh(start_dt, end_dt, cfg, fields)
+    aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
         raw_headers = [
@@ -197,13 +193,11 @@ class TestZephyr(unittest.TestCase):
     # here is the CSVOrder int.
     # 'data' is the list of values, and 'data_hash' is just a hash
 
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     cfg["averaging_window"] = "Unaveraged"
     cfg["slot"] = "slotB"
     fields = []
-    zephyr = Zephyr.Zephyr(start_dt, end_dt, cfg, fields)
+    zephyr = Zephyr.Zephyr(cfg, fields)
 
     def test_success(self):
         # Put measurands in out of order to ensure the CSVOrder flag is used
@@ -329,11 +323,9 @@ class TestQuantAQ(unittest.TestCase):
     # The JSON returned by quantaq's API call is in the format of a list of
     # dicts, where each entry in the list is a row.
     # The function I've produced has had to, by necessity, hardcode lat and lon
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    myquantaq = MyQuantAQ.MyQuantAQ(start_dt, end_dt, cfg, fields)
+    myquantaq = MyQuantAQ.MyQuantAQ(cfg, fields)
 
     def test_success(self):
         # Currently not a very robust function, as it will error

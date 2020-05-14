@@ -89,11 +89,9 @@ class TestSaveCleanData(unittest.TestCase):
     #          dataset and a given filename.
 
     # This class tests the former.
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     def test_success(self):
         self.aeroqual._devices = []
@@ -282,11 +280,9 @@ class TestSaveRawData(unittest.TestCase):
     #    - utils.save_json_file: Does actual writing to file of a given
     #          serializable Python object and a given filename.
 
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     def test_success(self):
         # Set dummy data
