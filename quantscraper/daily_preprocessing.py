@@ -24,14 +24,14 @@
 import sys
 import os
 import logging
+import argparse
 import traceback
-import configparser
 import json
 from datetime import date, timedelta, datetime
-from dotenv import load_dotenv
-
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
+
 import quantscraper.utils as utils
 import quantscraper.cli as cli
 from quantscraper.factories import setup_manufacturers
@@ -40,34 +40,68 @@ CONFIG_FN = "preprocessing.ini"
 DEVICES_FN = "devices.json"
 
 
-def setup_scraping_timeframe(cfg):
+def parse_args():
+    """
+    Parses CLI arguments to the script.
+
+    Args:
+        - None
+
+    Returns:
+        An argparse.Namespace object.
+    """
+    parser = argparse.ArgumentParser(description="QUANT preprocessing")
+    parser.add_argument(
+        "--devices",
+        metavar="DEVICE1 DEVICE2 ... DEVICEN",
+        nargs="+",
+        help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+    )
+
+    parser.add_argument(
+        "--date",
+        metavar="DATE",
+        help="The date to collate data from, in the format YYY-mm-dd. Defaults to yesterday.",
+    )
+
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Uploads the pre-processed data to Google Drive.",
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def setup_scraping_timeframe(day=None):
     """
     Sets up the day to process the data for.
 
     By default, this script attempts to collate data from yesterday,
-    although if a valid YYYY-mm-dd date is provided in the 'date' top-level
-    attribute of the config JSON file then that date is used instead.
+    although if a valid YYYY-mm-dd date is provided to the --date program
+    argument then that date is used instead.
 
     Args:
-        - cfg (Object): Contains the script configuration
-            settings.
+        - day (str, optional): The day to run the pre-processing routine for,
+        in YYYY-mm-dd format. If not provided then defaults to yesterday's date.
 
     Returns:
         The date to process for as a string in YYYY-mm-dd format.
     """
-    try:
-        date_dt = datetime.strptime(cfg.get("Analysis", "date"), "%Y-%m-%d")
-        date_str = date_dt.strftime("%Y-%m-%d")
-    except configparser.NoOptionError:
+    if day is None:
         yesterday = date.today() - timedelta(days=1)
-        date_str = yesterday.strftime("%Y-%m-%d")
+        day = yesterday.strftime("%Y-%m-%d")
+
+    # Ensure that the day is a valid date
+    try:
+        date_dt = datetime.strptime(day, "%Y-%m-%d")
     except ValueError:
         raise utils.TimeError(
-            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(
-                cfg.get("Analysis", "date")
-            )
+            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(day)
         )
 
+    date_str = date_dt.strftime("%Y-%m-%d")
     return date_str
 
 
@@ -251,7 +285,7 @@ def main():
         sys.exit()
 
     # Parse args and config file
-    args = cli.parse_args()
+    args = parse_args()
     try:
         cfg = utils.setup_config(CONFIG_FN)
     except utils.SetupError:
@@ -261,12 +295,13 @@ def main():
         sys.exit()
 
     # Default to yesterday's data if no parseable date provided in config
-    recording_date = setup_scraping_timeframe(cfg)
+    recording_date = setup_scraping_timeframe(args.date)
+
+    # Load config params
     local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
     local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
     credentials_fn = cfg.get("Analysis", "google_api_credentials_fn")
     drive_analysis_id = cfg.get("Analysis", "gdrive_analysis_folder_id")
-    upload_google_drive = cfg.get("Analysis", "upload_analysis_gdrive")
     time_res = cfg.get("Analysis", "time_resolution")
 
     # TODO Refactor into own function in utils
@@ -352,7 +387,7 @@ def main():
             continue
 
         # Upload to GoogleDrive
-        if upload_google_drive:
+        if args.upload:
             logging.info("Initiating upload to GoogleDrive.")
             try:
                 service = utils.auth_google_api(credentials_fn)

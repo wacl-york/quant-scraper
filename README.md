@@ -35,7 +35,11 @@ The installation processes places an executable called `quant_scrape` in the use
 
 `quant_scrape`
 
-A log will be displayed on `stderr`, which can be redirected to a file for long-term logging.
+By default, the scraper will run for all available instruments over the 24 hour period from midnight of the previous day to 1 second before midnight of the current day.
+A summary of the scraping is output to `stdout`, while a log will be displayed on `stderr`.
+Command line arguments allow for the specification of the instruments to scrape and the timeframe, in addition to uploading the resultant data to Google Drive and saving an HTML summary table.
+
+Run `quant_scrape --help` to see the available options.
 
 ## Scrapping configuration
 
@@ -61,11 +65,13 @@ It also resamples the time-series so that the air quality data from all manufact
 
 The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation. 
 
-As with the scraping program, it requires the presence of `devices.json` to define the manufacturers and devices included in the study.
+As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
 It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
 An example is provided by `example_preprocessing.ini`.
 
-By default the program pre-processes the previous day's cleaned data, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `date` option in the `Analysis` section.
+By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
+Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.
+Run `quant_preprocess --help` to see the available options.
 
 # Contributing to development
 

@@ -6,12 +6,10 @@
 """
 
 import unittest
-from unittest.mock import patch, Mock, mock_open
-import pandas as pd
-import json
-import numpy as np
+from unittest.mock import patch, Mock
 import datetime
-import configparser
+import pandas as pd
+import numpy as np
 import quantscraper.utils as utils
 import quantscraper.daily_preprocessing as daily_preprocessing
 
@@ -61,9 +59,7 @@ class TestLoadData(unittest.TestCase):
             mock_pd.read_csv = mock_read
 
             with self.assertRaises(utils.DataReadingError):
-                res = daily_preprocessing.get_data(
-                    "cleanfoo", "manu1", "dev1", "2012-03-12"
-                )
+                daily_preprocessing.get_data("cleanfoo", "manu1", "dev1", "2012-03-12")
 
 
 class TestLongToWide(unittest.TestCase):
@@ -235,7 +231,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(example_data)
+            daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns1(self):
         # Missing timestamp column
@@ -248,7 +244,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(example_data)
+            daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns2(self):
         # Missing device column
@@ -265,7 +261,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(example_data)
+            daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns3(self):
         # Missing measurand column
@@ -282,7 +278,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(example_data)
+            daily_preprocessing.long_to_wide(example_data)
 
     def test_missing_columns4(self):
         # Missing value column
@@ -299,7 +295,7 @@ class TestLongToWide(unittest.TestCase):
         )
 
         with self.assertRaises(utils.DataConversionError):
-            res = daily_preprocessing.long_to_wide(example_data)
+            daily_preprocessing.long_to_wide(example_data)
 
     def test_no_rows_no_measurands_or_devices(self):
         # Test when have no clean data and haven't specified measurands
@@ -419,9 +415,6 @@ class TestLongToWide(unittest.TestCase):
         pd.testing.assert_frame_equal(
             res, exp, check_column_type=True, check_index_type=False
         )
-
-    # TODO Add tests for when devices are specified, and also for devices +
-    # manufacturer
 
 
 class TestResample(unittest.TestCase):
@@ -568,7 +561,7 @@ class TestResample(unittest.TestCase):
         )
 
         with self.assertRaises(utils.ResamplingError):
-            res = daily_preprocessing.resample(dummy, "1Min")
+            daily_preprocessing.resample(dummy, "1Min")
 
     def test_error_bad_resolution_format(self):
         # Should raise error when pass in invalid time format
@@ -592,52 +585,35 @@ class TestResample(unittest.TestCase):
         dummy.set_index("timestamp", inplace=True)
 
         with self.assertRaises(utils.ResamplingError):
-            res = daily_preprocessing.resample(dummy, "adsdsa")
+            daily_preprocessing.resample(dummy, "adsdsa")
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_no_date(self):
         # Don't pass in date, so output should have yesterday's date
-        cfg = configparser.ConfigParser()
-        cfg.add_section("Analysis")
-        cfg.set("Analysis", "foo", "bar")
 
         # Mock date.today() to a fixed date
         with patch("quantscraper.daily_preprocessing.date", autospec=True) as mock_date:
             mock_today = Mock(return_value=datetime.date(2012, 3, 17))
             mock_date.today = mock_today
 
-            res = daily_preprocessing.setup_scraping_timeframe(cfg)
+            res = daily_preprocessing.setup_scraping_timeframe()
             self.assertEqual(res, "2012-03-16")
 
     def test_date_provided(self):
         # Providing config with valid date attribute shouldn't modify it
-        cfg = configparser.ConfigParser()
-        cfg.add_section("Analysis")
-        cfg.set("Analysis", "foo", "bar")
-        cfg.set("Analysis", "date", "2019-05-23")
-        res = daily_preprocessing.setup_scraping_timeframe(cfg)
+        res = daily_preprocessing.setup_scraping_timeframe("2019-05-23")
         self.assertEqual(res, "2019-05-23")
 
     def test_invalid_date(self):
         # Date is provided, but isn't in YYYY-mm-dd format so should raise error
-        cfg = configparser.ConfigParser()
-        cfg.add_section("Analysis")
-        cfg.set("Analysis", "foo", "bar")
-        cfg.set("Analysis", "date", "2020/03/04")
-
         with self.assertRaises(utils.TimeError):
-            daily_preprocessing.setup_scraping_timeframe(cfg)
+            daily_preprocessing.setup_scraping_timeframe("2020/03/04")
 
     def test_zeropadding_added(self):
         # Valid date is provided but doesn't have zero padding, which is always
         # present in the clean data filenames
-        cfg = configparser.ConfigParser()
-        cfg.add_section("Analysis")
-        cfg.set("Analysis", "foo", "bar")
-        cfg.set("Analysis", "date", "2020-3-4")
-
-        res = daily_preprocessing.setup_scraping_timeframe(cfg)
+        res = daily_preprocessing.setup_scraping_timeframe("2020-3-4")
         self.assertEqual(res, "2020-03-04")
 
 

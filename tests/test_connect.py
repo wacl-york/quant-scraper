@@ -8,7 +8,7 @@
 import os
 import unittest
 from collections import defaultdict
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock
 from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual

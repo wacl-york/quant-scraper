@@ -7,9 +7,7 @@
 
 
 import unittest
-from unittest.mock import MagicMock
 from collections import defaultdict
-import configparser
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
@@ -45,14 +43,7 @@ class TestAeroqual(unittest.TestCase):
         aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
         raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
-        exp = [
-            ["header5"],
-            ["header6"],
-            ["NO2", "CO2", "O3"],
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-        ]
+
         with self.assertRaises(DataParseError):
             aeroqual2.parse_to_csv(raw_data)
 
