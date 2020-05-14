@@ -1,5 +1,5 @@
 config.ini
-preprocessing.json
+preprocessing.ini
 devices.json
 __pycache__/*
 *.swp
