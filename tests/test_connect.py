@@ -29,11 +29,9 @@ os.environ["QUANTAQ_API_TOKEN"] = "foo"
 
 
 class TestAeroqual(unittest.TestCase):
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aeroqual = Aeroqual.Aeroqual(start_dt, end_dt, cfg, fields)
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
@@ -102,11 +100,9 @@ class TestAeroqual(unittest.TestCase):
 
 
 class TestAQMesh(unittest.TestCase):
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    aqmesh = AQMesh.AQMesh(start_dt, end_dt, cfg, fields)
+    aqmesh = AQMesh.AQMesh(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
@@ -180,11 +176,9 @@ class TestZephyr(unittest.TestCase):
     # so credential errors are only identified downstream when attempting to
     # pull data using the generated access token.
 
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    zephyr = Zephyr.Zephyr(start_dt, end_dt, cfg, fields)
+    zephyr = Zephyr.Zephyr(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
@@ -263,11 +257,9 @@ class TestMyQuantAQ(unittest.TestCase):
     # Don't want to do any actual IO, so instead will just mock the
     # quantaq.get_account() method raising an error, an indication that the
     # login has failed
-    start_dt = MagicMock()
-    end_dt = MagicMock()
     cfg = defaultdict(str)
     fields = []
-    myquantaq = MyQuantAQ.MyQuantAQ(start_dt, end_dt, cfg, fields)
+    myquantaq = MyQuantAQ.MyQuantAQ(cfg, fields)
 
     def test_success(self):
         # mock the get_account method that is called to test authentication

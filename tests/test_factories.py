@@ -31,15 +31,13 @@ class TestManufacturerFactory(unittest.TestCase):
     cfg = defaultdict(str)
     cfg["properties"] = defaultdict(str)
     cfg["fields"] = []
-    start_dt = MagicMock()
-    end_dt = MagicMock()
 
     def test_aeroqual_success(self):
         self.cfg["name"] = "Aeroqual"
 
         # Shouldn't raise any errors
         try:
-            res = manufacturer_factory(self.cfg, self.start_dt, self.end_dt)
+            res = manufacturer_factory(self.cfg)
             self.assertIsInstance(res, Manufacturer)
         except:
             self.fail("Error was unexpectedly raised.")
@@ -49,7 +47,7 @@ class TestManufacturerFactory(unittest.TestCase):
 
         # Shouldn't raise any errors
         try:
-            res = manufacturer_factory(self.cfg, self.start_dt, self.end_dt)
+            res = manufacturer_factory(self.cfg)
             self.assertIsInstance(res, Manufacturer)
         except:
             self.fail("Error was unexpectedly raised.")
@@ -59,7 +57,7 @@ class TestManufacturerFactory(unittest.TestCase):
 
         # Shouldn't raise any errors
         try:
-            res = manufacturer_factory(self.cfg, self.start_dt, self.end_dt)
+            res = manufacturer_factory(self.cfg)
             self.assertIsInstance(res, Manufacturer)
         except:
             self.fail("Error was unexpectedly raised.")
@@ -69,7 +67,7 @@ class TestManufacturerFactory(unittest.TestCase):
 
         # Shouldn't raise any errors
         try:
-            res = manufacturer_factory(self.cfg, self.start_dt, self.end_dt)
+            res = manufacturer_factory(self.cfg)
             self.assertIsInstance(res, Manufacturer)
         except:
             self.fail("Error was unexpectedly raised.")
@@ -79,7 +77,7 @@ class TestManufacturerFactory(unittest.TestCase):
         self.cfg["name"] = "quantAQ"
 
         with self.assertRaises(KeyError):
-            manufacturer_factory(self.cfg, self.start_dt, self.end_dt)
+            manufacturer_factory(self.cfg)
 
 
 class TestDeviceFactory(unittest.TestCase):
@@ -148,14 +146,10 @@ class TestSetupManufacturers(unittest.TestCase):
             ],
         },
     ]
-    start_dt = MagicMock()
-    end_dt = MagicMock()
 
     def test_success(self):
         devs = ["AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            deepcopy(self.valid_config), self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 1)
@@ -175,9 +169,7 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(dev_list, [])
 
     def test_success_all_devices(self):
-        res, dev_list = setup_manufacturers(
-            deepcopy(self.valid_config), self.start_dt, self.end_dt
-        )
+        res, dev_list = setup_manufacturers(deepcopy(self.valid_config))
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 2)
         self.assertEqual(len(res[1].devices), 2)
@@ -207,9 +199,7 @@ class TestSetupManufacturers(unittest.TestCase):
     def test_missing_device(self):
         # Have asked for a device that doesn't exist in the Device definition
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            deepcopy(self.valid_config), self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 1)
@@ -238,9 +228,7 @@ class TestSetupManufacturers(unittest.TestCase):
             "Zephyr": {"devices": ["a", "b", "c"]},
         }
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            invalid_config, self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 0)
         self.assertEqual(dev_list, devs)
 
@@ -250,9 +238,7 @@ class TestSetupManufacturers(unittest.TestCase):
         # Here have a list of lists
         invalid_config = [["Aeroqual", "AQMesh"]]
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            invalid_config, self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 0)
         self.assertEqual(dev_list, devs)
 
@@ -291,9 +277,7 @@ class TestSetupManufacturers(unittest.TestCase):
             },
         ]
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            invalid_config, self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 1)
         self.assertEqual(dev_list, ["FOO182", "AQY81", "Zep22", "Zep33"])
         self.assertEqual(len(res[0].devices), 1)
@@ -304,9 +288,7 @@ class TestSetupManufacturers(unittest.TestCase):
     def test_empty_device_list(self):
         # Have asked for a device that doesn't exist in the Device definition
         devs = []
-        res, dev_list = setup_manufacturers(
-            deepcopy(self.valid_config), self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 0)
 
     def test_mispelt_manufacturer(self):
@@ -342,9 +324,7 @@ class TestSetupManufacturers(unittest.TestCase):
             },
         ]
         devs = ["AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(
-            invalid_config, self.start_dt, self.end_dt, devs
-        )
+        res, dev_list = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 2)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 2)

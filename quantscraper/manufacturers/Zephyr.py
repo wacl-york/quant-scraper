@@ -26,13 +26,11 @@ class Zephyr(Manufacturer):
 
     name = "Zephyr"
 
-    def __init__(self, start_datetime, end_datetime, cfg, fields):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - start_datetime (datetime): The start of the scraping window.
-            - end_datetime (datetime): The end of the scraping window.
             - cfg (dict): Keyword-argument properties set in the Manufacturer's
                 'properties' attribute.
             - fields (list): List of dicts detailing the measurands available
@@ -56,18 +54,6 @@ class Zephyr(Manufacturer):
 
         # Download data
         self.data_headers = {"content-type": "application/json; charset=UTF-8"}
-
-        # Load start and end scraping datetimes
-        # Zephyr uses [closed, open) intervals, so set start time as midnight of
-        # the start day, and end day as midnight of day AFTER required end day.
-        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
-        # 59th minute worth of data
-        start_dt = datetime.combine(start_datetime, time.min)
-        end_dt = datetime.combine((end_datetime + timedelta(days=1)), time.min)
-        start_fmt = start_dt.strftime("%Y%m%d%H%M%S")
-        end_fmt = end_dt.strftime("%Y%m%d%H%M%S")
-        self.start_date = start_fmt
-        self.end_date = end_fmt
 
         raw_data_url = cfg["data_url"]
         self.data_url = Template(
@@ -119,7 +105,7 @@ class Zephyr(Manufacturer):
 
         self.api_token = result.json()["access_token"]
 
-    def scrape_device(self, device_id):
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
@@ -133,17 +119,30 @@ class Zephyr(Manufacturer):
         <main domain>?device=foo&start_date=bar...
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (datetime): The start of the scraping window.
+            - end (datetime): The end of the scraping window.
 
         Returns:
             The raw data is returned in the response's JSON and organised in a
             hierarchical format of dicts and lists.
         """
+        # Load start and end scraping datetimes
+        # Zephyr uses [closed, open) intervals, so set start time as midnight of
+        # the start day, and end day as midnight of day AFTER required end day.
+        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
+        # 59th minute worth of data
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine((end + timedelta(days=1)), time.min)
+        start_fmt = start_dt.strftime("%Y%m%d%H%M%S")
+        end_fmt = end_dt.strftime("%Y%m%d%H%M%S")
+
         this_url = self.data_url.substitute(
             device=device_id,
             token=self.api_token,
-            start=self.start_date,
-            end=self.end_date,
+            start=start_fmt,
+            end=end_fmt
         )
         try:
             result = self.session.get(this_url, headers=self.data_headers,)

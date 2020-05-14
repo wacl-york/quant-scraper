@@ -32,13 +32,11 @@ class MyQuantAQ(Manufacturer):
 
     name = "QuantAQ"
 
-    def __init__(self, start_datetime, end_datetime, cfg, fields):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - start_datetime (datetime): The start of the scraping window.
-            - end_datetime (datetime): The end of the scraping window.
             - cfg (dict): Keyword-argument properties set in the Manufacturer's
                 'properties' attribute.
             - fields (list): List of dicts detailing the measurands available
@@ -50,21 +48,10 @@ class MyQuantAQ(Manufacturer):
         self.api_obj = None
         self.api_token = os.environ["QUANTAQ_API_TOKEN"]
 
-        # Load start and end scraping datetimes
-        start_date = start_datetime.strftime("%Y-%m-%d")
-        # Notice how we add on 1 day here.
-        # Although there is a "less than or equal to" filter,
-        # if you use ">= start_date and <= end_date" where start_date=end_date,
-        # i.e. the common scenario in our usage, then it raises an error.
-        # The solution is to add a day onto the end_date,
-        # and use < rather than <=
-        end_date = (end_datetime + timedelta(days=1)).strftime("%Y-%m-%d")
-
         # This would be more easily saved as a dict as that's how it gets used
         # later, but the quantaq package does some funny dict updating by
         # reference that modifies the dict from my environment
-        raw = Template("timestamp,ge,${start};timestamp,lt,${end}")
-        self.query_string = raw.substitute(start=start_fmt, end=end_fmt)
+        self.query_string = Template("timestamp,ge,${start};timestamp,lt,${end}")
 
         super().__init__(cfg, fields)
 
@@ -92,7 +79,7 @@ class MyQuantAQ(Manufacturer):
                 "Could not connect to quantaq API.\n{}".format(ex)
             ) from None
 
-    def scrape_device(self, device_id):
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the API.
 
@@ -104,7 +91,10 @@ class MyQuantAQ(Manufacturer):
         Both the raw and final data are stored from this call.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (datetime): The start of the scraping window.
+            - end (datetime): The end of the scraping window.
 
         Returns:
             A dict with 2 attributes: 'raw' and 'final', holding the raw and
@@ -112,9 +102,21 @@ class MyQuantAQ(Manufacturer):
             Each of these datasets are stored as lists of dicts, with each list
             entry corresponding to a unique time-point.
         """
+        # Load start and end scraping datetimes
+        start_date = start.strftime("%Y-%m-%d")
+        # Notice how we add on 1 day here.
+        # Although there is a "less than or equal to" filter,
+        # if you use ">= start_date and <= end_date" where start_date=end_date,
+        # i.e. the common scenario in our usage, then it raises an error.
+        # The solution is to add a day onto the end_date,
+        # and use < rather than <=
+        end_date = (end + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        query = self.query_string.substitute(start=start_date, end=end_date)
+
         try:
             raw = self.api_obj.get_data(
-                sn=device_id, final_data=False, params=dict(filter=self.query_string),
+                sn=device_id, final_data=False, params=dict(filter=query),
             )
         except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(
@@ -122,7 +124,7 @@ class MyQuantAQ(Manufacturer):
             ) from None
         try:
             final = self.api_obj.get_data(
-                sn=device_id, final_data=True, params=dict(filter=self.query_string),
+                sn=device_id, final_data=True, params=dict(filter=query),
             )
         except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(

@@ -86,7 +86,7 @@ class Manufacturer(ABC):
         """
 
     @abstractmethod
-    def scrape_device(self, device_id):
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device.
 
@@ -98,7 +98,10 @@ class Manufacturer(ABC):
         sub-classes.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (datetime): The start of the scraping window.
+            - end (datetime): The end of the scraping window.
 
         Returns:
             A JSON serializable object holding the raw data.
