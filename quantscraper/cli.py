@@ -354,7 +354,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
-def summarise_run(summaries):
+def tabular_summary(summaries):
     """
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
@@ -369,11 +369,12 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        A 3D list, where each outermost entry corresponds to a 2D list for
-        each manufacturer. The 2D list represents tabular data, where the
-        outer-most dimension is a row and the inner-most a column.
+        A dict, where each entry corresponds to a 2D list indexed by
+        manufacturer name. The 2D list represents tabular data for the
+        corresponding manufacturer, where the outer-most dimension is a row
+        and the inner-most is a column.
     """
-    tables = []
+    tables = {}
     for manu in summaries:
         avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
 
@@ -444,14 +445,12 @@ def summarise_run(summaries):
             # Save manufacturer table
             manu_table = [col_names]
             manu_table.extend(manu_rows)
-            tables.append(manu_table)
+            tables[manu["manufacturer"]] = manu_table
 
     return tables
 
 
-def generate_ascii_summary(
-    manufacturers, tables, column_width=13, max_screen_width=100
-):
+def generate_ascii_summary(tables, column_width=13, max_screen_width=100):
     """
     Generates an plain-text ASCII summary of the data availability table.
 
@@ -460,13 +459,12 @@ def generate_ascii_summary(
     each fitting within the desired screen width.
 
     Args:
-        manufacturers (str[]): List of manufacturer names.
-        tables (list): 3D list, where each outer-most index represents the
-            summary table corresponding to each manufacturer, with the next inner
-            dimension representing a row in the table, and the final dimension being
-            columns.
-        column_width (int): Column width in spaces.
-        max_screen_width (int): Maximum horizontal space to use in spaces.
+        - tables (dict): Each entry corresponds to a 2D list indexed by
+            manufacturer name. The 2D list represents tabular data for the
+            corresponding manufacturer, where the outer-most dimension is a row
+            and the inner-most is a column.
+        - column_width (int): Column width in spaces.
+        - max_screen_width (int): Maximum horizontal space to use in spaces.
 
     Returns:
         A list of strings, where each entry is a new line.
@@ -482,7 +480,7 @@ def generate_ascii_summary(
     output.append("Summary")
     output.append("-" * 80)
 
-    for manufacturer, manu_table in zip(manufacturers, tables):
+    for manufacturer, manu_table in tables.items():
         output.append(manufacturer)
         output.append("~" * len(manufacturer))
 
@@ -604,7 +602,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
 
 def generate_html_summary(
-    manufacturers, tables, email_template, manufacturer_template, manufacturer_styles
+    tables, email_template, manufacturer_template, manufacturer_styles
 ):
     """
     Generates an HTML document summarising the device availability from the
@@ -617,19 +615,18 @@ def generate_html_summary(
     these HTML snippets into the main document template.
 
     Args:
-        manufacturers (str[]): List of manufacturer names.
-        tables (list): 3D list, where each outer-most index represents the
-            summary table corresponding to each manufacturer, with the next inner
-            dimension representing a row in the table, and the final dimension being
-            columns.
-        email_template (str): The HTML template of the whole document.
+        - tables (dict): Each entry corresponds to a 2D list indexed by
+            manufacturer name. The 2D list represents tabular data for the
+            corresponding manufacturer, where the outer-most dimension is a row
+            and the inner-most is a column.
+        - email_template (str): The HTML template of the whole document.
           Formatted as Python string.Template(), with $placeholder tags.
           Expect 1 placeholder:
               - summary: Whatever HTML markup is going to consitute the body of
               this document. This placeholder is located inside a <div>, which
               is directly inside the <body> tags.
-        manufacturer_template (str): The HTML template of the manufacturer section.
-        manufacturer styles (dict): Various CSS settings to pass to
+        - manufacturer_template (str): The HTML template of the manufacturer section.
+        - manufacturer styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
 
     Returns:
@@ -640,7 +637,7 @@ def generate_html_summary(
         generate_manufacturer_html(
             manufacturer_template, manu, tab, **manufacturer_styles
         )
-        for manu, tab in zip(manufacturers, tables)
+        for manu, tab in tables.items()
     ]
     manufacturer_html = "\n".join(manufacturer_sections)
 
@@ -699,13 +696,8 @@ def main():
 
     # Store device availability summary for each manufacturer
     summaries = []
-    # TODO Find better way of getting man strings. Probably store summaries as
-    # ordered dict with manufacturer giving the Key and the Value being the
-    # summary
-    man_strings = []
 
     for manufacturer in manufacturers:
-        man_strings.append(manufacturer.name)
         logging.info("Manufacturer: {}".format(manufacturer.name))
 
         try:
@@ -780,10 +772,10 @@ def main():
                 )
 
     # Summarise number of clean measurands into tabular format
-    summary_tables = summarise_run(summaries)
+    summary_tables = tabular_summary(summaries)
 
     # Output table to screen
-    ascii_summary = generate_ascii_summary(man_strings, summary_tables)
+    ascii_summary = generate_ascii_summary(summary_tables)
     # Print summary to log and stdout
     for line in ascii_summary:
         logging.info(line)
@@ -819,11 +811,7 @@ def main():
 
         if email_template is not None and manufacturer_template is not None:
             email_html = generate_html_summary(
-                man_strings,
-                summary_tables,
-                email_template,
-                manufacturer_template,
-                styles,
+                summary_tables, email_template, manufacturer_template, styles,
             )
 
         try:
