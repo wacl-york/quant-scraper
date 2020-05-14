@@ -12,6 +12,7 @@ import json
 import csv
 import socket
 from string import Template
+import configparser
 
 from google.oauth2 import service_account
 import googleapiclient.discovery
@@ -320,3 +321,22 @@ def load_html_template(filename):
         raise DataReadingError("Unable to read file {}.".format(filename)) from None
 
     return Template(template_raw)
+
+
+def setup_config(cfg_fn):
+    """
+    Loads configuration parameters from a file into memory.
+
+    Args:
+        - cfg_fn (str): Filepath of the .ini file.
+
+    Returns:
+        A configparser.Namespace instance.
+    """
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_fn)
+
+    if len(cfg.sections()) == 0:
+        raise SetupError("No sections found in '{}'".format(cfg_fn))
+
+    return cfg

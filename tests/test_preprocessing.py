@@ -11,6 +11,7 @@ import pandas as pd
 import json
 import numpy as np
 import datetime
+import configparser
 import quantscraper.utils as utils
 import quantscraper.daily_preprocessing as daily_preprocessing
 
@@ -594,53 +595,12 @@ class TestResample(unittest.TestCase):
             res = daily_preprocessing.resample(dummy, "adsdsa")
 
 
-class TestSetupConfig(unittest.TestCase):
-
-    # Ensures the expected calls are made
-    def test_success(self):
-        m = mock_open()
-        # Patch file open
-        with patch("quantscraper.daily_preprocessing.open", m):
-            # patch JSON
-            with patch("quantscraper.daily_preprocessing.json") as mock_json:
-
-                mock_load = Mock()
-                mock_cfg_return = Mock(val=5)
-                mock_load.return_value = mock_cfg_return
-                mock_json.load = mock_load
-
-                res = daily_preprocessing.setup_config("path/to/foo.json")
-                # Check calls are as expected
-                m.assert_called_once_with("path/to/foo.json", "r")
-                mock_load.assert_called_once_with(m())
-                self.assertEqual(res, mock_cfg_return)
-
-    def test_errorraised_nofile(self):
-        m = mock_open()
-        m.side_effect = FileNotFoundError("")
-        # Patch file open
-        with patch("quantscraper.daily_preprocessing.open", m):
-            # patch JSON
-            with patch("quantscraper.daily_preprocessing.json") as mock_json:
-
-                mock_load = Mock()
-                mock_cfg_return = Mock(val=5)
-                mock_load.return_value = mock_cfg_return
-                mock_json.load = mock_load
-
-                with self.assertRaises(utils.SetupError):
-                    daily_preprocessing.setup_config("path/to/foo.json")
-
-    # Ideally would test that code raises utils.SetupError when JSON parse
-    # fails, but as has been mentioned in other testing files, I can't find
-    # a way to mock this behaviour.
-    # I have tested this functionality through integration testing, however
-
-
 class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_no_date(self):
         # Don't pass in date, so output should have yesterday's date
-        cfg = {"foo": "bar"}
+        cfg = configparser.ConfigParser()
+        cfg.add_section("Analysis")
+        cfg.set("Analysis", "foo", "bar")
 
         # Mock date.today() to a fixed date
         with patch("quantscraper.daily_preprocessing.date", autospec=True) as mock_date:
@@ -648,17 +608,23 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
             mock_date.today = mock_today
 
             res = daily_preprocessing.setup_scraping_timeframe(cfg)
-            self.assertEqual(res["date"], "2012-03-16")
+            self.assertEqual(res, "2012-03-16")
 
     def test_date_provided(self):
         # Providing config with valid date attribute shouldn't modify it
-        cfg = {"foo": "bar", "date": "2019-05-23"}
+        cfg = configparser.ConfigParser()
+        cfg.add_section("Analysis")
+        cfg.set("Analysis", "foo", "bar")
+        cfg.set("Analysis", "date", "2019-05-23")
         res = daily_preprocessing.setup_scraping_timeframe(cfg)
-        self.assertEqual(res["date"], "2019-05-23")
+        self.assertEqual(res, "2019-05-23")
 
     def test_invalid_date(self):
         # Date is provided, but isn't in YYYY-mm-dd format so should raise error
-        cfg = {"foo": "bar", "date": "2020/03/04"}
+        cfg = configparser.ConfigParser()
+        cfg.add_section("Analysis")
+        cfg.set("Analysis", "foo", "bar")
+        cfg.set("Analysis", "date", "2020/03/04")
 
         with self.assertRaises(utils.TimeError):
             daily_preprocessing.setup_scraping_timeframe(cfg)
@@ -666,10 +632,13 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_zeropadding_added(self):
         # Valid date is provided but doesn't have zero padding, which is always
         # present in the clean data filenames
-        cfg = {"foo": "bar", "date": "2020-3-4"}
+        cfg = configparser.ConfigParser()
+        cfg.add_section("Analysis")
+        cfg.set("Analysis", "foo", "bar")
+        cfg.set("Analysis", "date", "2020-3-4")
 
         res = daily_preprocessing.setup_scraping_timeframe(cfg)
-        self.assertEqual(res["date"], "2020-03-04")
+        self.assertEqual(res, "2020-03-04")
 
 
 if __name__ == "__main__":

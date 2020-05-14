@@ -1,7 +1,8 @@
 # Application configuration
-*.ini
-*.json
-run_docker_cusom.sh
+example*
+
+
+run_docker_custom.sh
 run_docker_daily.sh
 
 __pycache__/*

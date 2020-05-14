@@ -24,6 +24,9 @@ from dotenv import load_dotenv
 import quantscraper.utils as utils
 from quantscraper.factories import setup_manufacturers
 
+CONFIG_FN = "config.ini"
+DEVICES_FN = "devices.json"
+
 
 def setup_loggers(logfn=None):
     """
@@ -69,9 +72,6 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="QUANT scraper")
     parser.add_argument(
-        "configfilepath", metavar="FILE", help="Location of INI configuration file"
-    )
-    parser.add_argument(
         "--devices",
         metavar="DEVICES",
         nargs="+",
@@ -79,25 +79,6 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
-
-
-def setup_config(cfg_fn):
-    """
-    Loads configuration parameters from a file into memory.
-
-    Args:
-        - cfg_fn (str): Filepath of the .ini file.
-
-    Returns:
-        A configparser.Namespace instance.
-    """
-    cfg = configparser.ConfigParser()
-    cfg.read(cfg_fn)
-
-    if len(cfg.sections()) == 0:
-        raise utils.SetupError("No sections found in '{}'".format(cfg_fn))
-
-    return cfg
 
 
 def setup_scraping_timeframe(cfg):
@@ -678,19 +659,18 @@ def main():
     args = parse_args()
 
     try:
-        cfg = setup_config(args.configfilepath)
+        cfg = utils.setup_config(CONFIG_FN)
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    start_time, end_time = setup_scraping_timeframe(cfg)
-
-    # TODO Refactor into own function
-    device_fn = cfg.get("Main", "device_list")
-    with open(device_fn, "r") as infile:
+    # TODO Refactor into own function in utils
+    with open(DEVICES_FN, "r") as infile:
         device_config = json.load(infile)
+
+    start_time, end_time = setup_scraping_timeframe(cfg)
 
     manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
 

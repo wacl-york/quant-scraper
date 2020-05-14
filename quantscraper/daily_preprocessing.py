@@ -25,34 +25,19 @@ import sys
 import os
 import logging
 import traceback
+import configparser
 import json
 from datetime import date, timedelta, datetime
+from dotenv import load_dotenv
 
 import numpy as np
 import pandas as pd
 import quantscraper.utils as utils
 import quantscraper.cli as cli
+from quantscraper.factories import setup_manufacturers
 
-
-def setup_config(cfg_fn):
-    """
-    Loads configuration parameters from a file into memory.
-
-    Args:
-        - cfg_fn (str): Filepath of the .ini file.
-
-    Returns:
-        A Python object, parsed from JSON.
-    """
-    try:
-        with open(cfg_fn, "r") as in_file:
-            cfg = json.load(in_file)
-    except FileNotFoundError:
-        raise utils.SetupError("File not found: '{}'".format(cfg_fn))
-    except json.decoder.JSONDecodeError:
-        raise utils.SetupError("Error parsing JSON file '{}'".format(cfg_fn))
-
-    return cfg
+CONFIG_FN = "preprocessing.ini"
+DEVICES_FN = "devices.json"
 
 
 def setup_scraping_timeframe(cfg):
@@ -68,21 +53,22 @@ def setup_scraping_timeframe(cfg):
             settings.
 
     Returns:
-        Updated version of config with the 'date' field set as a valid
-        date if it wasn't already.
+        The date to process for as a string in YYYY-mm-dd format.
     """
     try:
-        date_dt = datetime.strptime(cfg["date"], "%Y-%m-%d")
-        cfg["date"] = date_dt.strftime("%Y-%m-%d")
-    except KeyError:
+        date_dt = datetime.strptime(cfg.get("Analysis", "date"), "%Y-%m-%d")
+        date_str = date_dt.strftime("%Y-%m-%d")
+    except configparser.NoOptionError:
         yesterday = date.today() - timedelta(days=1)
-        cfg["date"] = yesterday.strftime("%Y-%m-%d")
+        date_str = yesterday.strftime("%Y-%m-%d")
     except ValueError:
         raise utils.TimeError(
-            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(cfg["date"])
+            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(
+                cfg.get("Analysis", "date")
+            )
         )
 
-    return cfg
+    return date_str
 
 
 def get_data(folder, manufacturer, device_id, day):
@@ -245,6 +231,10 @@ def resample(dataframe, resolution):
 
 
 def main():
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
 
     # Just using same setup functions as cli.py here.
     # Don't think would be appropriate to refactor these functions into the
@@ -263,43 +253,49 @@ def main():
     # Parse args and config file
     args = cli.parse_args()
     try:
-        cfg = setup_config(args.configfilepath)
+        cfg = utils.setup_config(CONFIG_FN)
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    # Default to yesterday's data if no parseable date provided in JSON
-    cfg = setup_scraping_timeframe(cfg)
+    # Default to yesterday's data if no parseable date provided in config
+    recording_date = setup_scraping_timeframe(cfg)
+    local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
+    local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
+    credentials_fn = cfg.get("Analysis", "google_api_credentials_fn")
+    drive_analysis_id = cfg.get("Analysis", "gdrive_analysis_folder_id")
+    upload_google_drive = cfg.get("Analysis", "upload_analysis_gdrive")
+    time_res = cfg.get("Analysis", "time_resolution")
 
-    # Get useful properties from config
-    recording_date = cfg["date"]
-    local_clean_folder = cfg["local_folder_clean_data"]
-    local_analysis_folder = cfg["local_folder_analysis_data"]
-    credentials_fn = cfg["google_api_credentials_fn"]
-    drive_analysis_id = cfg["gdrive_analysis_folder_id"]
-    upload_google_drive = cfg["upload_analysis_gdrive"]
-    time_res = cfg["time_resolution"]
+    # TODO Refactor into own function in utils
+    with open(DEVICES_FN, "r") as infile:
+        device_config = json.load(infile)
+
+    # Load all selected devices
+    manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
 
     # Load all manufacturers
-    for manufacturer in cfg["manufacturers"]:
+    for manufacturer in manufacturers:
 
-        logging.info("Manufacturer: {}".format(manufacturer["name"]))
+        logging.info("Manufacturer: {}".format(manufacturer.name))
 
         logging.info("Reading data from all devices...")
         dfs = []
-        for device in manufacturer["devices"]:
+        for device in manufacturer.devices:
             try:
                 dataframe = get_data(
                     local_clean_folder,
-                    manufacturer["name"],
-                    device["name"],
+                    manufacturer.name,
+                    device.device_id,
                     recording_date,
                 )
             except utils.DataReadingError as ex:
                 logging.error(
-                    "No clean data found for device '{}': {}".format(device["name"], ex)
+                    "No clean data found for device '{}': {}".format(
+                        device.device_id, ex
+                    )
                 )
                 continue
 
@@ -310,17 +306,21 @@ def main():
             combined_df = pd.concat(dfs)
         except ValueError:
             logging.error(
-                "No clean data found for manufacturer '{}'.".format(
-                    manufacturer["name"]
-                )
+                "No clean data found for manufacturer '{}'.".format(manufacturer.name)
             )
             continue
 
         # Convert into wide table
         try:
             logging.info("Converting to wide format.")
-            all_devices = [dev["name"] for dev in manufacturer["devices"]]
-            wide_df = long_to_wide(combined_df, manufacturer["fields"], all_devices)
+            # Obtain the available devices and measurands for this manufacturer,
+            # and ask that the output has a column for each combination of these
+            devices_to_include = [dev.device_id for dev in manufacturer.devices]
+            measurands_to_include = [m["id"] for m in manufacturer.measurands]
+            wide_df = long_to_wide(
+                combined_df, measurands_to_include, devices_to_include
+            )
+
         except utils.DataConversionError as ex:
             logging.error("Error when converting wide to long table: {}".format(ex))
             continue
@@ -342,7 +342,7 @@ def main():
         # Save pre-processed data frame locally
         logging.info("Saving file to disk.")
         filename = utils.ANALYSIS_DATA_FN.substitute(
-            man=manufacturer["name"], day=recording_date
+            man=manufacturer.name, day=recording_date
         )
         file_path = os.path.join(local_analysis_folder, filename)
         try:

@@ -8,12 +8,24 @@
 import datetime
 import unittest
 import configparser
+from collections import defaultdict
 import logging
+import os
 from unittest.mock import patch, MagicMock, Mock, call
 
 import quantscraper.cli as cli
 import quantscraper.utils as utils
 from quantscraper.manufacturers.Manufacturer import Device
+import quantscraper.manufacturers.Aeroqual as Aeroqual
+
+# Setup dummy env variables
+os.environ["AEROQUAL_USER"] = "foo"
+os.environ["AEROQUAL_PW"] = "foo"
+os.environ["AQMESH_USER"] = "foo"
+os.environ["AQMESH_PW"] = "foo"
+os.environ["ZEPHYR_USER"] = "foo"
+os.environ["ZEPHYR_PW"] = "foo"
+os.environ["QUANTAQ_API_TOKEN"] = "foo"
 
 
 class TestSetupLoggers(unittest.TestCase):
@@ -73,11 +85,6 @@ class TestParseArgs(unittest.TestCase):
             actual_addargument_calls = mock_addargument.mock_calls
             exp_addargument_calls = [
                 call(
-                    "configfilepath",
-                    metavar="FILE",
-                    help="Location of INI configuration file",
-                ),
-                call(
                     "--devices",
                     metavar="DEVICES",
                     nargs="+",
@@ -87,36 +94,6 @@ class TestParseArgs(unittest.TestCase):
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
 
             mock_parseargs.assert_called_once_with()
-
-
-class TestSetupConfig(unittest.TestCase):
-
-    # Ensures the expected calls are made
-    def test_success(self):
-        with patch("quantscraper.cli.configparser") as mock_cp:
-            mock_read = Mock()
-            mock_sections = Mock(return_value=[1, 2, 3])
-
-            mock_cfginstance = Mock(sections=mock_sections, read=mock_read)
-            mock_ConfigParser = Mock(return_value=mock_cfginstance)
-            mock_cp.ConfigParser = mock_ConfigParser
-
-            res = cli.setup_config("foo.ini")
-
-            self.assertEqual(res, mock_cfginstance)
-            mock_read.assert_called_once_with("foo.ini")
-
-    def test_errorraised_no_sections(self):
-        with patch("quantscraper.cli.configparser") as mock_cp:
-            mock_read = Mock()
-            mock_sections = Mock(return_value=[])
-
-            mock_cfginstance = Mock(sections=mock_sections, read=mock_read)
-            mock_ConfigParser = Mock(return_value=mock_cfginstance)
-            mock_cp.ConfigParser = mock_ConfigParser
-
-            with self.assertRaises(utils.SetupError):
-                res = cli.setup_config("foo.ini")
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
@@ -1025,3 +1002,314 @@ class TestSummariseRun(unittest.TestCase):
         }
         res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
+
+
+class TestUploadDataGoogleDrive(unittest.TestCase):
+    # the cli.upload_data_googledrive function uploads a list of files
+    # with the same mime_type to Google Drive
+
+    def test_success(self):
+        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
+            mock_service = Mock()
+            fns = ["1.txt", "2.txt", "3.txt"]
+            folder_id = "FoOBaR"
+            mime_type = "text/foobar"
+            exp_calls = [call(mock_service, fn, folder_id, mime_type) for fn in fns]
+
+            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+
+            calls = mock_upload.mock_calls
+
+            self.assertEqual(calls, exp_calls)
+
+    def test_empty_list(self):
+        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
+            mock_service = Mock()
+            fns = []
+            folder_id = "FoOBaR"
+            mime_type = "text/foobar"
+            exp_calls = []
+
+            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+
+            calls = mock_upload.mock_calls
+
+            self.assertEqual(calls, exp_calls)
+
+    def test_fns_None(self):
+        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
+            mock_service = Mock()
+            fns = None
+            folder_id = "FoOBaR"
+            mime_type = "text/foobar"
+            exp_calls = []
+
+            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+
+            calls = mock_upload.mock_calls
+
+            self.assertEqual(calls, exp_calls)
+
+
+class TestSaveCleanData(unittest.TestCase):
+    # Tests cli.save_data, which iterates through all devices and extracts
+    # their data to be saved. This class tests being passed clean data.
+    cfg = defaultdict(str)
+    fields = []
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
+
+    def test_success(self):
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._clean_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "foobar", "clean")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_foobar.csv",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Function should output names of files that are
+                    # successfully saved
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_foobar.csv",
+                            "dummyFolder/Aeroqual_2_foobar.csv",
+                        ],
+                    )
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_dir_doesnt_exist(self):
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._clean_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to not exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = False
+
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+
+                with self.assertRaises(utils.DataSavingError):
+                    cli.save_data(self.aeroqual, "dummyFolder", "startT", "clean")
+
+    def test_success_None_data(self):
+        # in case a dataset for a device is None, then shouldn't attempt to save
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._clean_data = None
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "today", "clean")
+
+                    # This inner function should only be called once on account
+                    # of second device not having data
+                    mock_save.assert_called_once_with(
+                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_today.csv"
+                    )
+                    # Function should only return filename from first file that
+                    # saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_today.csv"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # in case a file already exists then shouldn't save
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._clean_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._clean_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_csv_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "foobar", "clean")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_foobar.csv",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.csv"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.csv"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+
+class TestSaveRawData(unittest.TestCase):
+    # Tests cli.save_data, which iterates through all devices and extracts
+    # their data to be saved. This class tests being passed raw data.
+
+    cfg = defaultdict(str)
+    fields = []
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
+
+    def test_success(self):
+        # Set dummy data
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._raw_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.utils.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "day", "raw")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_day.json"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # should return both filenames as saved successfully
+                    self.assertEqual(
+                        res,
+                        [
+                            "dummyFolder/Aeroqual_1_day.json",
+                            "dummyFolder/Aeroqual_2_day.json",
+                        ],
+                    )
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_dir_doesnt_exist(self):
+        # Set dummy data
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._raw_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to not exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = False
+
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+
+                with self.assertRaises(utils.DataSavingError):
+                    cli.save_data(self.aeroqual, "dummyFolder", "foobar", "raw")
+
+    def test_success_None_data(self):
+        # Set dummy data
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._raw_data = None
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "day", "raw")
+
+                    # This inner function should only be called once on account
+                    # of second device not having data
+                    mock_save.assert_called_once_with(
+                        [[1, 2, 3], [4, 5, 6]], "dummyFolder/Aeroqual_1_day.json",
+                    )
+                    # should return both filenames as saved successfully
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_day.json"])
+                except:
+                    self.fail("Test raised error when should have passed.")
+
+    def test_error_saving_file(self):
+        # First file saves successfully but second fails as that filename
+        # already exists
+        # Set dummy data
+        self.aeroqual._devices = []
+        dev1 = Device(id="1", webid="1", location="foo")
+        dev1._raw_data = [[1, 2, 3], [4, 5, 6]]
+        dev2 = Device(id="2", webid="2", location="bar")
+        dev2._raw_data = [[7, 8, 9]]
+        self.aeroqual.add_device(dev1)
+        self.aeroqual.add_device(dev2)
+
+        # Need to patch os.path to force directory to exist
+        with patch("quantscraper.cli.os.path.isdir") as mock_isdir:
+            mock_isdir.return_value = True
+
+            # patch actual function that saves
+            with patch("quantscraper.utils.save_json_file") as mock_save:
+                mock_save.side_effect = ["", utils.DataSavingError("")]
+
+                try:
+                    res = cli.save_data(self.aeroqual, "dummyFolder", "foobar", "raw")
+
+                    calls = mock_save.mock_calls
+                    exp_calls = [
+                        call(
+                            [[1, 2, 3], [4, 5, 6]],
+                            "dummyFolder/Aeroqual_1_foobar.json",
+                        ),
+                        call([[7, 8, 9]], "dummyFolder/Aeroqual_2_foobar.json"),
+                    ]
+                    self.assertEqual(calls, exp_calls)
+                    # Should only have first filename returned
+                    self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.json"])
+                except:
+                    self.fail("Test raised error when should have passed.")
