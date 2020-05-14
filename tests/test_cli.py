@@ -705,7 +705,7 @@ class TestProcess(unittest.TestCase):
 
 class TestSummariseRun(unittest.TestCase):
 
-    # utils.summarise_run has limited error handling, as most of the input data
+    # utils.tabular_summary has limited error handling, as most of the input data
     # is automatically generated with default values (i.e. the number of clean
     # measurands which default to 0).
     # The 2 pieces that derive from user input are the device locations and
@@ -743,19 +743,19 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "10 (8%)", "5 (4%)", "0 (0%)"],
                 ["dev2", "Sweden", "10 (8%)", "5 (4%)", "1 (1%)"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (0%)"],
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
 
     def test_success2(self):
@@ -793,19 +793,19 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
                 ["dev2", "Sweden", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
                 ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
 
     def test_no_frequency(self):
@@ -833,19 +833,19 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "10", "5", "0"],
                 ["dev2", "Sweden", "10", "5", "1"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1 (0%)", "0 (0%)", "1 (0%)"],
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
 
     def test_no_location(self):
@@ -878,19 +878,19 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "", "96 (100%)", "48 (50%)", "32 (33%)"],
                 ["dev2", "", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
                 ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
 
     def test_no_measurands(self):
@@ -918,19 +918,19 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
                 ["dev2", "Sweden", "82 (85%)", "", "42 (44%)"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", ""],
                 ["manu2dev2", "NYC", "829 (58%)", "", "323 (22%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
 
     def test_no_timestamp(self):
@@ -969,17 +969,17 @@ class TestSummariseRun(unittest.TestCase):
                 },
             },
         ]
-        exp = [
-            [
+        exp = {
+            "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
                 ["dev1", "York", "", "48 (50%)", "32 (33%)"],
                 ["dev2", "Sweden", "82 (85%)", "68 (71%)", "42 (44%)"],
             ],
-            [
+            "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
                 ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
                 ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
-        ]
-        res = cli.summarise_run(summaries)
+        }
+        res = cli.tabular_summary(summaries)
         self.assertEqual(res, exp)
