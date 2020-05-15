@@ -148,7 +148,7 @@ class TestSetupManufacturers(unittest.TestCase):
 
     def test_success(self):
         devs = ["AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
+        res = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 1)
@@ -165,10 +165,9 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(res[2].devices[1].device_id, "Zep22")
         self.assertEqual(res[2].devices[1].web_id, "Zep22-f")
         self.assertEqual(res[2].devices[1].location, "frank")
-        self.assertEqual(dev_list, [])
 
     def test_success_all_devices(self):
-        res, dev_list = setup_manufacturers(deepcopy(self.valid_config))
+        res = setup_manufacturers(deepcopy(self.valid_config))
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 2)
         self.assertEqual(len(res[1].devices), 2)
@@ -193,12 +192,11 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(res[2].devices[1].device_id, "Zep22")
         self.assertEqual(res[2].devices[1].web_id, "Zep22-f")
         self.assertEqual(res[2].devices[1].location, "frank")
-        self.assertEqual(dev_list, None)
 
     def test_missing_device(self):
         # Have asked for a device that doesn't exist in the Device definition
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(deepcopy(self.valid_config), devs)
+        res = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 3)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 1)
@@ -215,7 +213,6 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(res[2].devices[1].device_id, "Zep22")
         self.assertEqual(res[2].devices[1].web_id, "Zep22-f")
         self.assertEqual(res[2].devices[1].location, "frank")
-        self.assertEqual(dev_list, ["FOO182"])
 
     def test_json_no_manufacturer_list(self):
         # If there isn't a list of 'manufacturer' objects in the dict, then nothing
@@ -227,9 +224,8 @@ class TestSetupManufacturers(unittest.TestCase):
             "Zephyr": {"devices": ["a", "b", "c"]},
         }
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(invalid_config, devs)
+        res = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 0)
-        self.assertEqual(dev_list, devs)
 
     def test_json_no_manufacturer_list2(self):
         # If there isn't a list of 'manufacturer' objects in the dict, then nothing
@@ -237,9 +233,8 @@ class TestSetupManufacturers(unittest.TestCase):
         # Here have a list of lists
         invalid_config = [["Aeroqual", "AQMesh"]]
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(invalid_config, devs)
+        res = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 0)
-        self.assertEqual(dev_list, devs)
 
     def test_json_no_manufacturer_list3(self):
         # If there isn't a list of 'manufacturer' objects in the dict, then nothing
@@ -276,9 +271,8 @@ class TestSetupManufacturers(unittest.TestCase):
             },
         ]
         devs = ["FOO182", "AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(invalid_config, devs)
+        res = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 1)
-        self.assertEqual(dev_list, ["FOO182", "AQY81", "Zep22", "Zep33"])
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(res[0].devices[0].device_id, "AQM18")
         self.assertEqual(res[0].devices[0].web_id, "AQM18-c")
@@ -287,7 +281,7 @@ class TestSetupManufacturers(unittest.TestCase):
     def test_empty_device_list(self):
         # Have asked for a device that doesn't exist in the Device definition
         devs = []
-        res, _ = setup_manufacturers(deepcopy(self.valid_config), devs)
+        res = setup_manufacturers(deepcopy(self.valid_config), devs)
         self.assertEqual(len(res), 0)
 
     def test_mispelt_manufacturer(self):
@@ -323,7 +317,7 @@ class TestSetupManufacturers(unittest.TestCase):
             },
         ]
         devs = ["AQM18", "AQY81", "Zep22", "Zep33"]
-        res, dev_list = setup_manufacturers(invalid_config, devs)
+        res = setup_manufacturers(invalid_config, devs)
         self.assertEqual(len(res), 2)
         self.assertEqual(len(res[0].devices), 1)
         self.assertEqual(len(res[1].devices), 2)
@@ -336,4 +330,3 @@ class TestSetupManufacturers(unittest.TestCase):
         self.assertEqual(res[1].devices[1].device_id, "Zep22")
         self.assertEqual(res[1].devices[1].web_id, "Zep22-f")
         self.assertEqual(res[1].devices[1].location, "frank")
-        self.assertEqual(dev_list, ["AQM18"])

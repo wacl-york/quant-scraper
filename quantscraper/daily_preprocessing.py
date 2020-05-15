@@ -37,7 +37,6 @@ import quantscraper.cli as cli
 from quantscraper.factories import setup_manufacturers
 
 CONFIG_FN = "preprocessing.ini"
-DEVICES_FN = "devices.json"
 
 
 def parse_args():
@@ -304,12 +303,14 @@ def main():
     drive_analysis_id = cfg.get("Analysis", "gdrive_analysis_folder_id")
     time_res = cfg.get("Analysis", "time_resolution")
 
-    # TODO Refactor into own function in utils
-    with open(DEVICES_FN, "r") as infile:
-        device_config = json.load(infile)
+    try:
+        device_config = utils.load_device_configuration()
+    except utils.SetupError as ex:
+        logging.error("Cannot load device configuration: {}.".format(ex))
+        sys.exit()
 
     # Load all selected devices
-    manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
+    manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
 
     # Load all manufacturers
     for manufacturer in manufacturers:
