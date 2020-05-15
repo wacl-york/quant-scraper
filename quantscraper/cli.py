@@ -23,7 +23,6 @@ import quantscraper.utils as utils
 from quantscraper.factories import setup_manufacturers
 
 CONFIG_FN = "config.ini"
-DEVICES_FN = "devices.json"
 
 
 def setup_loggers(logfn=None):
@@ -693,13 +692,15 @@ def main():
         logging.error("Terminating program")
         sys.exit()
 
-    # TODO Refactor into own function in utils
-    with open(DEVICES_FN, "r") as infile:
-        device_config = json.load(infile)
+    try:
+        device_config = utils.load_device_configuration()
+    except utils.SetupError as ex:
+        logging.error("Cannot load device configuration: {}.".format(ex))
+        sys.exit()
 
     start_time, end_time = setup_scraping_timeframe(args.start, args.end)
 
-    manufacturers, _ = setup_manufacturers(device_config["manufacturers"], args.devices)
+    manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
 
     # Store device availability summary for each manufacturer
     summaries = []

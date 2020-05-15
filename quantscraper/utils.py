@@ -23,6 +23,8 @@ RAW_DATA_FN = Template("${man}_${device}_${day}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
 ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
 
+DEVICES_FN = "devices.json"
+
 
 class LoginError(Exception):
     """
@@ -340,3 +342,17 @@ def setup_config(cfg_fn):
         raise SetupError("No sections found in '{}'".format(cfg_fn))
 
     return cfg
+
+
+def load_device_configuration():
+    """
+    """
+    try:
+        with open(DEVICES_FN, "r") as infile:
+            device_config = json.load(infile)
+    except FileNotFoundError:
+        raise SetupError("Cannot open file {}".format(DEVICES_FN)) from None
+    except json.decoder.JSONDecodeError:
+        raise SetupError("Cannot parse file {} into JSON".format(DEVICES_FN)) from None
+
+    return device_config

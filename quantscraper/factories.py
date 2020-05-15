@@ -5,6 +5,7 @@
     Builds instances of Manufacturer and Device classes.
 """
 
+import logging
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
@@ -33,7 +34,7 @@ def manufacturer_factory(config):
     try:
         option = config["name"]
     except (KeyError, TypeError):
-        raise KeyError("No 'name' attribute of manufacturer entry.") from None
+        raise KeyError("No 'name' attribute in manufacturer config.") from None
 
     try:
         cls = factory[option]
@@ -99,22 +100,26 @@ def setup_manufacturers(manufacturer_config, device_list=None):
             manufacturer_config are loaded.
 
     Returns:
-        A tuple containing:
-            - 0: A list of Manufacturer objects, each of which is populated with the
-                chosen Devices.
-            - 1: A list of the devices in device_list that could not be
-                instantiated.
+        A list of Manufacturer objects, each of which is populated with the
+        chosen Devices.
     """
     manufacturers = []
     for man_dict in manufacturer_config:
         try:
             man_inst = manufacturer_factory(man_dict)
-        except KeyError:
+        except KeyError as ex:
+            logging.error("Cannot instantiate Manufacturer from config: {}".format(ex))
+            logging.error("Manufacturer configuration: {}".format(man_dict))
             continue
 
         try:
             devices = man_dict["devices"]
         except KeyError:
+            logging.error(
+                "No 'devices' attribute in manufacturer config for {}.".format(
+                    man_dict["name"]
+                )
+            )
             continue
 
         for device_dict in devices:
@@ -122,6 +127,9 @@ def setup_manufacturers(manufacturer_config, device_list=None):
             try:
                 dev_id = device_dict["id"]
             except KeyError:
+                logging.error(
+                    "Device configuration has no 'id' attribute: {}".format(device_dict)
+                )
                 continue
 
             if device_list is not None and not dev_id in device_list:
@@ -130,12 +138,7 @@ def setup_manufacturers(manufacturer_config, device_list=None):
             device_inst = device_factory(device_dict)
             man_inst.add_device(device_inst)
 
-            # TODO When add error handling and logging can remove this keeping
-            # track of the list and returning it
-            if device_list is not None:
-                device_list.remove(dev_id)
-
         if len(man_inst.devices) > 0:
             manufacturers.append(man_inst)
 
-    return manufacturers, device_list
+    return manufacturers

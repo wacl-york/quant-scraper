@@ -7,7 +7,7 @@
 
 import unittest
 import string
-from unittest.mock import patch, Mock, mock_open
+from unittest.mock import patch, Mock, mock_open, PropertyMock
 import pandas as pd
 from googleapiclient.errors import HttpError
 from utils import build_mock_response
@@ -315,6 +315,10 @@ class TestSaveCSVFile(unittest.TestCase):
 
 class TestSaveJSONFile(unittest.TestCase):
     # Tests utils.save_json_file, which writes Python object to JSON file
+    # Unfortunately can't mock JSONDecodeError to assert this error is handled
+    # correctly, as the error needs to be instantiated which I can't mock.
+    # However, I have tested this functionality by running the program
+    # interactively
 
     def test_success(self):
         m = mock_open()
@@ -359,9 +363,6 @@ class TestSaveJSONFile(unittest.TestCase):
 
                 with self.assertRaises(utils.DataSavingError):
                     utils.save_json_file([[1, 2, 3], [4, 5, 6]], "path/to/fn.json")
-
-    # Unfortunately can't mock JSONDecodeError to assert this error is handled
-    # correctly, as the error needs to be instantiated which I can't mock.
 
 
 class TestSaveDataFrame(unittest.TestCase):
@@ -444,6 +445,8 @@ class TestSavePlaintext(unittest.TestCase):
 
 
 class TestLoadHTMLTemplate(unittest.TestCase):
+    # Template() parses any string, which is what file.read() returns,
+    # so can't test that the template is correctly formatted here
 
     # Tests that utils.load_html_tempate() can load file
     def test_success(self):
@@ -489,8 +492,44 @@ class TestLoadHTMLTemplate(unittest.TestCase):
             with self.assertRaises(utils.DataReadingError):
                 utils.load_html_template("path/to/fn.txt")
 
-    # Template() parses any string, which is what file.read() returns,
-    # so can't test that the template is correctly formatted here
+
+class TestLoadDeviceConfiguration(unittest.TestCase):
+    # Unfortunately can't mock JSONDecodeError to assert this error is handled
+    # correctly, as the error needs to be instantiated which I can't mock.
+    # However, I have tested this functionality through running the program
+    # with invalid JSON files
+
+    def test_success(self):
+        m = mock_open(read_data="foo")
+
+        with patch("quantscraper.utils.DEVICES_FN", "foo.json"):
+            with patch("quantscraper.utils.open", m):
+                with patch("quantscraper.utils.json") as mock_json:
+                    mock_ret = Mock()
+                    mock_load = Mock(return_value=mock_ret)
+                    mock_json.load = mock_load
+
+                    res = utils.load_device_configuration()
+
+                    # Check calls are as expected
+                    m.assert_called_once_with("foo.json", "r")
+                    mock_load.assert_called_once_with(m())
+                    self.assertEqual(res, mock_ret)
+
+    def test_file_not_found(self):
+        # If file isn't present then should raise an error
+        m = mock_open()
+        m.side_effect = FileNotFoundError()
+
+        with patch("quantscraper.utils.DEVICES_FN", "foo.json"):
+            with patch("quantscraper.utils.open", m):
+                with patch("quantscraper.utils.json") as mock_json:
+                    mock_ret = Mock()
+                    mock_load = Mock(return_value=mock_ret)
+                    mock_json.load = mock_load
+
+                    with self.assertRaises(utils.SetupError):
+                        utils.load_device_configuration()
 
 
 if __name__ == "__main__":
