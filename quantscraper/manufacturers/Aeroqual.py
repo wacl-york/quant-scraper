@@ -6,7 +6,7 @@
     quality instrumentation device manufacturer.
 """
 
-from datetime import datetime
+from datetime import date
 from string import Template
 import csv
 import requests as re
@@ -72,9 +72,9 @@ class Aeroqual(Manufacturer):
 
         # Load start and end scraping datetimes
         start_datetime = cfg.get("Main", "start_time")
-        start_datetime = datetime.fromisoformat(start_datetime)
+        start_datetime = date.fromisoformat(start_datetime)
         end_datetime = cfg.get("Main", "end_time")
-        end_datetime = datetime.fromisoformat(end_datetime)
+        end_datetime = date.fromisoformat(end_datetime)
 
         # Can't specify times for scraping window, just dates.
         # Will just convert datetime to date and doesn't matter too much since
