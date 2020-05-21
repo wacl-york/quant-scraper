@@ -7,7 +7,7 @@
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
 from string import Template
 import requests as re
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -52,13 +52,18 @@ class Zephyr(Manufacturer):
         self.data_headers = {"content-type": "application/json; charset=UTF-8"}
 
         # Load start and end scraping datetimes
-        start_datetime = cfg.get("Main", "start_time")
-        end_datetime = cfg.get("Main", "end_time")
-        start_date = datetime.fromisoformat(start_datetime).strftime("%Y%m%d%H%M%S")
-        end_date = datetime.fromisoformat(end_datetime).strftime("%Y%m%d%H%M%S")
-
-        self.start_date = start_date
-        self.end_date = end_date
+        # Zephyr uses [closed, open) intervals, so set start time as midnight of
+        # the start day, and end day as midnight of day AFTER required end day.
+        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
+        # 59th minute worth of data
+        start_date = date.fromisoformat(cfg.get("Main", "start_time"))
+        end_date = date.fromisoformat(cfg.get("Main", "end_time"))
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = datetime.combine((end_date + timedelta(days=1)), time.min)
+        start_fmt = start_dt.strftime("%Y%m%d%H%M%S")
+        end_fmt = end_dt.strftime("%Y%m%d%H%M%S")
+        self.start_date = start_fmt
+        self.end_date = end_fmt
 
         raw_data_url = cfg.get(self.name, "data_url")
         self.data_url = Template(

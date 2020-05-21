@@ -7,7 +7,7 @@
 """
 
 from string import Template
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
 import json
 import requests as re
 from bs4 import BeautifulSoup
@@ -56,12 +56,17 @@ class AQMesh(Manufacturer):
         # Convert start and end times into required format of
         # YYYY-mm-ddTHH:mm:ss TZ:TZ
         # Where TZ:TZ is in HH:MM format
-        # Making assumption here that have no timezone!
+        # AQMesh uses [closed, open) intervals, so set start time as midnight of
+        # the start day, and end day as midnight of day AFTER required end day.
+        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
+        # 59th minute worth of data
         timezone = cfg.get(self.name, "timezone")
         start_str = cfg.get("Main", "start_time")
         end_str = cfg.get("Main", "end_time")
-        start_dt = datetime.fromisoformat(start_str)
-        end_dt = datetime.fromisoformat(end_str)
+        start_date = date.fromisoformat(start_str)
+        end_date = date.fromisoformat(end_str)
+        start_dt = datetime.combine(start_date, time.min)
+        end_dt = datetime.combine((end_date + timedelta(days=1)), time.min)
         start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
         end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
 
