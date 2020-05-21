@@ -7,6 +7,7 @@
 from unittest.mock import Mock
 import datetime
 
+
 def build_mock_today(year, month, day):
     class MockDate(datetime.date):
         @classmethod
@@ -14,7 +15,6 @@ def build_mock_today(year, month, day):
             return cls(year, month, day)
 
     return MockDate
-
 
 
 def build_mock_response(

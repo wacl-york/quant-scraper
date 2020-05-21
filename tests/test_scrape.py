@@ -7,8 +7,8 @@
 
 import unittest
 from collections import defaultdict
-from unittest.mock import Mock, MagicMock, call
-from datetime import datetime
+from unittest.mock import Mock, call
+from datetime import date
 from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
@@ -16,7 +16,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import DataDownloadError
-from test_utils import build_mock_response
+from utils import build_mock_response
 
 # Want to test that:
 #   - Any HTTP errors are raised
@@ -45,8 +45,8 @@ class TestAeroqual(unittest.TestCase):
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200))
 
-        mock_start = datetime(2020, 4, 3, 15, 35, 00)
-        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         session_return = Mock(post=mock_post, get=mock_get)
         self.aeroqual.session = session_return
@@ -80,8 +80,8 @@ class TestAeroqual(unittest.TestCase):
         mock_posts = [build_mock_response(status=200), build_mock_response(status=200)]
         mock_post = Mock(side_effect=mock_posts)
         mock_get = Mock(return_value=build_mock_response(status=200, text="DummyData"))
-        mock_start = datetime(2020, 4, 3, 15, 35, 00)
-        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         exp_params = self.aeroqual.data_params.copy()
         exp_params["Period"] = exp_params["Period"].substitute(
@@ -118,8 +118,8 @@ class TestAeroqual(unittest.TestCase):
             build_mock_response(status=200),
         ]
         mock_get = build_mock_response(status=200)
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
@@ -137,8 +137,8 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
             self.aeroqual.scrape_device("foo", mock_start, mock_end)
@@ -152,8 +152,8 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
             self.aeroqual.scrape_device("foo", mock_start, mock_end)
@@ -167,8 +167,8 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
             self.aeroqual.scrape_device("foo", mock_start, mock_end)
@@ -179,8 +179,8 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
             self.aeroqual.scrape_device("foo", mock_start, mock_end)
@@ -191,8 +191,8 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(
             post=Mock(side_effect=mock_posts), get=Mock(return_value=mock_get)
         )
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         self.aeroqual.session = session_return
         with self.assertRaises(DataDownloadError):
             self.aeroqual.scrape_device("foo", mock_start, mock_end)
@@ -221,14 +221,14 @@ class TestAQMesh(unittest.TestCase):
         mock_params["UniqueId"] = mock_params["UniqueId"].substitute(device="123")
         mock_params["Channels"] = mock_params["Channels"].substitute(device="123")
         mock_params["Start"] = mock_params["Start"].substitute(
-            start="2020-04-03T15:35:00 +02:00"
+            start="2020-04-03T00:00:00 +02:00"
         )
         mock_params["End"] = mock_params["End"].substitute(
-            end="2020-05-03T16:28:29 +02:00"
+            end="2020-05-04T00:00:00 +02:00"
         )
 
-        mock_start = datetime(2020, 4, 3, 15, 35, 00)
-        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         try:
             res = self.aqmesh.scrape_device("123", mock_start, mock_end)
             self.assertEqual(res, [1, 2, 3])
@@ -247,8 +247,8 @@ class TestAQMesh(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         with self.assertRaises(DataDownloadError):
             self.aqmesh.scrape_device("123", mock_start, mock_end)
@@ -258,8 +258,8 @@ class TestAQMesh(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         with self.assertRaises(DataDownloadError):
             self.aqmesh.scrape_device("123", mock_start, mock_end)
@@ -269,8 +269,8 @@ class TestAQMesh(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         with self.assertRaises(DataDownloadError):
             self.aqmesh.scrape_device("123", mock_start, mock_end)
@@ -280,8 +280,8 @@ class TestAQMesh(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         with self.assertRaises(DataDownloadError):
             self.aqmesh.scrape_device("123", mock_start, mock_end)
@@ -300,8 +300,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
-        mock_start = datetime(2020, 4, 3, 15, 35, 00)
-        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
         # Make same substitution with device ID into the GET params and assert
         # that these are used in the function call
@@ -309,8 +309,8 @@ class TestZephyr(unittest.TestCase):
         mock_url = mock_url.substitute(
             device="123",
             token=self.zephyr.api_token,
-            start="20200403153500",
-            end="20200503162829",
+            start="20200403000000",
+            end="20200504000000",
         )
         try:
             res = self.zephyr.scrape_device("123", mock_start, mock_end)
@@ -326,8 +326,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 3, 17)
+        mock_end = date(2020, 3, 17)
 
         with self.assertRaises(DataDownloadError):
             self.zephyr.scrape_device("123", mock_start, mock_end)
@@ -337,8 +337,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 3, 17)
+        mock_end = date(2020, 3, 17)
 
         with self.assertRaises(DataDownloadError):
             self.zephyr.scrape_device("123", mock_start, mock_end)
@@ -348,8 +348,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 3, 17)
+        mock_end = date(2020, 3, 17)
 
         with self.assertRaises(DataDownloadError):
             self.zephyr.scrape_device("123", mock_start, mock_end)
@@ -359,8 +359,8 @@ class TestZephyr(unittest.TestCase):
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.zephyr.session = session_return
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 3, 17)
+        mock_end = date(2020, 3, 17)
 
         with self.assertRaises(DataDownloadError):
             self.zephyr.scrape_device("123", mock_start, mock_end)
@@ -378,8 +378,8 @@ class TestMyQuantAQ(unittest.TestCase):
         mock_get_data = Mock(return_value=mock_resp)
         mock_api_obj = Mock(get_data=mock_get_data)
         self.myquantaq.api_obj = mock_api_obj
-        mock_start = datetime(2020, 4, 3, 15, 35, 00)
-        mock_end = datetime(2020, 5, 3, 16, 28, 29)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         try:
             res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
             self.assertEqual(
@@ -404,8 +404,8 @@ class TestMyQuantAQ(unittest.TestCase):
         mock_get_data = Mock(side_effect=DataReadError)
         mock_api_obj = Mock(get_data=mock_get_data)
         self.myquantaq.api_obj = mock_api_obj
-        mock_start = MagicMock()
-        mock_end = MagicMock()
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
         with self.assertRaises(DataDownloadError):
             self.myquantaq.scrape_device("foo", mock_start, mock_end)
 

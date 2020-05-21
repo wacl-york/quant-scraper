@@ -93,8 +93,8 @@ class MyQuantAQ(Manufacturer):
         Args:
             - device_id (str): The ID used by the website to refer to the
                 device.
-            - start (datetime): The start of the scraping window.
-            - end (datetime): The end of the scraping window.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             A dict with 2 attributes: 'raw' and 'final', holding the raw and

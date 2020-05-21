@@ -121,8 +121,8 @@ class Zephyr(Manufacturer):
         Args:
             - device_id (str): The ID used by the website to refer to the
                 device.
-            - start (datetime): The start of the scraping window.
-            - end (datetime): The end of the scraping window.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             The raw data is returned in the response's JSON and organised in a
@@ -139,10 +139,7 @@ class Zephyr(Manufacturer):
         end_fmt = end_dt.strftime("%Y%m%d%H%M%S")
 
         this_url = self.data_url.substitute(
-            device=device_id,
-            token=self.api_token,
-            start=start_fmt,
-            end=end_fmt
+            device=device_id, token=self.api_token, start=start_fmt, end=end_fmt
         )
         try:
             result = self.session.get(this_url, headers=self.data_headers,)

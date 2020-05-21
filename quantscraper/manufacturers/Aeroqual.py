@@ -6,7 +6,6 @@
     quality instrumentation device manufacturer.
 """
 
-from datetime import date
 from string import Template
 import csv
 import os
@@ -135,8 +134,8 @@ class Aeroqual(Manufacturer):
         Args:
             - device_id (str): The ID used by the website to refer to the
                 device.
-            - start (datetime): The start of the scraping window.
-            - end (datetime): The end of the scraping window.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             A string containing the raw data in CSV format, i.e. rows are

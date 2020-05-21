@@ -5,7 +5,7 @@
     Unit tests for cli functions.
 """
 
-import datetime
+from datetime import date
 import unittest
 from collections import defaultdict
 import logging
@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock, Mock, call
 
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-from test_utils import build_mock_today
+from utils import build_mock_today
 from quantscraper.manufacturers.Manufacturer import Device
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 
@@ -93,12 +93,12 @@ class TestParseArgs(unittest.TestCase):
                 call(
                     "--start",
                     metavar="DATE",
-                    help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to midnight of the previous day.",
+                    help="The earliest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
                 ),
                 call(
                     "--end",
                     metavar="DATE",
-                    help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to 1 second before midnight of the current day.",
+                    help="The latest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
                 ),
                 call(
                     "--save-raw",
@@ -135,28 +135,25 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_no_start_end_times(self):
         # Don't pass in start time or end time, so the output time should be
         # yesterday midnight to 1 second before following midnight
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2012, 3, 17)):
-            cli.setup_scraping_timeframe(cfg)
             start, end = cli.setup_scraping_timeframe()
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(start, "2012-03-16")
-            self.assertEqual(end, "2012-03-16")
+            self.assertEqual(start, date(2012, 3, 16))
+            self.assertEqual(end, date(2012, 3, 16))
 
     def test_no_end_time(self):
         # Don't pass in end time, so the output time should be
         # specified time to 1 second before today's midnight
 
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2012, 3, 16)):
             start, end = cli.setup_scraping_timeframe(start="2012-02-28")
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(start, "2012-02-28")
-            self.assertEqual(end, "2012-03-15")
+            self.assertEqual(start, date(2012, 2, 28))
+            self.assertEqual(end, date(2012, 3, 15))
 
     def test_no_start_time(self):
         # Don't pass in start time, so the output time should be
@@ -167,39 +164,31 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(start, "2035-10-11")
-            self.assertEqual(end, "2035-10-12")
+            self.assertEqual(start, date(2035, 10, 11))
+            self.assertEqual(end, date(2035, 10, 12))
 
     def test_both_times_specified(self):
         # Both start and end times are specified in config file
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
-            cli.setup_scraping_timeframe(cfg)
             start, end = cli.setup_scraping_timeframe(
                 start="2035-10-11", end="2035-10-12"
             )
 
-            # assert cfg times are as expected, as this function modifies cfg by
-            # reference rather than returning it directly
-            self.assertEqual(start, "2035-10-11")
-            self.assertEqual(end, "2035-10-12")
+            self.assertEqual(start, date(2035, 10, 11))
+            self.assertEqual(end, date(2035, 10, 12))
 
     def test_start_later_end_both_passed_in(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here both are passed in
 
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(
-                    start="2035-10-13", end="2035-10-12"
-                )
+                cli.setup_scraping_timeframe(start="2035-10-13", end="2035-10-12")
 
     def test_start_later_end_start_assumed(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here just the end date is passed in and start date is taken as default
 
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(end="2019-08-15")
@@ -207,46 +196,41 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
     def test_start_later_end_end_assumed(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here just the start date is passed in and end date is taken as default
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(start="2019-08-17")
 
     def test_start_equal_end_both_passed_in(self):
-        # Here start date is equal to end. Shouldn't be allowed!
+        # Here start date is equal to end.
         # Here both are passed in
-
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(
-                    start="2035-10-13", end="2035-10-13"
-                )
+            start, end = cli.setup_scraping_timeframe(
+                start="2035-10-13", end="2035-10-13"
+            )
+            self.assertEqual(start, date(2035, 10, 13))
+            self.assertEqual(end, date(2035, 10, 13))
 
     def test_start_equal_end_start_assumed(self):
-        # Here start date is equal to end. Shouldn't be allowed!
+        # Here start date is equal to end.
         # Here just the end date is passed in and start date is taken as default
-
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(end="2019-08-16")
+            start, end = cli.setup_scraping_timeframe(end="2019-08-16")
+            self.assertEqual(start, date(2019, 8, 16))
+            self.assertEqual(end, date(2019, 8, 16))
 
     def test_start_equal_end_end_assumed(self):
-        # Here start date is equal to end. Shouldn't be allowed!
+        # Here start date is equal to end.
         # Here just the start date is passed in and end date is taken as default
-
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(start="2019-08-16")
+            start, end = cli.setup_scraping_timeframe(start="2019-08-16")
+            self.assertEqual(start, date(2019, 8, 16))
+            self.assertEqual(end, date(2019, 8, 16))
 
     def test_formatting_error_start(self):
         # Pass in a poorly specified time format to start time
-        # Mock date.today() to a fixed date
         with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(start="2012/03/04 15:32")
+                cli.setup_scraping_timeframe(start="2012/03/04")
 
 
 class TestScrape(unittest.TestCase):

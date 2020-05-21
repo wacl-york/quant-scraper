@@ -15,7 +15,7 @@ import os
 import sys
 import math
 import re
-from datetime import date, timedelta, datetime, time
+from datetime import date, timedelta
 import traceback
 from dotenv import load_dotenv
 
@@ -78,13 +78,13 @@ def parse_args():
     parser.add_argument(
         "--start",
         metavar="DATE",
-        help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to midnight of the previous day.",
+        help="The earliest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
     )
 
     parser.add_argument(
         "--end",
         metavar="DATE",
-        help="The earliest time to download data for. Must be a valid ISO datetime such as YYYY-mm-ddTHH:MM:SS, where T is the literal character. See documentation for datetime.fromisoformat for specifics. Defaults to 1 second before midnight of the current day.",
+        help="The latest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
     )
 
     parser.add_argument(
@@ -131,37 +131,36 @@ def setup_scraping_timeframe(start=None, end=None):
     window is between 2020-01-07 00:00:00 and 2020-01-07 23:59:59.
 
     Args:
-        - start (str, optional): The start of the scraping window, formatted as
-            a valid ISO datetime. Defaults to midnight of the previous day.
-        - end (str, optional): The end of the scraping window, formatted as
-            a valid ISO datetime. Defaults to 1 second before midnight of the
-            current day.
+        - start (str, optional): The start of the scraping window (inclusive), formatted as
+            a valid ISO date. Defaults to the previous day.
+        - end (str, optional): The end of the scraping window (inclusive), formatted as
+            a valid ISO date. Defaults to the previous day.
 
     Returns:
         A tuple containg the (start, end) limits of the scraping window, stored
-        as datetime objects.
+        as date objects.
     """
     error_msg = "Unable to parse {} as date in YYYY-mm-dd format."
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
 
     if start is None:
-        start = datetime.combine(yesterday, time.min).isoformat()
+        start = yesterday
 
     if end is None:
-        end = datetime.combine(yesterday, time.max).isoformat()
+        end = yesterday
 
-    # Parse strings as datetime objects
+    # Parse strings as date objects
     try:
-        start_dt = datetime.fromisoformat(start)
+        start_dt = date.fromisoformat(start)
     except ValueError:
-        raise utils.TimeError(error_msg.format(input=start, url=docs_url)) from None
+        raise utils.TimeError(error_msg.format(start)) from None
     try:
-        end_dt = datetime.fromisoformat(end)
+        end_dt = date.fromisoformat(end)
     except ValueError:
-        raise utils.TimeError(error_msg.format(input=end, url=docs_url)) from None
+        raise utils.TimeError(error_msg.format(end)) from None
 
-    if start_dt >= end_dt:
+    if start_dt > end_dt:
         raise utils.TimeError(
             "Start date must be earlier than end date. ({} - {})".format(start, end)
         )
@@ -175,8 +174,8 @@ def scrape(manufacturer, start, end):
 
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
-        - start (datetime): The start of the scraping window.
-        - end (datetime): The end of the scraping window.
+        - start (date): The start of the scraping window.
+        - end (date): The end of the scraping window.
 
     Returns:
         None, updates the raw_data attribute of a Device if the download is
@@ -733,9 +732,7 @@ def main():
         summaries.append(man_summary)
 
         # Get start time date for naming output files
-        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
-        # TODO Use start_end unless have start == end
-        start_fmt = start_dt.strftime("%Y-%m-%d")
+        start_fmt = start_time.strftime("%Y-%m-%d")
 
         if args.save_raw:
             logging.info("Saving raw data from all devices:")

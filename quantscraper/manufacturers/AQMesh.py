@@ -132,8 +132,8 @@ class AQMesh(Manufacturer):
         Args:
             - device_id (str): The ID used by the website to refer to the
                 device.
-            - start (datetime): The start of the scraping window.
-            - end (datetime): The end of the scraping window.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             The data stored in a hierarchical format comprising dicts and lists.
@@ -147,10 +147,10 @@ class AQMesh(Manufacturer):
         # the start day, and end day as midnight of day AFTER required end day.
         # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
         # 59th minute worth of data
-        start_dt = datetime.combine(start_datetime, time.min)
-        end_dt = datetime.combine((end_datetime + timedelta(days=1)), time.min)
-        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
-        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine((end + timedelta(days=1)), time.min)
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
 
         this_params = self.data_params.copy()
         this_params["UniqueId"] = this_params["UniqueId"].substitute(device=device_id)
