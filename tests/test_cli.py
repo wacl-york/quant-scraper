@@ -14,6 +14,7 @@ from unittest.mock import patch, MagicMock, Mock, call
 import quantscraper.cli as cli
 import quantscraper.utils as utils
 from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
+from test_utils import build_mock_today
 
 
 class TestSetupLoggers(unittest.TestCase):
@@ -119,16 +120,13 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         cfg.remove_option("Main", "end_time")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2012, 3, 17))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2012, 3, 17)):
             cli.setup_scraping_timeframe(cfg)
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2012-03-16T00:00:00")
-            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-16T23:59:59.999999")
+            self.assertEqual(cfg.get("Main", "start_time"), "2012-03-16")
+            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-16")
 
     def test_no_end_time(self):
         # Don't pass in end time, so the output time should be
@@ -137,20 +135,17 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         # Provide config without start or end time specified
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2012-02-28T13:59:00")
+        cfg.set("Main", "start_time", "2012-02-28")
         cfg.remove_option("Main", "end_time")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2012, 3, 16))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2012, 3, 16)):
             cli.setup_scraping_timeframe(cfg)
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2012-02-28T13:59:00")
-            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-15T23:59:59.999999")
+            self.assertEqual(cfg.get("Main", "start_time"), "2012-02-28")
+            self.assertEqual(cfg.get("Main", "end_time"), "2012-03-15")
 
     def test_no_start_time(self):
         # Don't pass in start time, so the output time should be
@@ -160,19 +155,16 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
         cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2035-10-12T14:22:00")
+        cfg.set("Main", "end_time", "2035-10-12")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2035, 10, 12))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             cli.setup_scraping_timeframe(cfg)
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11T00:00:00")
-            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12T14:22:00")
+            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11")
+            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12")
 
     def test_both_times_specified(self):
         # Both start and end times are specified in config file
@@ -180,34 +172,28 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         # Provide config without start or end time specified
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-11T12:00:00")
-        cfg.set("Main", "end_time", "2035-10-12T14:22:00")
+        cfg.set("Main", "start_time", "2035-10-11")
+        cfg.set("Main", "end_time", "2035-10-12")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2035, 10, 12))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             cli.setup_scraping_timeframe(cfg)
 
             # assert cfg times are as expected, as this function modifies cfg by
             # reference rather than returning it directly
-            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11T12:00:00")
-            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12T14:22:00")
+            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-11")
+            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-12")
 
     def test_start_later_end_both_passed_in(self):
         # Here start date is later than end. Shouldn't be allowed!
         # Here both are passed in
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-13T12:00:00")
-        cfg.set("Main", "end_time", "2035-10-12T14:22:00")
+        cfg.set("Main", "start_time", "2035-10-13")
+        cfg.set("Main", "end_time", "2035-10-12")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2035, 10, 12))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
 
@@ -217,13 +203,10 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
         cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2019-08-15T23:59:59")
+        cfg.set("Main", "end_time", "2019-08-15")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2019, 8, 17))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
 
@@ -232,76 +215,67 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
         # Here just the start date is passed in and end date is taken as default
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2019-08-17T00:00:00")
+        cfg.set("Main", "start_time", "2019-08-17")
         cfg.remove_option("Main", "end_time")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2019, 8, 17))
-            mock_date.today = mock_today
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
 
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
 
     def test_start_equal_end_both_passed_in(self):
         # Here start date is equal to end. Shouldn't be allowed!
-        # Here both are passed in
+        # Here start date is equal to end, should pass and set both dates the
+        # same. Both are passed in.
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2035-10-13T14:22:13")
-        cfg.set("Main", "end_time", "2035-10-13T14:22:13")
+        cfg.set("Main", "start_time", "2035-10-13")
+        cfg.set("Main", "end_time", "2035-10-13")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2035, 10, 12))
-            mock_date.today = mock_today
-
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+        with patch("quantscraper.cli.date", build_mock_today(2035, 10, 12)):
+            cli.setup_scraping_timeframe(cfg)
+            self.assertEqual(cfg.get("Main", "start_time"), "2035-10-13")
+            self.assertEqual(cfg.get("Main", "end_time"), "2035-10-13")
 
     def test_start_equal_end_start_assumed(self):
-        # Here start date is equal to end. Shouldn't be allowed!
-        # Here just the end date is passed in and start date is taken as default
+        # Here start date is equal to end, should pass and set both dates the
+        # same. Start date is taken as default
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
         cfg.remove_option("Main", "start_time")
-        cfg.set("Main", "end_time", "2019-08-16T00:00:00")
+        cfg.set("Main", "end_time", "2019-08-16")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2019, 8, 17))
-            mock_date.today = mock_today
-
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
+            cli.setup_scraping_timeframe(cfg)
+            self.assertEqual(cfg.get("Main", "start_time"), "2019-08-16")
+            self.assertEqual(cfg.get("Main", "end_time"), "2019-08-16")
 
     def test_start_equal_end_end_assumed(self):
-        # Here start date is equal to end. Shouldn't be allowed!
-        # Here just the start date is passed in and end date is taken as default
+        # Here start date is equal to end, should pass and set both dates the
+        # same. End date is taken as default
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2019-08-16T23:59:59.999999")
+        cfg.set("Main", "start_time", "2019-08-16")
         cfg.remove_option("Main", "end_time")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2019, 8, 17))
-            mock_date.today = mock_today
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
+            cli.setup_scraping_timeframe(cfg)
 
-            with self.assertRaises(utils.TimeError):
-                cli.setup_scraping_timeframe(cfg)
+            self.assertEqual(cfg.get("Main", "start_time"), "2019-08-16")
+            self.assertEqual(cfg.get("Main", "end_time"), "2019-08-16")
 
     def test_formatting_error_start(self):
         # Pass in a poorly specified time format to start time
         cfg = configparser.ConfigParser()
         cfg.read("example.ini")
-        cfg.set("Main", "start_time", "2012/03/04 15:32")
+        cfg.set("Main", "start_time", "2012/03/04")
 
         # Mock date.today() to a fixed date
-        with patch("quantscraper.cli.date", autospec=True) as mock_date:
-            mock_today = Mock(return_value=datetime.date(2019, 8, 17))
-            mock_date.today = mock_today
-
+        with patch("quantscraper.cli.date", build_mock_today(2019, 8, 17)):
             with self.assertRaises(utils.TimeError):
                 cli.setup_scraping_timeframe(cfg)
 

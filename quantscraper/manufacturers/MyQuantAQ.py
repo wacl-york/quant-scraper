@@ -9,7 +9,7 @@
     any conflict with QuantAQ's own API, which has a QuantAQ class.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from string import Template
 import requests as re
 import quantaq
@@ -45,24 +45,22 @@ class MyQuantAQ(Manufacturer):
         self.api_token = cfg.get(self.name, "api_token")
 
         # Load start and end scraping datetimes
-        start_datetime = cfg.get("Main", "start_time")
-        end_datetime = cfg.get("Main", "end_time")
-        start_date = datetime.fromisoformat(start_datetime).strftime("%Y-%m-%d")
+        start_date = date.fromisoformat(cfg.get("Main", "start_time"))
+        end_date = date.fromisoformat(cfg.get("Main", "end_time"))
+        start_fmt = start_date.strftime("%Y-%m-%d")
         # Notice how we add on 1 day here.
-        # The API only allows you to filter based on dates, not datetimes.
-        # Secondly, although there is a "less than or equal to" filter,
+        # Although there is a "less than or equal to" filter,
         # if you use ">= start_date and <= end_date" where start_date=end_date,
         # i.e. the common scenario in our usage, then it raises an error.
         # The solution is to add a day onto the end_date,
         # and use < rather than <=
-        end_date = datetime.fromisoformat(end_datetime)
-        end_date = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        end_fmt = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
         # This would be more easily saved as a dict as that's how it gets used
         # later, but the quantaq package does some funny dict updating by
         # reference that modifies the dict from my environment
         raw = Template("timestamp,ge,${start};timestamp,lt,${end}")
-        self.query_string = raw.substitute(start=start_date, end=end_date)
+        self.query_string = raw.substitute(start=start_fmt, end=end_fmt)
 
         super().__init__(cfg)
 

@@ -12,11 +12,10 @@ import logging
 import argparse
 import os
 import sys
-import string
 import math
 import configparser
 import re
-from datetime import date, timedelta, datetime, time
+from datetime import date, timedelta, datetime
 import traceback
 
 import quantscraper.utils as utils
@@ -96,8 +95,7 @@ def setup_scraping_timeframe(cfg):
     """
     Sets up the scraping timeframe for the scraping run.
 
-    By default, this script attempts to scrape from midnight of the day prior to
-    the script being executed, to 1 second before the following midnight.
+    By default, this script attempts to scrape the previous day.
     I.e. if the script is run at 2020-01-08 15:36:00, then the default scraping
     window is between 2020-01-07 00:00:00 and 2020-01-07 23:59:59.
 
@@ -111,36 +109,29 @@ def setup_scraping_timeframe(cfg):
     Returns:
         None. Updates cfg by reference as a side-effect.
     """
-    docs_url = "https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat"
-    error_msg = (
-        "Unknown ISO 8601 format '{input}'. Available formats are described at {url}"
-    )
+    error_msg = "Unable to parse {} as date in YYYY-mm-dd format."
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
     try:
         cfg.get("Main", "start_time")
     except configparser.NoOptionError:
-        cfg["Main"]["start_time"] = datetime.combine(yesterday, time.min).isoformat()
+        cfg["Main"]["start_time"] = yesterday
     try:
         cfg.get("Main", "end_time")
     except configparser.NoOptionError:
-        cfg["Main"]["end_time"] = datetime.combine(yesterday, time.max).isoformat()
+        cfg["Main"]["end_time"] = yesterday
 
     # Confirm that both dates are valid
     try:
-        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+        start_dt = date.fromisoformat(cfg.get("Main", "start_time"))
     except ValueError:
-        raise utils.TimeError(
-            error_msg.format(input=cfg.get("Main", "start_time"), url=docs_url)
-        )
+        raise utils.TimeError(error_msg.format(cfg.get("Main", "start_time")))
     try:
-        end_dt = datetime.fromisoformat(cfg.get("Main", "end_time"))
+        end_dt = date.fromisoformat(cfg.get("Main", "end_time"))
     except ValueError:
-        raise utils.TimeError(
-            error_msg.format(input=cfg.get("Main", "end_time"), url=docs_url)
-        )
+        raise utils.TimeError(error_msg.format(cfg.get("Main", "end_time")))
 
-    if start_dt >= end_dt:
+    if start_dt > end_dt:
         raise utils.TimeError(
             "Start date must be earlier than end date. ({} - {})".format(
                 cfg.get("Main", "start_time"), cfg.get("Main", "end_time")
@@ -711,6 +702,7 @@ def main():
 
         # Get start time date for naming output files
         start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
+        # TODO Use start_end unless have start == end
         start_fmt = start_dt.strftime("%Y-%m-%d")
 
         if cfg.getboolean("Main", "save_raw_data"):
