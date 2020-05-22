@@ -263,7 +263,7 @@ def resample(dataframe, resolution):
     return df_resampled
 
 
-def upload_files_google_drive(credentials_fn, files):
+def upload_files_google_drive(files):
     """
     Provides boiler plate code and error handling for all aspects of uploading a
     list of files to Google Drive, including:
@@ -272,15 +272,13 @@ def upload_files_google_drive(credentials_fn, files):
         - Calling the function that handles the file upload.
 
     Args:
-        - credentials_fn (str): File-path where credentials.json is located
-            containing Google Service account credentials.
         - files (str[]): List of local file-path of files to be uploaded.
 
     Returns:
         None. Uploads files to Google Drive as a side-effect.
     """
     try:
-        service = utils.auth_google_api(credentials_fn)
+        service = utils.auth_google_api()
     except utils.GoogleAPIError:
         logging.error("Cannot connect to Google API.")
         logging.error(traceback.format_exc())
@@ -339,7 +337,6 @@ def main():
     # Load config params
     local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
     local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
-    credentials_fn = cfg.get("Analysis", "google_api_credentials_fn")
     time_res = cfg.get("Analysis", "time_resolution")
 
     try:
@@ -434,7 +431,7 @@ def main():
     # Upload files to Google Drive
     if args.upload and len(files_to_upload) > 0:
         logging.info("Initiating upload to GoogleDrive.")
-        upload_files_google_drive(credentials_fn, files_to_upload)
+        upload_files_google_drive(files_to_upload)
 
 
 if __name__ == "__main__":

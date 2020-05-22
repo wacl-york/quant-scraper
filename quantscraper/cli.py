@@ -740,6 +740,8 @@ def main():
                 start_fmt,
                 "raw",
             )
+        else:
+            raw_fns = None
 
         if args.save_clean:
             logging.info("Saving cleaned CSV data from all devices:")
@@ -749,10 +751,12 @@ def main():
                 start_fmt,
                 "clean",
             )
+        else:
+            clean_fns = None
 
         if args.upload_raw or args.upload_clean:
             try:
-                service = utils.auth_google_api(cfg.get("GoogleAPI", "credentials_fn"))
+                service = utils.auth_google_api()
             except utils.GoogleAPIError:
                 logging.error("Cannot connect to Google API.")
                 logging.error(traceback.format_exc())

@@ -7,7 +7,8 @@
 
 import unittest
 import string
-from unittest.mock import patch, Mock, mock_open, PropertyMock
+import os
+from unittest.mock import patch, Mock, mock_open
 import pandas as pd
 from googleapiclient.errors import HttpError
 from utils import build_mock_response
@@ -158,26 +159,28 @@ class TestAuthGoogleAPI(unittest.TestCase):
     # the utils.auth_google_api method should return a connection to Google
     # Drive's API
 
-    def test_no_credentials_file(self):
+    def test_no_env_var(self):
         with patch(
-            "quantscraper.utils.service_account.Credentials.from_service_account_file"
+            "quantscraper.utils.service_account.Credentials.from_service_account_info"
         ) as mock_cred_obj:
-            mock_cred_obj.side_effect = FileNotFoundError("")
             with self.assertRaises(utils.GoogleAPIError):
-                utils.auth_google_api("imaginary_file.txt")
+                utils.auth_google_api()
 
-    def test_file_format_error(self):
+    def test_envvar_format_error(self):
+        # Poorly formatted JSON
+        os.environ["GOOGLE_CREDS"] = '{"foo": "bar"'
         with patch(
-            "quantscraper.utils.service_account.Credentials.from_service_account_file"
+            "quantscraper.utils.service_account.Credentials.from_service_account_info"
         ) as mock_cred_obj:
-            mock_cred_obj.side_effect = ValueError("")
             with self.assertRaises(utils.GoogleAPIError):
-                utils.auth_google_api("imaginary_file.txt")
+                utils.auth_google_api()
 
     def test_success(self):
         # Patch credentials call
+        os.environ["GOOGLE_CREDS"] = '{"foo": "bar", "alpha": 3.5}'
+
         with patch(
-            "quantscraper.utils.service_account.Credentials.from_service_account_file"
+            "quantscraper.utils.service_account.Credentials.from_service_account_info"
         ) as mock_cred_obj:
             mock_credentials = Mock()
             mock_cred_obj.return_value = mock_credentials
@@ -189,14 +192,14 @@ class TestAuthGoogleAPI(unittest.TestCase):
                 mock_service = Mock()
                 mock_build.return_value = mock_service
 
-                service = utils.auth_google_api("imaginary_file.txt")
+                service = utils.auth_google_api()
 
                 # Using standard recommended google drive scope
                 exp_scopes = ["https://www.googleapis.com/auth/drive.file"]
 
                 # Test calls
                 mock_cred_obj.assert_called_once_with(
-                    "imaginary_file.txt", scopes=exp_scopes
+                    dict(foo="bar", alpha=3.5), scopes=exp_scopes
                 )
                 mock_build.assert_called_once_with(
                     "drive", "v3", credentials=mock_credentials, cache_discovery=False

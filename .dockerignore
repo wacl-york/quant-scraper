@@ -1,5 +1,9 @@
-example*
+# Don't include sensitive information
 *.env
+googleapi_credentials.json
+
+# Don't need examples
+example*
 
 __pycache__/*
 *.swp

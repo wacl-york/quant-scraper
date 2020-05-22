@@ -1,13 +1,17 @@
+# Application configuration
+*.env
 config.ini
 preprocessing.ini
 devices.json
-__pycache__/*
-*.swp
+
 data/*
-*.env
+*.swp
 
 # Compiled python modules.
 *.pyc
+
+# Cache
+__pycache__/*
 
 # Setuptools distribution folder.
 /dist/

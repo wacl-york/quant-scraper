@@ -150,30 +150,39 @@ def is_float(x):
     return parseable
 
 
-def auth_google_api(credentials_fn):
+def auth_google_api():
     """
     Authorizes connection to GoogleDrive API.
+
+    Requires GOOGLE_CREDS environment variable to be set, containing the
+    contents of the JSON credential file, formatted as a string.
 
     Uses v3 of the GoogleDrive API, see examples at:
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        - credentials_fn (str): Path to JSON file that has Google API credentials
-            saved.
+        None. Loads credentials from environment variable.
 
     Returns:
         A googleapiclient.discovery.Resource object.
     """
     scopes = ["https://www.googleapis.com/auth/drive.file"]
+    try:
+        raw_params = os.environ["GOOGLE_CREDS"]
+    except KeyError:
+        raise GoogleAPIError(
+            "Environment variable GOOGLE_CREDS not found. Please set it with the contents of the JSON credentials file."
+        ) from None
 
     try:
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_fn, scopes=scopes
+        params = json.loads(raw_params)
+    except json.decoder.JSONDecodeError:
+        raise GoogleAPIError("Unable to parse GOOGLE_CREDS as JSON.")
+
+    try:
+        credentials = service_account.Credentials.from_service_account_info(
+            params, scopes=scopes
         )
-    except FileNotFoundError:
-        raise GoogleAPIError(
-            "Credential file '{}' not found".format(credentials_fn)
-        ) from None
     except ValueError:
         raise GoogleAPIError("Credential file is not formatted as expected") from None
 
