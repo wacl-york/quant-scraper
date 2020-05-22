@@ -33,10 +33,10 @@ def main():
         for dev in args.scrape_devices:
             scrape_call.append(dev)
 
-    if args.upload_raw is not None:
+    if args.upload_raw:
         scrape_call.append("--upload-raw")
 
-    if args.upload_clean is not None:
+    if args.upload_clean:
         scrape_call.append("--upload-clean")
 
     if args.preprocess_devices is not None:
@@ -44,7 +44,7 @@ def main():
         for dev in args.preprocess_devices:
             preprocess_call.append(dev)
 
-    if args.upload_preprocess is not None:
+    if args.upload_preprocess:
         preprocess_call.append("--upload")
 
     subprocess.run(scrape_call)

@@ -760,18 +760,31 @@ def main():
 
             if args.upload_raw:
                 logging.info("Uploading raw data to Google Drive:")
-                upload_data_googledrive(
-                    service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
-                )
+                try:
+                    folder_id = os.environ["GDRIVE_RAW_ID"]
+                except KeyError:
+                    logging.error(
+                        "GDRIVE_RAW_ID env var not found. Please set it with the ID of the Google Drive folder to upload the raw data to."
+                    )
+                    folder_id = None
+
+                if folder_id is not None:
+                    upload_data_googledrive(service, raw_fns, folder_id, "text/json")
 
             if args.upload_clean:
                 logging.info("Uploading clean CSV data to Google Drive:")
-                upload_data_googledrive(
-                    service,
-                    clean_fns,
-                    cfg.get("GoogleAPI", "clean_data_id"),
-                    "text/csv",
-                )
+                try:
+                    folder_id = os.environ["GDRIVE_CLEAN_ID"]
+                except KeyError:
+                    logging.error(
+                        "GDRIVE_CLEAN_ID env var not found. Please set it with the ID of the Google Drive folder to upload the clean data to."
+                    )
+                    folder_id = None
+
+                if folder_id is not None:
+                    upload_data_googledrive(
+                        service, clean_fns, folder_id, "text/csv",
+                    )
 
     # Summarise number of clean measurands into tabular format
     summary_tables = tabular_summary(summaries)

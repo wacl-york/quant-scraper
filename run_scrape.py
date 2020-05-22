@@ -59,13 +59,13 @@ def main():
         if args.preprocess_devices is not None:
             cmd.extend(["--preprocess-devices", *args.preprocess_devices])
 
-        if args.upload_clean is not None:
+        if args.upload_clean:
             cmd.append("--upload-clean")
 
-        if args.upload_raw is not None:
+        if args.upload_raw:
             cmd.append("--upload-raw")
 
-        if args.upload_preprocess is not None:
+        if args.upload_preprocess:
             cmd.append("--upload-preprocess")
 
         overrides = {"containerOverrides": [{"name": "quant", "command": cmd}]}

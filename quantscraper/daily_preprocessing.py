@@ -263,6 +263,46 @@ def resample(dataframe, resolution):
     return df_resampled
 
 
+def upload_files_google_drive(credentials_fn, files):
+    """
+    Provides boiler plate code and error handling for all aspects of uploading a
+    list of files to Google Drive, including:
+        - Initiating connection to GoogleDrive API
+        - Obtaining the folder ID from an environment variable
+        - Calling the function that handles the file upload.
+
+    Args:
+        - credentials_fn (str): File-path where credentials.json is located
+            containing Google Service account credentials.
+        - files (str[]): List of local file-path of files to be uploaded.
+
+    Returns:
+        None. Uploads files to Google Drive as a side-effect.
+    """
+    try:
+        service = utils.auth_google_api(credentials_fn)
+    except utils.GoogleAPIError:
+        logging.error("Cannot connect to Google API.")
+        logging.error(traceback.format_exc())
+        return
+
+    try:
+        drive_analysis_id = os.environ["GDRIVE_ANALYSIS_ID"]
+    except KeyError:
+        logging.error(
+            "GDRIVE_ANALYSIS_ID env var not found. Please set it with the ID of the Google Drive folder to upload the analysis data to."
+        )
+        return
+
+    for file in files:
+        try:
+            utils.upload_file_google_drive(service, file, drive_analysis_id, "text/csv")
+            logging.info("Upload successful.")
+        except utils.DataUploadError:
+            logging.error("Error in upload")
+            logging.error(traceback.format_exc())
+
+
 def main():
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
@@ -300,7 +340,6 @@ def main():
     local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
     local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
     credentials_fn = cfg.get("Analysis", "google_api_credentials_fn")
-    drive_analysis_id = cfg.get("Analysis", "gdrive_analysis_folder_id")
     time_res = cfg.get("Analysis", "time_resolution")
 
     try:
@@ -311,6 +350,8 @@ def main():
 
     # Load all selected devices
     manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
+
+    files_to_upload = []
 
     # Load all manufacturers
     for manufacturer in manufacturers:
@@ -387,24 +428,13 @@ def main():
             logging.error("Could not save file to disk: {}.".format(ex))
             continue
 
-        # Upload to GoogleDrive
         if args.upload:
-            logging.info("Initiating upload to GoogleDrive.")
-            try:
-                service = utils.auth_google_api(credentials_fn)
-            except utils.GoogleAPIError:
-                logging.error("Cannot connect to Google API.")
-                logging.error(traceback.format_exc())
-                continue
+            files_to_upload.append(file_path)
 
-            try:
-                utils.upload_file_google_drive(
-                    service, file_path, drive_analysis_id, "text/csv"
-                )
-                logging.info("Upload successful.")
-            except utils.DataUploadError:
-                logging.error("Error in upload")
-                logging.error(traceback.format_exc())
+    # Upload files to Google Drive
+    if args.upload and len(files_to_upload) > 0:
+        logging.info("Initiating upload to GoogleDrive.")
+        upload_files_google_drive(credentials_fn, files_to_upload)
 
 
 if __name__ == "__main__":
