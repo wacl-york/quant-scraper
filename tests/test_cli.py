@@ -113,12 +113,12 @@ class TestParseArgs(unittest.TestCase):
                 call(
                     "--upload-raw",
                     action="store_true",
-                    help="Uploads raw data to Google Drive. Data must be either already available locally, or saved during the run with the save-raw flag.",
+                    help="Uploads raw data to Google Drive.",
                 ),
                 call(
                     "--upload-clean",
                     action="store_true",
-                    help="Uploads clean data to Google Drive. Data must be either already available locally, or saved during the run with the save-clean flag.",
+                    help="Uploads clean data to Google Drive.",
                 ),
                 call(
                     "--html",

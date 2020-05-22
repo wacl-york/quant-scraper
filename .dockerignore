@@ -1,9 +1,5 @@
-# Application configuration
 example*
-
-
-run_docker_custom.sh
-run_docker_daily.sh
+*.env
 
 __pycache__/*
 *.swp

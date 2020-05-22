@@ -100,15 +100,13 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--upload-raw",
-        action="store_true",
-        help="Uploads raw data to Google Drive. Data must be either already available locally, or saved during the run with the save-raw flag.",
+        "--upload-raw", action="store_true", help="Uploads raw data to Google Drive.",
     )
 
     parser.add_argument(
         "--upload-clean",
         action="store_true",
-        help="Uploads clean data to Google Drive. Data must be either already available locally, or saved during the run with the save-clean flag.",
+        help="Uploads clean data to Google Drive.",
     )
 
     parser.add_argument(
