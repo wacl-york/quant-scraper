@@ -15,7 +15,7 @@ import os
 import sys
 import math
 import re
-from datetime import date, timedelta
+from datetime import date, timedelta, time, datetime
 import traceback
 from dotenv import load_dotenv
 
@@ -362,19 +362,23 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
-def tabular_summary(summaries):
+def tabular_summary(summaries, start_time, end_time):
     """
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
 
     Args:
-        summaries (list): A list of dictionaries, with each entry storing
+        - summaries (list): A list of dictionaries, with each entry storing
             information about a different manufacturer.
             Each dictionary summarises how many recordings are available for each
             device. Has the keys:
               - 'manufacturer': Provides manufacturer name as a string
               - 'devices': A further dict mapping {device_id : num_available_timepoints}
                 If a device has no available recordings then the value is None.
+        - start_time (date): The scraping window starting date, used to
+            calculate number of expected timestamps.
+        - end_time (date): The scraping window ending date, used to calculate
+            number of expected timestamps.
 
     Returns:
         A dict, where each entry corresponds to a 2D list indexed by
@@ -390,7 +394,10 @@ def tabular_summary(summaries):
             manu_rows = []
             # Obtain number of expected recordings
             try:
-                exp_recordings = manu["frequency"] * 24
+                start_dt = datetime.combine(start_time, time.min)
+                end_dt = datetime.combine(end_time + timedelta(days=1), time.min)
+                num_hours = (end_dt - start_dt).total_seconds() / 3600
+                exp_recordings = round(manu["frequency"] * num_hours)
             except KeyError:
                 exp_recordings = None
 
@@ -791,7 +798,7 @@ def main():
                     )
 
     # Summarise number of clean measurands into tabular format
-    summary_tables = tabular_summary(summaries)
+    summary_tables = tabular_summary(summaries, start_time, end_time)
 
     # Output table to screen
     ascii_summary = generate_ascii_summary(summary_tables)
