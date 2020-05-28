@@ -1,8 +1,9 @@
-# Application configuration
-*.ini
-*.json
-run_docker_cusom.sh
-run_docker_daily.sh
+# Don't include sensitive information
+*.env
+googleapi_credentials.json
+
+# Don't need examples
+example*
 
 __pycache__/*
 *.swp
