@@ -363,7 +363,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
-def tabular_summary(summaries, start_time, end_time):
+def tabular_summary(summaries, start_date, end_date):
     """
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
@@ -376,9 +376,9 @@ def tabular_summary(summaries, start_time, end_time):
               - 'manufacturer': Provides manufacturer name as a string
               - 'devices': A further dict mapping {device_id : num_available_timepoints}
                 If a device has no available recordings then the value is None.
-        - start_time (date): The scraping window starting date, used to
+        - start_date (date): The scraping window starting date, used to
             calculate number of expected timestamps.
-        - end_time (date): The scraping window ending date, used to calculate
+        - end_date (date): The scraping window ending date, used to calculate
             number of expected timestamps.
 
     Returns:
@@ -395,8 +395,8 @@ def tabular_summary(summaries, start_time, end_time):
             manu_rows = []
             # Obtain number of expected recordings
             try:
-                start_dt = datetime.combine(start_time, time.min)
-                end_dt = datetime.combine(end_time + timedelta(days=1), time.min)
+                start_dt = datetime.combine(start_date, time.min)
+                end_dt = datetime.combine(end_date + timedelta(days=1), time.min)
                 num_hours = (end_dt - start_dt).total_seconds() / 3600
                 exp_recordings = round(manu["frequency"] * num_hours)
             except KeyError:
@@ -627,7 +627,12 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
 
 def generate_html_summary(
-    tables, email_template, manufacturer_template, manufacturer_styles
+    tables,
+    email_template,
+    manufacturer_template,
+    manufacturer_styles,
+    start_date,
+    end_date,
 ):
     """
     Generates an HTML document summarising the device availability from the
@@ -653,6 +658,8 @@ def generate_html_summary(
         - manufacturer_template (str): The HTML template of the manufacturer section.
         - manufacturer styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
+        - start_date (date): The scraping window starting date.
+        - end_date (date): The scraping window ending date.
 
     Returns:
         A string containing a fully completed HTML document.
@@ -668,7 +675,11 @@ def generate_html_summary(
 
     # Fill in email template
     try:
-        email_html = email_template.substitute(summary=manufacturer_html)
+        email_html = email_template.substitute(
+            summary=manufacturer_html,
+            start=start_date.strftime("%Y-%m-%d"),
+            end=end_date.strftime("%Y-%m-%d"),
+        )
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
         email_html = email_template.template
@@ -845,7 +856,12 @@ def main():
 
         if email_template is not None and manufacturer_template is not None:
             email_html = generate_html_summary(
-                summary_tables, email_template, manufacturer_template, styles,
+                summary_tables,
+                email_template,
+                manufacturer_template,
+                styles,
+                start_time,
+                end_time,
             )
 
         try:
