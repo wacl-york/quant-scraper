@@ -11,6 +11,7 @@
 
 import logging
 import argparse
+import regex
 import os
 import sys
 import math
@@ -555,15 +556,25 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
             CSS styling parameters.
             'th_style': Default style to apply to th tags.
             'td_style': Default style to apply to td tags.
-            'pass_colour': Background colour for cells with 100% availability.
-            'fail_colour': Background colour for cells with 0% availability.
-            'warning_colour': Background colour for cells with <100% but >0% availability.
+            'colour_<a>': Colour to apply to cells with availability >= a. See
+                notes in example.ini for how these are applied.
+            'colour_fail': Colour to apply to cells that don't match any
+                "colour_<a>" ranges.
 
     Returns:
         A string containing HTML representing this manufacturer section.
     """
     header = table[0]
     body = table[1:]
+
+    # Form tuples with (lower %, hex colour string) in descending order
+    reg = regex.compile("colour_([0-9]+)")
+    colours_raw = [
+        (int(x.group(1)), kwargs[x.group(0)])
+        for x in [reg.match(f) for f in kwargs]
+        if x is not None and len(x) == 2
+    ]
+    colours_sorted = sorted(colours_raw, key=lambda tup: tup[0], reverse=True)
 
     # Extract each cell and replace with <th> tags
     head_tags = "\n".join(
@@ -587,14 +598,17 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
                 else:
                     pct = -1
 
-                if pct == 100:
-                    cell_colour = kwargs["pass_colour"]
-                elif pct == 0:
-                    cell_colour = kwargs["fail_colour"]
-                elif pct > 0 and pct < 100:
-                    cell_colour = kwargs["warning_colour"]
+                # Cascade through cell colour lower ranges until find
+                # bucket that this cell fits into and apply that colour
+                if pct > 100 or pct < 0:
+                    cell_colour = kwargs["colour_fail"]
                 else:
-                    cell_colour = "#ffffff"
+                    for interval in colours_sorted:
+                        if pct >= interval[0]:
+                            cell_colour = interval[1]
+                            break
+                    else:
+                        cell_colour = kwargs["colour_fail"]
 
                 cell_style = cell_style + "background-color: {};".format(cell_colour)
 
@@ -827,13 +841,7 @@ def main():
             manufacturer_template = None
 
         # Load style options for manufacturer summary
-        styles = {
-            "th_style": cfg.get("HTMLSummary", "th_style"),
-            "td_style": cfg.get("HTMLSummary", "td_style"),
-            "pass_colour": cfg.get("HTMLSummary", "pass_colour"),
-            "fail_colour": cfg.get("HTMLSummary", "fail_colour"),
-            "warning_colour": cfg.get("HTMLSummary", "warning_colour"),
-        }
+        styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
 
         if email_template is not None and manufacturer_template is not None:
             email_html = generate_html_summary(
