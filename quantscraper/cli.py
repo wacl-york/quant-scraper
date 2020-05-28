@@ -8,18 +8,21 @@
     the previous day.  This behaviour can be changed in the config.ini file,
     which is also where credentials are stored.
 """
+
 import logging
 import argparse
 import os
 import sys
 import math
-import configparser
 import re
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 import traceback
+from dotenv import load_dotenv
 
 import quantscraper.utils as utils
-from quantscraper.manufacturers.manufacturer_factory import manufacturer_factory
+from quantscraper.factories import setup_manufacturers
+
+CONFIG_FN = "config.ini"
 
 
 def setup_loggers(logfn=None):
@@ -66,98 +69,126 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="QUANT scraper")
     parser.add_argument(
-        "configfilepath", metavar="FILE", help="Location of INI configuration file"
+        "--devices",
+        metavar="DEVICE1 DEVICE2 ... DEVICEN",
+        nargs="+",
+        help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
     )
+
+    parser.add_argument(
+        "--start",
+        metavar="DATE",
+        help="The earliest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
+    )
+
+    parser.add_argument(
+        "--end",
+        metavar="DATE",
+        help="The latest date to download data for (inclusive). Must be in the format YYYY-mm-dd. Defaults to the previous day.",
+    )
+
+    parser.add_argument(
+        "--save-raw",
+        action="store_true",
+        help="Saves raw data to local file storage. Required in order to later upload to GoogleDrive.",
+    )
+
+    parser.add_argument(
+        "--save-clean",
+        action="store_true",
+        help="Saves clean data to local file storage. Required in order to later upload to GoogleDrive.",
+    )
+
+    parser.add_argument(
+        "--upload-raw", action="store_true", help="Uploads raw data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--upload-clean",
+        action="store_true",
+        help="Uploads clean data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--html",
+        metavar="FN",
+        help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+    )
+
     args = parser.parse_args()
     return args
 
 
-def setup_config(cfg_fn):
-    """
-    Loads configuration parameters from a file into memory.
-
-    Args:
-        - cfg_fn (str): Filepath of the .ini file.
-
-    Returns:
-        A configparser.Namespace instance.
-    """
-    cfg = configparser.ConfigParser()
-    cfg.read(cfg_fn)
-
-    if len(cfg.sections()) == 0:
-        raise utils.SetupError("No sections found in '{}'".format(cfg_fn))
-
-    return cfg
-
-
-def setup_scraping_timeframe(cfg):
+def setup_scraping_timeframe(start=None, end=None):
     """
     Sets up the scraping timeframe for the scraping run.
 
-    By default, this script attempts to scrape the previous day.
+    By default, this function sets the window from midnight of the day prior to
+    the script being executed, to 1 second before the following midnight.
     I.e. if the script is run at 2020-01-08 15:36:00, then the default scraping
     window is between 2020-01-07 00:00:00 and 2020-01-07 23:59:59.
 
-    If the Main.start_time and Main.end_time configuration parameters in the
-    ini file are supplied then this default behaviour is overruled.
-
     Args:
-        - cfg (configparser.Namespace): Contains the script configuration
-            settings.
+        - start (str, optional): The start of the scraping window (inclusive), formatted as
+            a valid ISO date. Defaults to the previous day.
+        - end (str, optional): The end of the scraping window (inclusive), formatted as
+            a valid ISO date. Defaults to the previous day.
 
     Returns:
-        None. Updates cfg by reference as a side-effect.
+        A tuple containg the (start, end) limits of the scraping window, stored
+        as date objects.
     """
     error_msg = "Unable to parse {} as date in YYYY-mm-dd format."
 
-    yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
-    try:
-        cfg.get("Main", "start_time")
-    except configparser.NoOptionError:
-        cfg["Main"]["start_time"] = yesterday
-    try:
-        cfg.get("Main", "end_time")
-    except configparser.NoOptionError:
-        cfg["Main"]["end_time"] = yesterday
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
 
-    # Confirm that both dates are valid
+    if start is None:
+        start = yesterday
+
+    if end is None:
+        end = yesterday
+
+    # Parse strings as date objects
     try:
-        start_dt = date.fromisoformat(cfg.get("Main", "start_time"))
+        start_dt = date.fromisoformat(start)
     except ValueError:
-        raise utils.TimeError(error_msg.format(cfg.get("Main", "start_time")))
+        raise utils.TimeError(error_msg.format(start)) from None
     try:
-        end_dt = date.fromisoformat(cfg.get("Main", "end_time"))
+        end_dt = date.fromisoformat(end)
     except ValueError:
-        raise utils.TimeError(error_msg.format(cfg.get("Main", "end_time")))
+        raise utils.TimeError(error_msg.format(end)) from None
 
     if start_dt > end_dt:
         raise utils.TimeError(
-            "Start date must be earlier than end date. ({} - {})".format(
-                cfg.get("Main", "start_time"), cfg.get("Main", "end_time")
-            )
+            "Start date must be earlier than end date. ({} - {})".format(start, end)
         )
 
+    return (start_dt, end_dt)
 
-def scrape(manufacturer):
+
+def scrape(manufacturer, start, end):
     """
     Scrapes data for all devices belonging to a manufacturer.
 
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+        - start (date): The start of the scraping window.
+        - end (date): The end of the scraping window.
 
     Returns:
-        None, updates the Manufacturer.raw_data attribute if the download is
+        None, updates the raw_data attribute of a Device if the download is
         successful.
     """
-    for webid, devid in zip(manufacturer.device_web_ids, manufacturer.device_ids):
+    for device in manufacturer.devices:
         try:
-            manufacturer.raw_data[devid] = manufacturer.scrape_device(webid)
-            logging.info("Download successful for device {}.".format(devid))
+            device.raw_data = manufacturer.scrape_device(device.web_id, start, end)
+            logging.info("Download successful for device {}.".format(device.device_id))
         except utils.DataDownloadError:
-            logging.error("Unable to download data for device {}.".format(devid))
+            logging.error(
+                "Unable to download data for device {}.".format(device.device_id)
+            )
             logging.error(traceback.format_exc())
-            manufacturer.raw_data[devid] = None
+            device.raw_data = None
 
 
 def process(manufacturer):
@@ -166,7 +197,7 @@ def process(manufacturer):
     into CSV format, before running a data cleaning proecedure to store only
     valid floating point values.
 
-    Updates the Manufacturer.clean_data attribute if the CSV parse and
+    Updates the Device.clean_data attribute if the CSV parse and
     subsequent QA validation procedures are successful.
 
     Args:
@@ -183,7 +214,9 @@ def process(manufacturer):
               If a device has no available recordings then this value is None.
     """
     summary = {"manufacturer": manufacturer.name, "devices": {}}
-    for devid in manufacturer.device_ids:
+    for device in manufacturer.devices:
+        devid = device.device_id
+
         # Default number of clean values is 0, useful for instances where
         # there is an error in validating the data.
         # Duplicated 2 lines of code with manufacturer.validate_data(), but
@@ -198,18 +231,14 @@ def process(manufacturer):
         # This would mean either lose out on informative error messages,
         # or having to log errors from with manufacturer.validate_data(),
         # and I would rather keep logging outside of library code
-        summary["devices"][devid] = {
-            m["clean_label"]: 0 for m in manufacturer.measurands
-        }
+        summary["devices"][devid] = {m["id"]: 0 for m in manufacturer.measurands}
         summary["devices"][devid]["timestamp"] = 0
 
-        manufacturer.clean_data[devid] = None
-
-        if manufacturer.raw_data[devid] is None:
+        if device.raw_data is None:
             continue
 
         try:
-            csv_data = manufacturer.parse_to_csv(manufacturer.raw_data[devid])
+            csv_data = manufacturer.parse_to_csv(device.raw_data)
             if len(csv_data) > 1:
                 logging.info("Parse into CSV successful for device {}.".format(devid))
             else:
@@ -238,7 +267,7 @@ def process(manufacturer):
                 continue
 
             # Success, at least 1 clean measurement has been found
-            manufacturer.clean_data[devid] = clean_data
+            device.clean_data = clean_data
             summary["devices"][devid] = measurand_summary
 
         except utils.ValidateDataError as ex:
@@ -269,11 +298,11 @@ def save_data(manufacturer, folder, day, data_type):
 
     if data_type == "clean":
         fn_template = utils.CLEAN_DATA_FN
-        manufacturer_data = manufacturer.clean_data
+        get_data = lambda x: x.clean_data
         saving_function = utils.save_csv_file
     elif data_type == "raw":
         fn_template = utils.RAW_DATA_FN
-        manufacturer_data = manufacturer.raw_data
+        get_data = lambda x: x.raw_data
         saving_function = utils.save_json_file
     else:
         raise utils.DataSavingError("Unknown data type '{}'.".format(data_type))
@@ -283,10 +312,12 @@ def save_data(manufacturer, folder, day, data_type):
             "Folder {} doesn't exist, cannot save raw data.".format(folder)
         )
 
-    for devid in manufacturer.device_ids:
-        out_fn = fn_template.substitute(man=manufacturer.name, device=devid, day=day)
+    for device in manufacturer.devices:
+        out_fn = fn_template.substitute(
+            man=manufacturer.name, device=device.device_id, day=day
+        )
 
-        data = manufacturer_data[devid]
+        data = get_data(device)
         if data is None:
             continue
 
@@ -331,7 +362,7 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
-def summarise_run(summaries):
+def tabular_summary(summaries):
     """
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
@@ -346,11 +377,12 @@ def summarise_run(summaries):
                 If a device has no available recordings then the value is None.
 
     Returns:
-        A 3D list, where each outermost entry corresponds to a 2D list for
-        each manufacturer. The 2D list represents tabular data, where the
-        outer-most dimension is a row and the inner-most a column.
+        A dict, where each entry corresponds to a 2D list indexed by
+        manufacturer name. The 2D list represents tabular data for the
+        corresponding manufacturer, where the outer-most dimension is a row
+        and the inner-most is a column.
     """
-    tables = []
+    tables = {}
     for manu in summaries:
         avail_devices = [(d, v) for d, v in manu["devices"].items() if v is not None]
 
@@ -386,10 +418,6 @@ def summarise_run(summaries):
                 # Form a list with device ID + measurements in same order as
                 # column header
                 row = [device[0]]
-                try:
-                    num_timestamps = device[1]["timestamp"]
-                except KeyError:
-                    num_timestamps = None
 
                 for m in measurands:
                     try:
@@ -421,29 +449,26 @@ def summarise_run(summaries):
             # Save manufacturer table
             manu_table = [col_names]
             manu_table.extend(manu_rows)
-            tables.append(manu_table)
+            tables[manu["manufacturer"]] = manu_table
 
     return tables
 
 
-def generate_ascii_summary(
-    manufacturers, tables, column_width=13, max_screen_width=100
-):
+def generate_ascii_summary(tables, column_width=13, max_screen_width=100):
     """
     Generates an plain-text ASCII summary of the data availability table.
 
-    If there is too much data to fit onto the screen at once (using 
+    If there is too much data to fit onto the screen at once (using
     max_screen_width argument), then the table is split into sub-tables,
     each fitting within the desired screen width.
 
     Args:
-        manufacturers (str[]): List of manufacturer names.
-        tables (list): 3D list, where each outer-most index represents the
-            summary table corresponding to each manufacturer, with the next inner
-            dimension representing a row in the table, and the final dimension being
-            columns.
-        column_width (int): Column width in spaces.
-        max_screen_width (int): Maximum horizontal space to use in spaces.
+        - tables (dict): Each entry corresponds to a 2D list indexed by
+            manufacturer name. The 2D list represents tabular data for the
+            corresponding manufacturer, where the outer-most dimension is a row
+            and the inner-most is a column.
+        - column_width (int): Column width in spaces.
+        - max_screen_width (int): Maximum horizontal space to use in spaces.
 
     Returns:
         A list of strings, where each entry is a new line.
@@ -459,7 +484,7 @@ def generate_ascii_summary(
     output.append("Summary")
     output.append("-" * 80)
 
-    for manufacturer, manu_table in zip(manufacturers, tables):
+    for manufacturer, manu_table in tables.items():
         output.append(manufacturer)
         output.append("~" * len(manufacturer))
 
@@ -581,7 +606,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
 
 def generate_html_summary(
-    manufacturers, tables, email_template, manufacturer_template, manufacturer_styles
+    tables, email_template, manufacturer_template, manufacturer_styles
 ):
     """
     Generates an HTML document summarising the device availability from the
@@ -594,19 +619,18 @@ def generate_html_summary(
     these HTML snippets into the main document template.
 
     Args:
-        manufacturers (str[]): List of manufacturer names.
-        tables (list): 3D list, where each outer-most index represents the
-            summary table corresponding to each manufacturer, with the next inner
-            dimension representing a row in the table, and the final dimension being
-            columns.
-        email_template (str): The HTML template of the whole document.
+        - tables (dict): Each entry corresponds to a 2D list indexed by
+            manufacturer name. The 2D list represents tabular data for the
+            corresponding manufacturer, where the outer-most dimension is a row
+            and the inner-most is a column.
+        - email_template (str): The HTML template of the whole document.
           Formatted as Python string.Template(), with $placeholder tags.
           Expect 1 placeholder:
               - summary: Whatever HTML markup is going to consitute the body of
               this document. This placeholder is located inside a <div>, which
               is directly inside the <body> tags.
-        manufacturer_template (str): The HTML template of the manufacturer section.
-        manufacturer styles (dict): Various CSS settings to pass to
+        - manufacturer_template (str): The HTML template of the manufacturer section.
+        - manufacturer styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
 
     Returns:
@@ -617,7 +641,7 @@ def generate_html_summary(
         generate_manufacturer_html(
             manufacturer_template, manu, tab, **manufacturer_styles
         )
-        for manu, tab in zip(manufacturers, tables)
+        for manu, tab in tables.items()
     ]
     manufacturer_html = "\n".join(manufacturer_sections)
 
@@ -640,6 +664,11 @@ def main():
 
     Returns: None.
     """
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
+
     # Setup logging, which for now just logs to stderr
     try:
         setup_loggers()
@@ -651,28 +680,30 @@ def main():
 
     # Parse args and config file
     args = parse_args()
+
     try:
-        cfg = setup_config(args.configfilepath)
+        cfg = utils.setup_config(CONFIG_FN)
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    setup_scraping_timeframe(cfg)
+    try:
+        device_config = utils.load_device_configuration()
+    except utils.SetupError as ex:
+        logging.error("Cannot load device configuration: {}.".format(ex))
+        sys.exit()
+
+    start_time, end_time = setup_scraping_timeframe(args.start, args.end)
+
+    manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
 
     # Store device availability summary for each manufacturer
     summaries = []
 
-    man_strings = cfg.get("Main", "manufacturers").split(",")
-    for man_class in man_strings:
-        logging.info("Manufacturer: {}".format(man_class))
-        try:
-            manufacturer = manufacturer_factory(man_class, cfg)
-        except (utils.DataParseError, KeyError):
-            logging.error("Error instantiating Manufacturer instance.")
-            logging.error(traceback.format_exc())
-            continue
+    for manufacturer in manufacturers:
+        logging.info("Manufacturer: {}".format(manufacturer.name))
 
         try:
             logging.info("Attempting to connect...")
@@ -686,26 +717,22 @@ def main():
             continue
 
         logging.info("Downloading data from all devices:")
-        scrape(manufacturer)
+        scrape(manufacturer, start_time, end_time)
         logging.info("Processing raw data for all devices:")
         man_summary = process(manufacturer)
 
         # Add device location and recording rate so can be displayed in summary
         # table
-        for devid, location in zip(
-            manufacturer.device_ids, manufacturer.device_locations
-        ):
-            if man_summary["devices"][devid] is not None:
-                man_summary["devices"][devid]["Location"] = location
+        for device in manufacturer.devices:
+            if man_summary["devices"][device.device_id] is not None:
+                man_summary["devices"][device.device_id]["Location"] = device.location
         man_summary["frequency"] = manufacturer.recording_frequency
         summaries.append(man_summary)
 
         # Get start time date for naming output files
-        start_dt = datetime.fromisoformat(cfg.get("Main", "start_time"))
-        # TODO Use start_end unless have start == end
-        start_fmt = start_dt.strftime("%Y-%m-%d")
+        start_fmt = start_time.strftime("%Y-%m-%d")
 
-        if cfg.getboolean("Main", "save_raw_data"):
+        if args.save_raw:
             logging.info("Saving raw data from all devices:")
             raw_fns = save_data(
                 manufacturer,
@@ -713,8 +740,10 @@ def main():
                 start_fmt,
                 "raw",
             )
+        else:
+            raw_fns = None
 
-        if cfg.getboolean("Main", "save_clean_data"):
+        if args.save_clean:
             logging.info("Saving cleaned CSV data from all devices:")
             clean_fns = save_data(
                 manufacturer,
@@ -722,38 +751,50 @@ def main():
                 start_fmt,
                 "clean",
             )
+        else:
+            clean_fns = None
 
-        upload_raw = cfg.getboolean("Main", "upload_raw_googledrive")
-        upload_clean = cfg.getboolean("Main", "upload_clean_googledrive")
-
-        if upload_raw or upload_clean:
+        if args.upload_raw or args.upload_clean:
             try:
-                service = utils.auth_google_api(cfg.get("GoogleAPI", "credentials_fn"))
+                service = utils.auth_google_api()
             except utils.GoogleAPIError:
                 logging.error("Cannot connect to Google API.")
                 logging.error(traceback.format_exc())
                 break
 
-            if upload_raw:
+            if args.upload_raw:
                 logging.info("Uploading raw data to Google Drive:")
-                upload_data_googledrive(
-                    service, raw_fns, cfg.get("GoogleAPI", "raw_data_id"), "text/json"
-                )
+                try:
+                    folder_id = os.environ["GDRIVE_RAW_ID"]
+                except KeyError:
+                    logging.error(
+                        "GDRIVE_RAW_ID env var not found. Please set it with the ID of the Google Drive folder to upload the raw data to."
+                    )
+                    folder_id = None
 
-            if upload_clean:
+                if folder_id is not None:
+                    upload_data_googledrive(service, raw_fns, folder_id, "text/json")
+
+            if args.upload_clean:
                 logging.info("Uploading clean CSV data to Google Drive:")
-                upload_data_googledrive(
-                    service,
-                    clean_fns,
-                    cfg.get("GoogleAPI", "clean_data_id"),
-                    "text/csv",
-                )
+                try:
+                    folder_id = os.environ["GDRIVE_CLEAN_ID"]
+                except KeyError:
+                    logging.error(
+                        "GDRIVE_CLEAN_ID env var not found. Please set it with the ID of the Google Drive folder to upload the clean data to."
+                    )
+                    folder_id = None
+
+                if folder_id is not None:
+                    upload_data_googledrive(
+                        service, clean_fns, folder_id, "text/csv",
+                    )
 
     # Summarise number of clean measurands into tabular format
-    summary_tables = summarise_run(summaries)
+    summary_tables = tabular_summary(summaries)
 
     # Output table to screen
-    ascii_summary = generate_ascii_summary(man_strings, summary_tables)
+    ascii_summary = generate_ascii_summary(summary_tables)
     # Print summary to log and stdout
     for line in ascii_summary:
         logging.info(line)
@@ -761,7 +802,7 @@ def main():
         print(line)
 
     # Add HTML summary if requested
-    if cfg.getboolean("Main", "save_html_summary"):
+    if args.html is not None:
 
         # Load both templates
         email_template_fn = cfg.get("HTMLSummary", "email_template")
@@ -789,15 +830,11 @@ def main():
 
         if email_template is not None and manufacturer_template is not None:
             email_html = generate_html_summary(
-                man_strings,
-                summary_tables,
-                email_template,
-                manufacturer_template,
-                styles,
+                summary_tables, email_template, manufacturer_template, styles,
             )
 
         try:
-            utils.save_plaintext(email_html, cfg.get("HTMLSummary", "filename"))
+            utils.save_plaintext(email_html, args.html)
         except utils.DataSavingError as ex:
             logging.error("Unable to save HTML email: {}".format(ex))
 

@@ -33,18 +33,28 @@ Once a suitable version of Python has been made available, the `quantscraper` pa
 
 The installation processes places an executable called `quant_scrape` in the user's `PATH` and is run with the following command.
 
-`quant_scrape example.ini`
+`quant_scrape`
 
-This takes one obligatory argument: the location of an INI file containing configuration parameters for the scraping, including:
+By default, the scraper will run for all available instruments over the 24 hour period from midnight of the previous day to 1 second before midnight of the current day.
+A summary of the scraping is output to `stdout`, while a log will be displayed on `stderr`.
+Command line arguments allow for the specification of the instruments to scrape and the timeframe, in addition to uploading the resultant data to Google Drive and saving an HTML summary table.
 
-  - website credentials
-  - timeframe to collect data from
-  - parameters for each website
-  - where to save output data to
+Run `quant_scrape --help` to see the available options.
 
-The example configuration file (`example.ini`) shows the required format.
+## Scrapping configuration
 
-A log will be displayed on `stdout`, which can be redirected to a file for long-term logging.
+This requires a configuration file called `config.ini` to be present in the directory where the executable is called from.
+This file provides parameters for the scraping; `example.ini` shows the required format.
+
+## Manufacturer and Device specification
+
+In addition, it requires the presence of a file called `devices.json` in the working directory.
+This file maps the relationship between the manufacturers and the devices in the study.
+Each entry in the `manufacturers` list reflects an air quality instrumentation company included in the study, with the `properties` object providing keyword-value properties that must be completed before running the program.
+The `fields` list defines the measurands recorded by devices from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this measurand by the company in the downloaded data (`webid`), and a `scale` parameter that is multiplied by the raw value.
+The `devices` list holds a record of the physical instruments installed from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this device by the company on their system (`webid`), and a description of where the device is installed (`location`).
+
+The example file `example_devices.json` shows the required layout.
 
 # Running the pre-processing
 
@@ -53,14 +63,15 @@ In addition to the CLI scraping program there is a pre-processing script, which 
 In particular, it converts the data from being saved in long format with 1 file per device, into wide format with 1 file per manufacturer.
 It also resamples the time-series so that the air quality data from all manufacturers is saved at the same sampling rate.
 
-The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation and accepts a JSON configuration file. 
-The JSON file specifies which manufacturers and devices should be scraped, along with other settings similar to the `.ini` file used by the scraper.
-An example file is provided in this repo for reference.
+The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation. 
 
-`quant_preprocess example_preprocessing.json`
+As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
+It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
+An example is provided by `example_preprocessing.ini`.
 
-By default the program pre-processes the previous day's cleaned data, although this behaviour can be configured by specifying the date at the top level of the JSON file, i.e. `'date': '2020-03-17'`.
-If provided, it must be in YYYY-mm-dd format.
+By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
+Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.
+Run `quant_preprocess --help` to see the available options.
 
 # Contributing to development
 

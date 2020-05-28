@@ -27,6 +27,7 @@ setup(
         "google-auth-oauthlib",
         "requests",
         "pandas",
+        "python-dotenv",
         "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
     ],
     include_package_data=True,
