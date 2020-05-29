@@ -694,21 +694,27 @@ class TestSummariseRun(unittest.TestCase):
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 3))
         self.assertEqual(res, exp)
 
-    def test_success2(self):
-        # Test with more clean data
+    def test_success_denominator(self):
+        # Test with more clean data and with a 3 day scraping window, thereby
+        # changing the denominator of the %s
         summaries = [
             {
                 "manufacturer": "foo",
                 "frequency": 4,
                 "devices": {
-                    "dev1": {"co2": 48, "no": 32, "timestamp": 96, "Location": "York"},
+                    "dev1": {
+                        "co2": 58,
+                        "no": 132,
+                        "timestamp": 280,
+                        "Location": "York",
+                    },
                     "dev2": {
-                        "co2": 68,
-                        "no": 42,
-                        "timestamp": 82,
+                        "co2": 41,
+                        "no": 30,
+                        "timestamp": 121,
                         "Location": "Sweden",
                     },
                 },
@@ -718,15 +724,15 @@ class TestSummariseRun(unittest.TestCase):
                 "frequency": 60,
                 "devices": {
                     "manu2dev1": {
-                        "o3": 766,
-                        "no": 1358,
-                        "timestamp": 1358,
+                        "o3": 3220,
+                        "no": 2485,
+                        "timestamp": 4301,
                         "Location": "Honolulu",
                     },
                     "manu2dev2": {
-                        "o3": 323,
-                        "no": 232,
-                        "timestamp": 829,
+                        "o3": 852,
+                        "no": 307,
+                        "timestamp": 1666,
                         "Location": "NYC",
                     },
                 },
@@ -735,16 +741,16 @@ class TestSummariseRun(unittest.TestCase):
         exp = {
             "foo": [
                 ["Device ID", "Location", "Timestamps", "co2", "no"],
-                ["dev1", "York", "96 (100%)", "48 (50%)", "32 (33%)"],
-                ["dev2", "Sweden", "82 (85%)", "68 (71%)", "42 (44%)"],
+                ["dev1", "York", "280 (97%)", "58 (20%)", "132 (46%)"],
+                ["dev2", "Sweden", "121 (42%)", "41 (14%)", "30 (10%)"],
             ],
             "bar": [
                 ["Device ID", "Location", "Timestamps", "no", "o3"],
-                ["manu2dev1", "Honolulu", "1358 (94%)", "1358 (94%)", "766 (53%)"],
-                ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
+                ["manu2dev1", "Honolulu", "4301 (100%)", "2485 (58%)", "3220 (75%)"],
+                ["manu2dev2", "NYC", "1666 (39%)", "307 (7%)", "852 (20%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 5))
         self.assertEqual(res, exp)
 
     def test_no_frequency(self):
@@ -784,7 +790,7 @@ class TestSummariseRun(unittest.TestCase):
                 ["manu2dev2", "NYC", "0 (0%)", "0 (0%)", "0 (0%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 3))
         self.assertEqual(res, exp)
 
     def test_no_location(self):
@@ -829,7 +835,7 @@ class TestSummariseRun(unittest.TestCase):
                 ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 3))
         self.assertEqual(res, exp)
 
     def test_no_measurands(self):
@@ -869,7 +875,7 @@ class TestSummariseRun(unittest.TestCase):
                 ["manu2dev2", "NYC", "829 (58%)", "", "323 (22%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 3))
         self.assertEqual(res, exp)
 
     def test_no_timestamp(self):
@@ -920,7 +926,7 @@ class TestSummariseRun(unittest.TestCase):
                 ["manu2dev2", "NYC", "829 (58%)", "232 (16%)", "323 (22%)"],
             ],
         }
-        res = cli.tabular_summary(summaries)
+        res = cli.tabular_summary(summaries, date(2020, 4, 3), date(2020, 4, 3))
         self.assertEqual(res, exp)
 
 

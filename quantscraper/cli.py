@@ -11,11 +11,12 @@
 
 import logging
 import argparse
+import regex
 import os
 import sys
 import math
 import re
-from datetime import date, timedelta
+from datetime import date, timedelta, time, datetime
 import traceback
 from dotenv import load_dotenv
 
@@ -362,19 +363,23 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             continue
 
 
-def tabular_summary(summaries):
+def tabular_summary(summaries, start_date, end_date):
     """
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
 
     Args:
-        summaries (list): A list of dictionaries, with each entry storing
+        - summaries (list): A list of dictionaries, with each entry storing
             information about a different manufacturer.
             Each dictionary summarises how many recordings are available for each
             device. Has the keys:
               - 'manufacturer': Provides manufacturer name as a string
               - 'devices': A further dict mapping {device_id : num_available_timepoints}
                 If a device has no available recordings then the value is None.
+        - start_date (date): The scraping window starting date, used to
+            calculate number of expected timestamps.
+        - end_date (date): The scraping window ending date, used to calculate
+            number of expected timestamps.
 
     Returns:
         A dict, where each entry corresponds to a 2D list indexed by
@@ -390,7 +395,10 @@ def tabular_summary(summaries):
             manu_rows = []
             # Obtain number of expected recordings
             try:
-                exp_recordings = manu["frequency"] * 24
+                start_dt = datetime.combine(start_date, time.min)
+                end_dt = datetime.combine(end_date + timedelta(days=1), time.min)
+                num_hours = (end_dt - start_dt).total_seconds() / 3600
+                exp_recordings = round(manu["frequency"] * num_hours)
             except KeyError:
                 exp_recordings = None
 
@@ -548,15 +556,25 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
             CSS styling parameters.
             'th_style': Default style to apply to th tags.
             'td_style': Default style to apply to td tags.
-            'pass_colour': Background colour for cells with 100% availability.
-            'fail_colour': Background colour for cells with 0% availability.
-            'warning_colour': Background colour for cells with <100% but >0% availability.
+            'colour_<a>': Colour to apply to cells with availability >= a. See
+                notes in example.ini for how these are applied.
+            'colour_fail': Colour to apply to cells that don't match any
+                "colour_<a>" ranges.
 
     Returns:
         A string containing HTML representing this manufacturer section.
     """
     header = table[0]
     body = table[1:]
+
+    # Form tuples with (lower %, hex colour string) in descending order
+    reg = regex.compile("colour_([0-9]+)")
+    colours_raw = [
+        (int(x.group(1)), kwargs[x.group(0)])
+        for x in [reg.match(f) for f in kwargs]
+        if x is not None and len(x) == 2
+    ]
+    colours_sorted = sorted(colours_raw, key=lambda tup: tup[0], reverse=True)
 
     # Extract each cell and replace with <th> tags
     head_tags = "\n".join(
@@ -580,14 +598,17 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
                 else:
                     pct = -1
 
-                if pct == 100:
-                    cell_colour = kwargs["pass_colour"]
-                elif pct == 0:
-                    cell_colour = kwargs["fail_colour"]
-                elif pct > 0 and pct < 100:
-                    cell_colour = kwargs["warning_colour"]
+                # Cascade through cell colour lower ranges until find
+                # bucket that this cell fits into and apply that colour
+                if pct > 100 or pct < 0:
+                    cell_colour = kwargs["colour_fail"]
                 else:
-                    cell_colour = "#ffffff"
+                    for interval in colours_sorted:
+                        if pct >= interval[0]:
+                            cell_colour = interval[1]
+                            break
+                    else:
+                        cell_colour = kwargs["colour_fail"]
 
                 cell_style = cell_style + "background-color: {};".format(cell_colour)
 
@@ -606,7 +627,12 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
 
 def generate_html_summary(
-    tables, email_template, manufacturer_template, manufacturer_styles
+    tables,
+    email_template,
+    manufacturer_template,
+    manufacturer_styles,
+    start_date,
+    end_date,
 ):
     """
     Generates an HTML document summarising the device availability from the
@@ -632,6 +658,8 @@ def generate_html_summary(
         - manufacturer_template (str): The HTML template of the manufacturer section.
         - manufacturer styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
+        - start_date (date): The scraping window starting date.
+        - end_date (date): The scraping window ending date.
 
     Returns:
         A string containing a fully completed HTML document.
@@ -647,7 +675,11 @@ def generate_html_summary(
 
     # Fill in email template
     try:
-        email_html = email_template.substitute(summary=manufacturer_html)
+        email_html = email_template.substitute(
+            summary=manufacturer_html,
+            start=start_date.strftime("%Y-%m-%d"),
+            end=end_date.strftime("%Y-%m-%d"),
+        )
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
         email_html = email_template.template
@@ -791,7 +823,7 @@ def main():
                     )
 
     # Summarise number of clean measurands into tabular format
-    summary_tables = tabular_summary(summaries)
+    summary_tables = tabular_summary(summaries, start_time, end_time)
 
     # Output table to screen
     ascii_summary = generate_ascii_summary(summary_tables)
@@ -820,17 +852,16 @@ def main():
             manufacturer_template = None
 
         # Load style options for manufacturer summary
-        styles = {
-            "th_style": cfg.get("HTMLSummary", "th_style"),
-            "td_style": cfg.get("HTMLSummary", "td_style"),
-            "pass_colour": cfg.get("HTMLSummary", "pass_colour"),
-            "fail_colour": cfg.get("HTMLSummary", "fail_colour"),
-            "warning_colour": cfg.get("HTMLSummary", "warning_colour"),
-        }
+        styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
 
         if email_template is not None and manufacturer_template is not None:
             email_html = generate_html_summary(
-                summary_tables, email_template, manufacturer_template, styles,
+                summary_tables,
+                email_template,
+                manufacturer_template,
+                styles,
+                start_time,
+                end_time,
             )
 
         try:
