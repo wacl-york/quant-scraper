@@ -150,6 +150,31 @@ def is_float(x):
     return parseable
 
 
+def parse_JSON_environment_variable(name):
+    """
+    Parses JSON keyword-value environment variable into a Python dict.
+
+    Args:
+        - name (str). Name of the JSON formatted environment variable.
+
+    Returns:
+        A dict with each keyword-value loaded.
+    """
+    try:
+        raw_params = os.environ[name]
+    except KeyError:
+        raise SetupError("Environment variable {} not found.".format(name)) from None
+
+    try:
+        params = json.loads(raw_params)
+    except json.decoder.JSONDecodeError:
+        raise SetupError(
+            "Unable to parse environment variable {} as JSON.".format(name)
+        )
+
+    return params
+
+
 def auth_google_api():
     """
     Authorizes connection to GoogleDrive API.
@@ -168,16 +193,9 @@ def auth_google_api():
     """
     scopes = ["https://www.googleapis.com/auth/drive.file"]
     try:
-        raw_params = os.environ["GOOGLE_CREDS"]
-    except KeyError:
-        raise GoogleAPIError(
-            "Environment variable GOOGLE_CREDS not found. Please set it with the contents of the JSON credentials file."
-        ) from None
-
-    try:
-        params = json.loads(raw_params)
-    except json.decoder.JSONDecodeError:
-        raise GoogleAPIError("Unable to parse GOOGLE_CREDS as JSON.")
+        params = parse_JSON_environment_variable("GOOGLE_CREDS")
+    except SetupError as ex:
+        raise GoogleAPIError(ex)
 
     try:
         credentials = service_account.Credentials.from_service_account_info(

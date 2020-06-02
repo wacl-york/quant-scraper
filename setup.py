@@ -21,6 +21,7 @@ setup(
         ],
     },
     install_requires=[
+        "boto3",
         "bs4",
         "google-api-python-client",
         "google-auth-httplib2",

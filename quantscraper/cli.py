@@ -11,7 +11,6 @@
 
 import logging
 import argparse
-import regex
 import os
 import sys
 import math
@@ -568,11 +567,11 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
     body = table[1:]
 
     # Form tuples with (lower %, hex colour string) in descending order
-    reg = regex.compile("colour_([0-9]+)")
+    pattern = "colour_([0-9]+)"
     colours_raw = [
         (int(x.group(1)), kwargs[x.group(0)])
-        for x in [reg.match(f) for f in kwargs]
-        if x is not None and len(x) == 2
+        for x in [re.search(pattern, f) for f in kwargs]
+        if x is not None
     ]
     colours_sorted = sorted(colours_raw, key=lambda tup: tup[0], reverse=True)
 
@@ -696,19 +695,31 @@ def main():
 
     Returns: None.
     """
-    # This sets up environment variables if they are explicitly provided in a .env
-    # file. If system env variables are present (as they will be in production),
-    # then it doesn't overwrite them
-    load_dotenv()
-
     # Setup logging, which for now just logs to stderr
     try:
         setup_loggers()
     except utils.SetupError:
         logging.error("Error in setting up loggers.")
         logging.error(traceback.format_exc())
-        logging.error("Terminating program")
+        logging.error("Terminating program.")
         sys.exit()
+
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
+    # Parse JSON environment variable into separate env vars
+    try:
+        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
+    except utils.SetupError:
+        logging.error(
+            "Error when initiating environment variables, terminating execution."
+        )
+        logging.error(traceback.format_exc())
+        sys.exit()
+
+    for k, v in vars.items():
+        os.environ[k] = v
 
     # Parse args and config file
     args = parse_args()

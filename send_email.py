@@ -7,6 +7,7 @@
 
 import argparse
 import boto3
+import os
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 

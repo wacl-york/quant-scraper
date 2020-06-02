@@ -34,7 +34,7 @@ def main():
     env_fn = "run.env"
 
     if not os.path.isfile(env_fn):
-        print("Error: file {} not found. Termining execution.".format(env_fn))
+        print("Error: file {} not found. Terminating execution.".format(env_fn))
         sys.exit()
 
     # Load environment parameters containing AWS runtime details
@@ -58,6 +58,9 @@ def main():
 
         if args.preprocess_devices is not None:
             cmd.extend(["--preprocess-devices", *args.preprocess_devices])
+
+        if args.recipients is not None:
+            cmd.extend(["--recipients", *args.recipients])
 
         if args.upload_clean:
             cmd.append("--upload-clean")
@@ -135,6 +138,13 @@ def parse_args():
         "--upload-preprocess",
         action="store_true",
         help="Uploads pre-processed data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--recipients",
+        metavar="EMAIL@DOMAIN",
+        nargs="+",
+        help="The recipients to send the email to. If not provided, then no email is sent.",
     )
 
     args = parser.parse_args()

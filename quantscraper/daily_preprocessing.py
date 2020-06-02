@@ -302,11 +302,6 @@ def upload_files_google_drive(files):
 
 
 def main():
-    # This sets up environment variables if they are explicitly provided in a .env
-    # file. If system env variables are present (as they will be in production),
-    # then it doesn't overwrite them
-    load_dotenv()
-
     # Just using same setup functions as cli.py here.
     # Don't think would be appropriate to refactor these functions into the
     # utils.py module, as these are script functions, rather than library
@@ -320,6 +315,23 @@ def main():
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
+
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
+    # Parse JSON environment variable into separate env vars
+    try:
+        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
+    except utils.SetupError:
+        logging.error(
+            "Error when initiating environment variables, terminating execution."
+        )
+        logging.error(traceback.format_exc())
+        sys.exit()
+
+    for k, v in vars.items():
+        os.environ[k] = v
 
     # Parse args and config file
     args = parse_args()
