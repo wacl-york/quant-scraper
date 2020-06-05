@@ -4,6 +4,8 @@
 #
 # Depends upon a deploy.env file present in the path with values:
 #   APP_NAME=<repo name>
+#   AWS_ECR_PROFILE=<name of AWS profile in ~/.aws/credentials that has IAM
+#            access upload images to the ECR repository>
 #   DOCKER_REPO=<AWS path> in format <id>.dkr.ecr.<region>.amazonaws.com
 #   AWS_CLI_REGION=<AWS region name>
 #
@@ -53,7 +55,7 @@ tag-version: ## Generate container `latest` tag
 
 # Login to ECR
 # Requires user to have login credentials in path
-CMD_REPOLOGIN := aws ecr get-login-password --region $(AWS_CLI_REGION) | docker login --username AWS --password-stdin ${DOCKER_REPO}
+CMD_REPOLOGIN := aws ecr get-login-password --profile $(AWS_ECR_PROFILE) --region $(AWS_CLI_REGION) | docker login --username AWS --password-stdin ${DOCKER_REPO}
 
 repo-login: ## Auto login to AWS-ECR unsing aws-cli
 	@eval $(CMD_REPOLOGIN)

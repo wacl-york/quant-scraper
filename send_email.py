@@ -6,8 +6,8 @@
 """
 
 import argparse
-import boto3
 import os
+import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 

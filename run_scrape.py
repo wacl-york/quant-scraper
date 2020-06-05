@@ -7,10 +7,14 @@
 
     Depends upon having a file called "run.env" in the path, containing
     AWS runtime properties:
+        CLUSTER_ID=<name of cluster>
+        AWS_TASK_PROFILE=<name of AWS profile in ~/.aws/credentials that has IAM
+            access to run the task>
         QUANT_TASK_ARN=<arn of task to run>
         SUBNET_1=<subnet id>
         SUBNET_2=<subnet id>
         SECURITY_GROUP=<security group id>
+        AWS_CLI_REGION=<region to run the task in>
 
     Runs the scraping and pre-processing functionalities for a single day by
     calling the appropriate commands.
@@ -75,7 +79,11 @@ def main():
     else:
         overrides = {}
 
-    client = boto3.client("ecs")
+    session = boto3.Session(
+        profile_name=os.environ["AWS_TASK_PROFILE"],
+        region_name=os.environ["AWS_CLI_REGION"],
+    )
+    client = session.client("ecs")
     run_task_response = client.run_task(
         cluster=os.environ["CLUSTER_ID"],
         taskDefinition=os.environ["QUANT_TASK_ARN"],
