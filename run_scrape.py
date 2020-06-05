@@ -77,7 +77,7 @@ def main():
 
     client = boto3.client("ecs")
     run_task_response = client.run_task(
-        cluster="default",
+        cluster=os.environ["CLUSTER_ID"],
         taskDefinition=os.environ["QUANT_TASK_ARN"],
         count=1,
         launchType="FARGATE",
