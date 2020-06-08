@@ -18,47 +18,50 @@ This will create all the necessary resources tied to the AWS account from which 
 Open `Secrets Manager` in AWS and you will notice there are 3 secrets with placeholder values.
 These should be self-explanatory and are all available in LastPass.
 
-Take care when copying values over; it is best to use the `plaintext` editor rather than the GUI `Secret key/value` GUI as the latter.
-There are 2 reasons for this; firstly you can copy a whole JSON secret in one motion with the `plaintext` editor rather than having to copy each key/value pair at a time, and secondly it doesn't escape special characters such as `\n` unlike the GUI.
-This is particularly frustrating when copying over the Google Service Account credentials JSON.
+Take care when copying values over; it is best to use the `plaintext` editor rather than the GUI `Secret key/value` GUI.
+There are 2 reasons for this; firstly you can copy a whole JSON secret in one motion with the `plaintext` editor rather than having to copy each key/value pair at a time, and secondly the GUI escapes special characters such as `\n`, which is particularly frustrating when copying over the Google Service Account credentials JSON.
 
 ### Create IAM credentials
 
 The Stack includes 2 IAM users:
 
-  - QUANT_IAM_ECR: Can upload Docker images to ECR
-  - QUANT_IAM_RunAdHoc: Can run one-off tasks from a local machine using `boto3`
+  - `QUANT_IAM_ECR`: Can upload Docker images to ECR
+  - `QUANT_IAM_RunAdHoc`: Can run one-off tasks from a local machine using `boto3`
 
-Before these IAM users can be used, their credentials need to be saved to your local machine.
+Before these IAM users can be used, access tokens need to be generated and saved to your local machine.
 
-Go into each the `Security credentials` tab on each user's page and click `Create access key`. 
+Go into the `Security credentials` tab on each user's page and click `Create access key`. 
 Download the resulting `access key id` and `secret access key` and save them into `~/.aws/credentials` under the profiles `QUANTECRPush` and `QUANTRunAdHocTask` respectively.
 
 ### Push Docker image to repository
 
 The `Makefile` includes the functionality to push images to the ECR repository.
-Before this can be used, an application configuration file needs to be created.
+Environment variables need to be configured before the first push.
 
 Create a file called `deploy.env` in your working directory with the following values:
 
-`APP_NAME=<reponame>`
-`DOCKER_REPO=<userid>.dkr.ecr.<awsregion>.amazonaws.com`
-`AWS_CLI_REGION=<awsregion>`
-`AWS_ECR_PROFILE=QUANTECRPush`
+```
+APP_NAME=<reponame>
+DOCKER_REPO=<userid>.dkr.ecr.<awsregion>.amazonaws.com
+AWS_CLI_REGION=<awsregion>
+AWS_ECR_PROFILE=QUANTECRPush
+```
 
 `<reponame>` is the repository name, found in the ECR table as the string in the `Repository Name` column.
+
 `<userid>` is the numeric user id found in the same row of the table as the first part of the `URI` column.
+
 `<awsregion>` is the region identifier for the region the account is based in.
 
 `QUANTECRPush` is the IAM profile setup in the previous step.
 
 **NB: You don't have to use a deploy.env file, as long as these 4 environment variables are available to the Makefile**
 
-Once this has been setup, run `make release` to build the latest image, tag it, and push to the repository.
+Once this has been setup, run `make release` to build the latest image, tag it, and push it to the repository.
 
 ### DKIM
 
-This section will be completed once it has been setup to allow emails to be sent from the `york.ac.uk` domain. 
+This section will be completed once DKIM has been setup to allow emails to be sent from the `york.ac.uk` domain. 
 
 ### Configuration to run ad-hoc scraping tasks
 
@@ -66,19 +69,21 @@ If you wish to run one-off scraping jobs from the command line of a local machin
 
 Create a file called `run.env` with the following values:
 
-`CLUSTER_ID=<clusterid>`
-`AWS_TASK_PROFILE=QUANTRunAdHocTask`
-`QUANT_TASK_ARN=<taskArn>`
-`SUBNET_1=<subnet1id>`
-`SUBNET_2=<subnet2id>`
-`SECURITY_GROUP=<securitygroupid>`
-`AWS_CLI_REGION=<awsregion>`
+```
+CLUSTER_ID=<clusterid>
+AWS_TASK_PROFILE=QUANTRunAdHocTask
+QUANT_TASK_ARN=<taskArn>
+SUBNET_1=<subnet1id>
+SUBNET_2=<subnet2id>
+SECURITY_GROUP=<securitygroupid>
+AWS_CLI_REGION=<awsregion>
+```
 
 `QUANTRunAdHocTask` is the name of the profile in `~/.aws/credentials` that should have been populated previously with the access keys.
 
-`<clusterid>` is the name of the Cluster, which by default is *QUANTCluster* (check this on the Clusters page, accessed from the ECS page).
+`<clusterid>` is the name of the Cluster, which by default is `QUANTCluster` (check this on the Clusters page, accessed from the ECS page).
 
-`<taskArn>` takes the form `arn:aws:ecs:<awsregion>:<userid>:task-definition/QUANTTasks`, where `QUANTTasks` is the default task family name label and `<userid>` and `<awsregion>` are the same as when setting up the ECR env vars.
+`<taskArn>` takes the form `arn:aws:ecs:<awsregion>:<userid>:task-definition/QUANTTasks`, where `QUANTTasks` is the default task family name and `<userid>` and `<awsregion>` are the same as when setting up the ECR env vars.
 
 `<subnet1id>` and `<subnet2id>` are the `Subnet ID` column values from the table of available subnets where the name is `QUANT Subnet 1/2` (navigate to the `VPC` page then click `Subnets` in the left-hand navigation panel).
 
