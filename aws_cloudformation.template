@@ -121,7 +121,6 @@
                   "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
               },
               "TaskCount": 1,
-              "PlatformVersion": "Latest",
               "LaunchType": "FARGATE",
               "NetworkConfiguration": {
                 "AwsVpcConfiguration" : {
@@ -139,6 +138,30 @@
           }
         ]
       }
+    },
+    "QUANTPolicyPassRole": {
+      "Type" : "AWS::IAM::ManagedPolicy",
+      "Properties" : {
+          "Description" : "Allows the role to be passed to QUANT_scraping to run the container.",
+          "ManagedPolicyName" : "QUANTPassRole",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": "iam:PassRole",
+                    "Resource": [
+                        { "Fn::GetAtt" : [ "QUANTRoleScraping", "Arn" ] }
+                    ],
+                    "Condition": {
+                        "StringLike": {
+                            "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                        }
+                    }
+                }
+            ]
+          }
+        }
     },
     "QUANTIAMECR": {
       "Type" : "AWS::IAM::User",
@@ -181,28 +204,24 @@
       "Type" : "AWS::IAM::User",
       "Properties" : {
           "UserName" : "QUANT_IAM_RunAdHoc",
+          "ManagedPolicyArns" : [
+              {
+                "Ref": "QUANTPolicyPassRole"
+              }
+          ],
           "Policies" : [ 
             {
-                "PolicyName": "RunAdHocTasks",
+                "PolicyName": "RunQUANTTaskAdHoc",
                 "PolicyDocument":  {
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Sid": "",
                             "Effect": "Allow",
                             "Action": "ecs:RunTask",
                             "Resource": [
                                 { 
                                   "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
                                 }
-                            ]
-                        },
-                        {
-                            "Sid": "",
-                            "Effect": "Allow",
-                            "Action": "iam:PassRole",
-                            "Resource": [
-                                { "Fn::GetAtt" : [ "QUANTRoleScraping", "Arn" ] }
                             ]
                         }
                     ]
@@ -280,37 +299,28 @@
              }
              ]
           },
+          "ManagedPolicyArns" : [
+              {
+                "Ref": "QUANTPolicyPassRole"
+              }
+          ],
           "Description" : "The role that starts a scheduled scraping task",
           "Policies" : [ 
               {
-                  "PolicyName" : "QUANT_scheduled_role",
+                  "PolicyName" : "QUANTRunTaskScheduled",
                   "PolicyDocument" : 
                     {
                         "Version": "2012-10-17",
                         "Statement": [
                             {
-                                "Sid": "",
                                 "Effect": "Allow",
                                 "Action": "ecs:RunTask",
                                 "Resource": [
                                     { 
-                                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+                                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}:*"
                                     }
                                 ]
                             },
-                            {
-                                "Sid": "",
-                                "Effect": "Allow",
-                                "Action": "iam:PassRole",
-                                "Resource": [
-                                    { "Fn::GetAtt" : [ "QUANTRoleScraping", "Arn" ] }
-                                ],
-                                "Condition": {
-                                    "StringLike": {
-                                        "iam:PassedToService": "ecs-tasks.amazonaws.com"
-                                    }
-                                }
-                            }
                         ]
                     }
               }
@@ -501,7 +511,7 @@
           "Ref": "ACL"
         },
         "SubnetId": {
-          "Ref": "QUANTSubnet2"
+          "Ref": "QUANTSubnet1"
         }
       }
     },
@@ -512,7 +522,7 @@
           "Ref": "ACL"
         },
         "SubnetId": {
-          "Ref": "QUANTSubnet1"
+          "Ref": "QUANTSubnet2"
         }
       }
     },
