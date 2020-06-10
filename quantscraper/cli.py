@@ -166,6 +166,30 @@ def setup_scraping_timeframe(start=None, end=None):
     return (start_dt, end_dt)
 
 
+def log_device_calibration(manufacturer):
+    """
+    Logs operating conditions for all devices belonging to a manufacturer.
+
+    Args:
+        - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+
+    Returns:
+        None, prints any parameters out to log.
+    """
+    for device in manufacturer.devices:
+        try:
+            params = manufacturer.log_device_status(device.web_id)
+            if len(params) == 0:
+                logging.info("No status found for device {}.".format(device.device_id))
+            else:
+                logging.info("Device {} status: {}".format(device.device_id, params))
+        except utils.DataDownloadError:
+            logging.error(
+                "Unable to download status for device {}.".format(device.device_id)
+            )
+            logging.error(traceback.format_exc())
+
+
 def scrape(manufacturer, start, end):
     """
     Scrapes data for all devices belonging to a manufacturer.
@@ -759,6 +783,8 @@ def main():
             logging.error(traceback.format_exc())
             continue
 
+        logging.info("Downloading operating conditions from all devices:")
+        log_device_calibration(manufacturer)
         logging.info("Downloading data from all devices:")
         scrape(manufacturer, start_time, end_time)
         logging.info("Processing raw data for all devices:")
