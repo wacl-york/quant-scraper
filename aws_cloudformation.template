@@ -548,7 +548,7 @@
         }
       }
     },
-    "subnetroute3": {
+    "subnetroute2": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "RouteTableId": {
