@@ -206,14 +206,17 @@ class Aeroqual(Manufacturer):
 
         # Form into neat keyword-value pair
         for tag in calibration_tags:
-            key = "-".join(
+            key = "_".join(
                 (
-                    tag["data-parameter"].replace(" ", ""),
                     tag["data-sensor"].replace(" ", ""),
+                    tag["data-parameter"].replace(" ", ""),
                 )
             )
             val = tag["value"]
             params[key] = val
+
+        # Order by sensor, rather than by slope then intercept
+        params = {k: params[k] for k in sorted(params)}
 
         return params
 

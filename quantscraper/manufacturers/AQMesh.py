@@ -165,13 +165,25 @@ class AQMesh(Manufacturer):
         except (json.decoder.JSONDecodeError, TypeError):
             raise DataDownloadError("Cannot parse request response to JSON.") from None
 
-        for channel in configuration["Channels"]:
-            # Make composite key
-            measurand = "{}({})".format(channel["SensorLabel"], channel["Unit"])
-            for param in ("Slope", "Offset"):
-                key = "_".join((measurand, param))
-                val = channel[param]
-                params[key] = val
+        # If don't have Channels, SensorLabel, Unit, Slope or Offset attributes
+        # then return empty dict rather than raise error
+        if "Channels" in configuration:
+            for channel in configuration["Channels"]:
+                # Make composite key
+                try:
+                    measurand = "{}({})".format(channel["SensorLabel"], channel["Unit"])
+                except KeyError:
+                    continue
+                for param in ("Slope", "Offset"):
+                    key = "_".join((measurand, param))
+                    try:
+                        val = channel[param]
+                        params[key] = val
+                    except KeyError:
+                        continue
+        # Ensure params are ordered by measurand. This should be the case but
+        # best to make sure
+        params = {k: params[k] for k in sorted(params)}
 
         return params
 
