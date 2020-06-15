@@ -353,6 +353,123 @@ class TestScrape(unittest.TestCase):
         self.assertEqual(dev3.raw_data, None)
 
 
+class TestLogDeviceCalibration(unittest.TestCase):
+    # Tests the log_device_calibration() function, which iterates through a
+    # given manufacturer's devices and scrapes their calibration params
+
+    def test_success_all_ids(self):
+        # Test success on all devices
+        mock_scrape = Mock(
+            side_effect=[
+                {"slope": "1", "offset": "3"},
+                {"slope": "2.5", "offset": "4"},
+                {"slope": "5.8", "offset": "5.6"},
+            ]
+        )
+        man = Mock(log_device_status=mock_scrape,)
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
+
+        with self.assertLogs(level="INFO") as cm:
+            cli.log_device_calibration(man)
+
+        # Assert log is called with expected messages
+        self.assertEqual(
+            cm.output,
+            [
+                "INFO:root:Device 1 status: {'slope': '1', 'offset': '3'}",
+                "INFO:root:Device 2 status: {'slope': '2.5', 'offset': '4'}",
+                "INFO:root:Device 3 status: {'slope': '5.8', 'offset': '5.6'}",
+            ],
+        )
+
+        # Assert scrape calls are as expected
+        actual_calls = mock_scrape.mock_calls
+        exp_calls = [
+            call("4"),
+            call("5"),
+            call("6"),
+        ]
+        self.assertEqual(actual_calls, exp_calls)
+
+    def test_mixed_success(self):
+        # 2nd device raises utils.DataDownloadError
+        mock_scrape = Mock(
+            side_effect=[
+                {"slope": "1", "offset": "3"},
+                utils.DataDownloadError(""),
+                {"slope": "5.8", "offset": "5.6"},
+            ]
+        )
+        man = Mock(log_device_status=mock_scrape,)
+
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
+
+        with self.assertLogs(level="INFO") as cm:
+            cli.log_device_calibration(man)
+
+        # Assert log is called with expected messages
+        # NB: using assertIn rather than assertEqual as hard to produce the
+        # expected stacktrace that will also be logged alongside the error
+        # message.
+        self.assertIn(
+            "INFO:root:Device 1 status: {'slope': '1', 'offset': '3'}", cm.output
+        )
+        self.assertIn("ERROR:root:Unable to download status for device 2.", cm.output)
+        self.assertIn(
+            "INFO:root:Device 3 status: {'slope': '5.8', 'offset': '5.6'}", cm.output
+        )
+
+        # Assert scrape calls are as expected
+        actual_calls = mock_scrape.mock_calls
+        exp_calls = [
+            call("4"),
+            call("5"),
+            call("6"),
+        ]
+        self.assertEqual(actual_calls, exp_calls)
+
+    def test_all_failure(self):
+        # all devices fail to download data
+        mock_scrape = Mock(
+            side_effect=[
+                utils.DataDownloadError(""),
+                utils.DataDownloadError(""),
+                utils.DataDownloadError(""),
+            ]
+        )
+        man = Mock(log_device_status=mock_scrape,)
+        dev1 = Device("1", "4", "foo")
+        dev2 = Device("2", "5", "foo")
+        dev3 = Device("3", "6", "foo")
+        man.devices = [dev1, dev2, dev3]
+
+        with self.assertLogs(level="INFO") as cm:
+            cli.log_device_calibration(man)
+
+        # Assert log is called with expected messages
+        # NB: using assertIn rather than assertEqual as hard to produce the
+        # expected stacktrace that will also be logged alongside the error
+        # message.
+        self.assertIn("ERROR:root:Unable to download status for device 1.", cm.output)
+        self.assertIn("ERROR:root:Unable to download status for device 2.", cm.output)
+        self.assertIn("ERROR:root:Unable to download status for device 3.", cm.output)
+
+        # Assert scrape calls are as expected
+        actual_calls = mock_scrape.mock_calls
+        exp_calls = [
+            call("4"),
+            call("5"),
+            call("6"),
+        ]
+        self.assertEqual(actual_calls, exp_calls)
+
+
 class TestProcess(unittest.TestCase):
     # The cli.process(manufacturer) function iterates through the given
     # manufacturer's devices and:

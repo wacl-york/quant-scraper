@@ -36,5 +36,4 @@ def build_mock_response(
     # add json data if provided
     if json_data is not None:
         mock_resp.json = Mock(return_value=json_data)
-    # mock_post = Mock(post=Mock(return_value=mock_resp))
     return mock_resp

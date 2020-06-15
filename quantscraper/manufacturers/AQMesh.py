@@ -122,6 +122,71 @@ class AQMesh(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+        params = {}
+
+        request_params = {
+            "CRUD": "read",
+            "Call": "deviceinformation",
+            "UniqueId": device_id,
+        }
+
+        try:
+            result = self.session.post(
+                self.data_url, params=request_params, headers=self.data_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download device configuration.\n{}".format(str(ex))
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when downloading device configuration.\n{}".format(
+                    str(ex)
+                )
+            ) from None
+
+        try:
+            configuration = result.json()
+        except (json.decoder.JSONDecodeError, TypeError):
+            raise DataDownloadError("Cannot parse request response to JSON.") from None
+
+        # If don't have Channels, SensorLabel, Unit, Slope or Offset attributes
+        # then return empty dict rather than raise error
+        if "Channels" in configuration:
+            for channel in configuration["Channels"]:
+                # Make composite key
+                try:
+                    measurand = "{}({})".format(channel["SensorLabel"], channel["Unit"])
+                except KeyError:
+                    continue
+                for param in ("Slope", "Offset"):
+                    key = "_".join((measurand, param))
+                    try:
+                        val = channel[param]
+                        params[key] = val
+                    except KeyError:
+                        continue
+        # Ensure params are ordered by measurand. This should be the case but
+        # best to make sure
+        params = {k: params[k] for k in sorted(params)}
+
+        return params
+
     def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.

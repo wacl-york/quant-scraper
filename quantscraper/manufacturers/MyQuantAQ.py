@@ -79,6 +79,23 @@ class MyQuantAQ(Manufacturer):
                 "Could not connect to quantaq API.\n{}".format(ex)
             ) from None
 
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+        params = {}
+        return params
+
     def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the API.

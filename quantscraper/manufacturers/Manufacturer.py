@@ -36,6 +36,8 @@ class Manufacturer(ABC):
         - add_device: Adds a Device object to the Manufacturer's 'devices' list.
         - connect (abstract): Establishes a connection to the manufacturer's
             website and handles any required authentication.
+        - log_device_status(abstract): Scrapes information about the device's
+            operating condition.
         - scrape_device (abstract): Downloads the data for a given device.
         - parse_to_csv (abstract): Parses a device's raw JSON data into a
             tabular 2D list format.
@@ -85,13 +87,28 @@ class Manufacturer(ABC):
         """
 
     @abstractmethod
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+
+    @abstractmethod
     def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device.
 
-        The scraping timeframe, along with other manufacturer-specific
-        parameters are stored in the .ini configuration file and set in the
-        constructor as instance attributes if needed.
+        Manufacturer-specific parameters are stored in the .ini configuration
+        file and set in the constructor as instance attributes if needed.
 
         Abstract method that must have a concrete implementation provided by
         sub-classes.
