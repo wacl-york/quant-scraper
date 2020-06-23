@@ -46,6 +46,9 @@ def main():
     if args.upload_clean:
         scrape_call.append("--upload-clean")
 
+    if args.upload_availability:
+        scrape_call.append("--upload-availability")
+
     if args.preprocess_devices is not None:
         preprocess_call.extend(["--devices", *args.preprocess_devices])
 
@@ -103,6 +106,12 @@ def parse_args():
         "--upload-clean",
         action="store_true",
         help="Uploads clean data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--upload-availability",
+        action="store_true",
+        help="Uploads availability data to Google Drive.",
     )
 
     parser.add_argument(

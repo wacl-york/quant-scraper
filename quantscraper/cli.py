@@ -110,6 +110,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--upload-availability",
+        action="store_true",
+        help="Uploads availability CSV data to Google Drive.",
+    )
+
+    parser.add_argument(
         "--html",
         metavar="FN",
         help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
@@ -762,6 +768,17 @@ def main():
         logging.error("Cannot load device configuration: {}.".format(ex))
         sys.exit()
 
+    # Get handle to google API if needed
+    if any([args.upload_raw, args.upload_clean, args.upload_availability]):
+        try:
+            service = utils.auth_google_api()
+        except utils.GoogleAPIError:
+            logging.error(
+                "Cannot connect to Google API, outputs will not be uploaded to Google Drive."
+            )
+            logging.error(traceback.format_exc())
+            service = None
+
     start_time, end_time = setup_scraping_timeframe(args.start, args.end)
 
     manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
@@ -823,41 +840,33 @@ def main():
         else:
             clean_fns = None
 
-        if args.upload_raw or args.upload_clean:
+        if args.upload_raw:
+            logging.info("Uploading raw data to Google Drive:")
             try:
-                service = utils.auth_google_api()
-            except utils.GoogleAPIError:
-                logging.error("Cannot connect to Google API.")
-                logging.error(traceback.format_exc())
-                break
+                folder_id = os.environ["GDRIVE_RAW_ID"]
+            except KeyError:
+                logging.error(
+                    "GDRIVE_RAW_ID env var not found. Please set it with the ID of the Google Drive folder to upload the raw data to."
+                )
+                folder_id = None
 
-            if args.upload_raw:
-                logging.info("Uploading raw data to Google Drive:")
-                try:
-                    folder_id = os.environ["GDRIVE_RAW_ID"]
-                except KeyError:
-                    logging.error(
-                        "GDRIVE_RAW_ID env var not found. Please set it with the ID of the Google Drive folder to upload the raw data to."
-                    )
-                    folder_id = None
+            if folder_id is not None:
+                upload_data_googledrive(service, raw_fns, folder_id, "text/json")
 
-                if folder_id is not None:
-                    upload_data_googledrive(service, raw_fns, folder_id, "text/json")
+        if args.upload_clean:
+            logging.info("Uploading clean CSV data to Google Drive:")
+            try:
+                folder_id = os.environ["GDRIVE_CLEAN_ID"]
+            except KeyError:
+                logging.error(
+                    "GDRIVE_CLEAN_ID env var not found. Please set it with the ID of the Google Drive folder to upload the clean data to."
+                )
+                folder_id = None
 
-            if args.upload_clean:
-                logging.info("Uploading clean CSV data to Google Drive:")
-                try:
-                    folder_id = os.environ["GDRIVE_CLEAN_ID"]
-                except KeyError:
-                    logging.error(
-                        "GDRIVE_CLEAN_ID env var not found. Please set it with the ID of the Google Drive folder to upload the clean data to."
-                    )
-                    folder_id = None
-
-                if folder_id is not None:
-                    upload_data_googledrive(
-                        service, clean_fns, folder_id, "text/csv",
-                    )
+            if folder_id is not None:
+                upload_data_googledrive(
+                    service, clean_fns, folder_id, "text/csv",
+                )
 
     # Summarise number of clean measurands into tabular format
     summary_tables = tabular_summary(summaries, start_time, end_time)
@@ -869,6 +878,30 @@ def main():
         logging.info(line)
     for line in ascii_summary:
         print(line)
+
+    # Upload availability CSV
+    if args.upload_availability:
+        filename_template = "availability_{manufacturer}_{date}.csv"
+        folder_id = os.environ["GDRIVE_AVAILABILITY_ID"]
+
+        for manufacturer, csv_data in summary_tables.items():
+            fn = filename_template.format(manufacturer=manufacturer, date=start_time)
+            filepath = os.path.join(cfg.get("Main", "local_folder_availability"), fn)
+            try:
+                utils.save_csv_file(csv_data, filepath)
+            except utils.DataSavingError as ex:
+                logging.error(
+                    "Cannot save data availability for {}: {}".format(manufacturer, ex)
+                )
+                continue
+
+            try:
+                logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
+                utils.upload_file_google_drive(service, filepath, folder_id, "text/csv")
+                logging.info("Upload successful.")
+            except utils.DataUploadError:
+                logging.error("Error in upload")
+                logging.error(traceback.format_exc())
 
     # Add HTML summary if requested
     if args.html is not None:
