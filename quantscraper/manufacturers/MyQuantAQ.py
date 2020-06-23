@@ -9,8 +9,9 @@
     any conflict with QuantAQ's own API, which has a QuantAQ class.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import timedelta
 from string import Template
+import os
 import requests as re
 import quantaq
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -31,38 +32,28 @@ class MyQuantAQ(Manufacturer):
 
     name = "QuantAQ"
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None
         """
         self.api_obj = None
-        self.api_token = cfg.get(self.name, "api_token")
-
-        # Load start and end scraping datetimes
-        start_date = date.fromisoformat(cfg.get("Main", "start_time"))
-        end_date = date.fromisoformat(cfg.get("Main", "end_time"))
-        start_fmt = start_date.strftime("%Y-%m-%d")
-        # Notice how we add on 1 day here.
-        # Although there is a "less than or equal to" filter,
-        # if you use ">= start_date and <= end_date" where start_date=end_date,
-        # i.e. the common scenario in our usage, then it raises an error.
-        # The solution is to add a day onto the end_date,
-        # and use < rather than <=
-        end_fmt = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        self.api_token = os.environ["QUANTAQ_API_TOKEN"]
 
         # This would be more easily saved as a dict as that's how it gets used
         # later, but the quantaq package does some funny dict updating by
         # reference that modifies the dict from my environment
-        raw = Template("timestamp,ge,${start};timestamp,lt,${end}")
-        self.query_string = raw.substitute(start=start_fmt, end=end_fmt)
+        self.query_string = Template("timestamp,ge,${start};timestamp,lt,${end}")
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """
@@ -88,7 +79,24 @@ class MyQuantAQ(Manufacturer):
                 "Could not connect to quantaq API.\n{}".format(ex)
             ) from None
 
-    def scrape_device(self, device_id):
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+        params = {}
+        return params
+
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the API.
 
@@ -100,7 +108,10 @@ class MyQuantAQ(Manufacturer):
         Both the raw and final data are stored from this call.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             A dict with 2 attributes: 'raw' and 'final', holding the raw and
@@ -108,9 +119,21 @@ class MyQuantAQ(Manufacturer):
             Each of these datasets are stored as lists of dicts, with each list
             entry corresponding to a unique time-point.
         """
+        # Load start and end scraping datetimes
+        start_date = start.strftime("%Y-%m-%d")
+        # Notice how we add on 1 day here.
+        # Although there is a "less than or equal to" filter,
+        # if you use ">= start_date and <= end_date" where start_date=end_date,
+        # i.e. the common scenario in our usage, then it raises an error.
+        # The solution is to add a day onto the end_date,
+        # and use < rather than <=
+        end_date = (end + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        query = self.query_string.substitute(start=start_date, end=end_date)
+
         try:
             raw = self.api_obj.get_data(
-                sn=device_id, final_data=False, params=dict(filter=self.query_string),
+                sn=device_id, final_data=False, params=dict(filter=query),
             )
         except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(
@@ -118,7 +141,7 @@ class MyQuantAQ(Manufacturer):
             ) from None
         try:
             final = self.api_obj.get_data(
-                sn=device_id, final_data=True, params=dict(filter=self.query_string),
+                sn=device_id, final_data=True, params=dict(filter=query),
             )
         except (quantaq.baseapi.DataReadError, re.exceptions.ConnectionError) as ex:
             raise DataDownloadError(

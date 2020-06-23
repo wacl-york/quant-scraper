@@ -1,0 +1,622 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "QUANT Scraping Stack",
+  "Parameters": {
+    "TaskFamily": {
+        "Type": "String",
+        "Default": "QUANTTasks",
+        "Description": "Task family name. Doesn't need to be supplied. Setup as parameter so can reference it as a variable."
+    }
+  },
+  "Resources": {
+    "QUANTRepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "RepositoryName": "wacl/quantscraper",
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Repository for Docker images."
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Repository"
+          }
+        ]
+      }
+    },
+    "QUANTCluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "QUANTCluster",
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Cluster to run QUANT scraping tasks in."
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Cluster"
+          } ]
+      }
+    },
+    "QUANTTask": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ExecutionRoleArn": { "Fn::GetAtt": ["QUANTRoleScraping", "Arn"] },
+        "ContainerDefinitions": [
+            {
+                "LogConfiguration": {
+                    "LogDriver": "awslogs",
+                    "Options": {
+                        "awslogs-group": "/ecs/quantscraper-demo",
+                        "awslogs-region": { "Ref": "AWS::Region" },
+                        "awslogs-stream-prefix": "quantscrape"
+                    }
+                },
+                "Cpu": 256,
+                "WorkingDirectory": "/quantscraper",
+                "Secrets": [
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretQUANTCredentials" },
+                        "Name": "QUANT_CREDS"
+                    },
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretGoogleCredentials" },
+                        "Name": "GOOGLE_CREDS"
+                    },
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretEmailAccount" },
+                        "Name": "EMAIL_SENDER_ADDRESS"
+                    }
+                ],
+                "MemoryReservation": 128,
+                "Image": { "Fn::Sub" :  "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${QUANTRepository}"},
+                "Essential": true,
+                "Name": "quant"
+            }
+        ],
+        "Memory": "512",
+        "TaskRoleArn": { 
+            "Fn::GetAtt": ["QUANTRoleScraping", "Arn"] 
+        },
+        "Family": { 
+            "Ref": "TaskFamily"
+        },
+        "RequiresCompatibilities": [
+            "FARGATE"
+        ],
+        "NetworkMode": "awsvpc",
+        "Cpu": "256",
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Cluster to run QUANT scraping tasks in."
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Cluster"
+          }
+        ]
+      }
+    },
+    "QUANTScheduledTask": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Run QUANTscraper every day at 13:00",
+        "Name": "DailyQUANTScrape",
+        "ScheduleExpression": "cron(0 13 * * ? *)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": ["QUANTCluster", "Arn"]
+            },
+            "RoleArn": { 
+                "Fn::GetAtt" : [ "QUANTRoleScheduledScrape", "Arn" ] 
+            },
+            "Id": "quant_scheduled_daily_scrape",
+            "EcsParameters": {
+              "TaskDefinitionArn": {
+                  "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+              },
+              "TaskCount": 1,
+              "LaunchType": "FARGATE",
+              "NetworkConfiguration": {
+                "AwsVpcConfiguration" : {
+                    "AssignPublicIp": "ENABLED",
+                    "SecurityGroups": [
+                        { "Ref": "QUANTSecurityGroup" }
+                    ],
+                    "Subnets": [
+                        { "Ref": "QUANTSubnet1" },
+                        { "Ref": "QUANTSubnet2" }
+                    ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "QUANTPolicyPassRole": {
+      "Type" : "AWS::IAM::ManagedPolicy",
+      "Properties" : {
+          "Description" : "Allows the role to be passed to QUANT_scraping to run the container.",
+          "ManagedPolicyName" : "QUANTPassRole",
+          "PolicyDocument" : {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": "iam:PassRole",
+                    "Resource": [
+                        { "Fn::GetAtt" : [ "QUANTRoleScraping", "Arn" ] }
+                    ],
+                    "Condition": {
+                        "StringLike": {
+                            "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                        }
+                    }
+                }
+            ]
+          }
+        }
+    },
+    "QUANTIAMECR": {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+          "UserName" : "QUANT_IAM_ECR",
+          "Policies" : [ 
+            {
+                "PolicyName": "PushImageECR",
+                "PolicyDocument":  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Action": [
+                                "ecr:BatchGetImage",
+                                "ecr:CompleteLayerUpload",
+                                "ecr:UploadLayerPart",
+                                "ecr:InitiateLayerUpload",
+                                "ecr:BatchCheckLayerAvailability",
+                                "ecr:PutImage"
+                            ],
+                            "Resource": [
+                                { "Fn::GetAtt" : [ "QUANTRepository", "Arn" ] }
+                            ]
+                        },
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Action": "ecr:GetAuthorizationToken",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+          ]
+      }
+    },
+    "QUANTIAMRunAdHoc": {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+          "UserName" : "QUANT_IAM_RunAdHoc",
+          "ManagedPolicyArns" : [
+              {
+                "Ref": "QUANTPolicyPassRole"
+              }
+          ],
+          "Policies" : [ 
+            {
+                "PolicyName": "RunQUANTTaskAdHoc",
+                "PolicyDocument":  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "ecs:RunTask",
+                            "Resource": [
+                                { 
+                                  "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ]
+      }
+    },
+    "QUANTRoleScraping": {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+          "RoleName" : "QUANT_scraping",
+          "AssumeRolePolicyDocument" : {
+            "Version": "2012-10-17",
+             "Statement": [
+             {
+                 "Effect": "Allow",
+                 "Principal": {
+                     "Service": [
+                         "ecs-tasks.amazonaws.com"
+                     ]
+                 },
+                 "Action": [
+                     "sts:AssumeRole"
+                 ]
+             }
+             ]
+          },
+          "Description" : "The role that provides all permissions for a scraping Task",
+          "Policies" : [ 
+              {
+                  "PolicyName" : "QUANT_scraping",
+                  "PolicyDocument" : 
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "ecr:GetAuthorizationToken",
+                                    "ecr:BatchCheckLayerAvailability",
+                                    "ecr:GetDownloadUrlForLayer",
+                                    "ecr:BatchGetImage",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents",
+                                    "secretsmanager:GetSecretValue",
+                                    "ses:SendEmail",
+                                    "ses:SendRawEmail"
+                                ],
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+              }
+          ]
+        }
+    },
+    "QUANTRoleScheduledScrape": {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+          "RoleName" : "QUANT_scheduled_task",
+          "AssumeRolePolicyDocument" : {
+            "Version": "2012-10-17",
+             "Statement": [
+             {
+                 "Effect": "Allow",
+                 "Principal": {
+                     "Service": [
+                         "events.amazonaws.com"
+                     ]
+                 },
+                 "Action": [
+                     "sts:AssumeRole"
+                 ]
+             }
+             ]
+          },
+          "ManagedPolicyArns" : [
+              {
+                "Ref": "QUANTPolicyPassRole"
+              }
+          ],
+          "Description" : "The role that starts a scheduled scraping task",
+          "Policies" : [ 
+              {
+                  "PolicyName" : "QUANTRunTaskScheduled",
+                  "PolicyDocument" : 
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "ecs:RunTask",
+                                "Resource": [
+                                    { 
+                                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}:*"
+                                    }
+                                ]
+                            },
+                        ]
+                    }
+              }
+          ]
+        }
+    },
+    "QUANTSecretQUANTCredentials": {
+          "Type" : "AWS::SecretsManager::Secret",
+          "Properties" : {
+              "Description" : "Credentials for web portal",
+              "Name" : "QUANTCredentials",
+              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_USER": "foo","AQMESH_PW": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo","GDRIVE_RAW_ID": "foo","GDRIVE_CLEAN_ID": "foo","GDRIVE_ANALYSIS_ID": "foo"}'
+            }
+    },
+    "QUANTSecretGoogleCredentials": {
+          "Type" : "AWS::SecretsManager::Secret",
+          "Properties" : {
+              "Description" : "Credentials for Google Service Account that writes to Google Drive",
+              "Name" : "GoogleCredentials",
+              "SecretString" : '{"type": "foo","project_id": "foo","private_key_id": "foo","private_key": "foo","client_email": "foo","client_id": "foo","auth_uri": "foo","token_uri": "foo","auth_provider_x509_cert_url": "foo","client_x509_cert_url": "foo"}'
+            }
+    },
+    "QUANTSecretEmailAccount": {
+          "Type" : "AWS::SecretsManager::Secret",
+          "Properties" : {
+              "Description" : "The account to send the automated email from",
+              "Name" : "QUANTEmailSender",
+              "SecretString" : "foo@domain.com"
+            }
+    },
+    "QUANTVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QUANT VPC"
+          },
+          {
+            "Key": "Description",
+            "Value": "VPC used by QUANT scraping tasks"
+          }
+        ]
+      }
+    },
+    "QUANTSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": "eu-west-1b",
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Used in QUANT scraping tasks"
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Subnet 1"
+          }
+        ]
+      }
+    },
+    "QUANTSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/24",
+        "AvailabilityZone": "eu-west-1a",
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Used in QUANT scraping tasks"
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Subnet 2"
+          }
+        ]
+      }
+    },
+    "QUANTIGW": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Created for QUANT"
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT Internet Gateway"
+          }
+        ]
+      }
+    },
+    "QUANTDHCPopt": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": { "Fn::Sub": "${AWS::Region}.compute.internal" },
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ]
+      }
+    },
+    "ACL": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        }
+      }
+    },
+    "RouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Description",
+            "Value": "Created for QUANT"
+          },
+          {
+            "Key": "Name",
+            "Value": "QUANT RouteTable"
+          }
+        ]
+      }
+    },
+    "QUANTSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ECS Allowed Ports",
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QUANT SecurityGroup"
+          },
+          {
+            "Key": "Description",
+            "Value": "Created for QUANT"
+          }
+        ]
+      }
+    },
+    "acl1": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "ACL"
+        }
+      }
+    },
+    "acl2": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "ACL"
+        }
+      }
+    },
+    "subnetacl1": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "ACL"
+        },
+        "SubnetId": {
+          "Ref": "QUANTSubnet1"
+        }
+      }
+    },
+    "subnetacl2": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "ACL"
+        },
+        "SubnetId": {
+          "Ref": "QUANTSubnet2"
+        }
+      }
+    },
+    "gw1": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "QUANTIGW"
+        }
+      }
+    },
+    "subnetroute1": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        },
+        "SubnetId": {
+          "Ref": "QUANTSubnet1"
+        }
+      }
+    },
+    "subnetroute2": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        },
+        "SubnetId": {
+          "Ref": "QUANTSubnet2"
+        }
+      }
+    },
+    "route1": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        },
+        "GatewayId": {
+          "Ref": "QUANTIGW"
+        }
+      },
+      "DependsOn": "gw1"
+    },
+    "dchpassoc1": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties": {
+        "VpcId": {
+          "Ref": "QUANTVPC"
+        },
+        "DhcpOptionsId": {
+          "Ref": "QUANTDHCPopt"
+        }
+      }
+    },
+    "ingress1": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "QUANTSecurityGroup"
+        },
+        "IpProtocol": "tcp",
+        "FromPort": "80",
+        "ToPort": "80",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+    "ingress2": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "QUANTSecurityGroup"
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Ref": "QUANTSecurityGroup"
+        },
+        "SourceSecurityGroupOwnerId": { "Ref": "AWS::AccountId" }
+      }
+    },
+    "egress1": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "QUANTSecurityGroup"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+  }
+}

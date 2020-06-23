@@ -1,17 +1,16 @@
-# Application configuration
+# Don't include sensitive information
 *.env
-config.ini
-preprocessing.ini
-devices.json
+googleapi_credentials.json
 
-data/*
+# Don't need examples
+example*
+
+__pycache__/*
 *.swp
+data/*
 
 # Compiled python modules.
 *.pyc
-
-# Cache
-__pycache__/*
 
 # Setuptools distribution folder.
 /dist/
@@ -22,6 +21,3 @@ __pycache__/*
 # Testing related outputs
 .coverage
 .coverage.*
-
-# GoogleAPI
-googleapi_credentials.json

@@ -7,8 +7,9 @@
 """
 
 from string import Template
-from datetime import datetime, date, timedelta, time
+from datetime import datetime, timedelta, time
 import json
+import os
 import requests as re
 from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -26,49 +27,37 @@ class AQMesh(Manufacturer):
 
     name = "AQMesh"
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None
         """
         self.session = None
-        self.auth_url = cfg.get(self.name, "auth_url")
-        self.data_url = cfg.get(self.name, "data_url")
+        self.auth_url = cfg["auth_url"]
+        self.data_url = cfg["data_url"]
 
         # Authentication
         self.auth_params = {
-            "username": cfg.get(self.name, "Username"),
-            "password": cfg.get(self.name, "Password"),
+            "username": os.environ["AQMESH_USER"],
+            "password": os.environ["AQMESH_PW"],
         }
-        self.auth_headers = {"referer": cfg.get(self.name, "auth_referer")}
+        self.auth_headers = {"referer": cfg["auth_referer"]}
 
         # Download data
         self.data_headers = {
             "content-type": "application/json; charset=UTF-8",
-            "referer": cfg.get(self.name, "data_referer"),
+            "referer": cfg["data_referer"],
         }
 
-        # Convert start and end times into required format of
-        # YYYY-mm-ddTHH:mm:ss TZ:TZ
-        # Where TZ:TZ is in HH:MM format
-        # AQMesh uses [closed, open) intervals, so set start time as midnight of
-        # the start day, and end day as midnight of day AFTER required end day.
-        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
-        # 59th minute worth of data
-        timezone = cfg.get(self.name, "timezone")
-        start_str = cfg.get("Main", "start_time")
-        end_str = cfg.get("Main", "end_time")
-        start_date = date.fromisoformat(start_str)
-        end_date = date.fromisoformat(end_str)
-        start_dt = datetime.combine(start_date, time.min)
-        end_dt = datetime.combine((end_date + timedelta(days=1)), time.min)
-        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
-        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(timezone))
+        self.timezone = cfg["timezone"]
 
         self.data_params = {
             "CRUD": "READ",
@@ -77,13 +66,13 @@ class AQMesh(Manufacturer):
             "Channels": Template(
                 "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
             ),
-            "Start": start_fmt,
-            "End": end_fmt,
-            "TimeZone": timezone,
-            "Average": cfg.get(self.name, "averaging_window"),
+            "Start": Template("${start}"),
+            "End": Template("${end}"),
+            "TimeZone": self.timezone,
+            "Average": cfg["averaging_window"],
             "TimeConvention": "timebeginning",
-            "Units": cfg.get(self.name, "units"),
-            "DataType": cfg.get(self.name, "data_type"),
+            "Units": cfg["units"],
+            "DataType": cfg["data_type"],
             "ReadingMinValue": "",
             "ReadingMaxValue": "",
             "Assignment": "current",
@@ -92,7 +81,7 @@ class AQMesh(Manufacturer):
             "AdditionalParameters": "",
         }
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """
@@ -133,7 +122,72 @@ class AQMesh(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, device_id):
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+        params = {}
+
+        request_params = {
+            "CRUD": "read",
+            "Call": "deviceinformation",
+            "UniqueId": device_id,
+        }
+
+        try:
+            result = self.session.post(
+                self.data_url, params=request_params, headers=self.data_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download device configuration.\n{}".format(str(ex))
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when downloading device configuration.\n{}".format(
+                    str(ex)
+                )
+            ) from None
+
+        try:
+            configuration = result.json()
+        except (json.decoder.JSONDecodeError, TypeError):
+            raise DataDownloadError("Cannot parse request response to JSON.") from None
+
+        # If don't have Channels, SensorLabel, Unit, Slope or Offset attributes
+        # then return empty dict rather than raise error
+        if "Channels" in configuration:
+            for channel in configuration["Channels"]:
+                # Make composite key
+                try:
+                    measurand = "{}({})".format(channel["SensorLabel"], channel["Unit"])
+                except KeyError:
+                    continue
+                for param in ("Slope", "Offset"):
+                    key = "_".join((measurand, param))
+                    try:
+                        val = channel[param]
+                        params[key] = val
+                    except KeyError:
+                        continue
+        # Ensure params are ordered by measurand. This should be the case but
+        # best to make sure
+        params = {k: params[k] for k in sorted(params)}
+
+        return params
+
+    def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
@@ -141,16 +195,33 @@ class AQMesh(Manufacturer):
         The raw data is held in the 'Data' attribute of the response JSON.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             The data stored in a hierarchical format comprising dicts and lists.
             At the top level, the data has 2 attributes, 'Headers' and 'Rows',
             which hold the column labels and data respectively.
         """
+        # Convert start and end times into required format of
+        # YYYY-mm-ddTHH:mm:ss TZ:TZ
+        # Where TZ:TZ is in HH:MM format
+        # AQMesh uses [closed, open) intervals, so set start time as midnight of
+        # the start day, and end day as midnight of day AFTER required end day.
+        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
+        # 59th minute worth of data
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine((end + timedelta(days=1)), time.min)
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+
         this_params = self.data_params.copy()
         this_params["UniqueId"] = this_params["UniqueId"].substitute(device=device_id)
         this_params["Channels"] = this_params["Channels"].substitute(device=device_id)
+        this_params["Start"] = this_params["Start"].substitute(start=start_fmt)
+        this_params["End"] = this_params["End"].substitute(end=end_fmt)
 
         try:
             result = self.session.get(

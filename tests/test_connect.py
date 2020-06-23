@@ -5,8 +5,9 @@
     Unit tests for Manufacturer.connect() methods.
 """
 
+import os
 import unittest
-import configparser
+from collections import defaultdict
 from unittest.mock import patch, Mock
 from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
@@ -17,20 +18,20 @@ import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 from quantscraper.utils import LoginError
 from test_utils import build_mock_response
 
-# TODO Are these unit tests sufficient? Just test that error is thrown for
-# specific HTTP error codes and that login attempts with incorrect credentials
-# will fail.
-# Haven't checked for login with correct credentials, but would that be a
-# security risk?
-
-# TODO Should config be mocked too, or is it fair enough to use the example
-# config that is bundled with the source code?
+# Setup dummy env variables
+os.environ["AEROQUAL_USER"] = "foo"
+os.environ["AEROQUAL_PW"] = "foo"
+os.environ["AQMESH_USER"] = "foo"
+os.environ["AQMESH_PW"] = "foo"
+os.environ["ZEPHYR_USER"] = "foo"
+os.environ["ZEPHYR_PW"] = "foo"
+os.environ["QUANTAQ_API_TOKEN"] = "foo"
 
 
 class TestAeroqual(unittest.TestCase):
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
-    aeroqual = Aeroqual.Aeroqual(cfg)
+    cfg = defaultdict(str)
+    fields = []
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
@@ -59,7 +60,7 @@ class TestAeroqual(unittest.TestCase):
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aeroqual.connect()
+                self.aeroqual.connect()
 
     # Unauthorised
     def test_401(self):
@@ -68,7 +69,7 @@ class TestAeroqual(unittest.TestCase):
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aeroqual.connect()
+                self.aeroqual.connect()
 
     # Forbidden
     def test_403(self):
@@ -77,7 +78,7 @@ class TestAeroqual(unittest.TestCase):
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aeroqual.connect()
+                self.aeroqual.connect()
 
     # Not found
     def test_404(self):
@@ -86,7 +87,7 @@ class TestAeroqual(unittest.TestCase):
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aeroqual.connect()
+                self.aeroqual.connect()
 
     # timeout
     def test_408(self):
@@ -95,13 +96,13 @@ class TestAeroqual(unittest.TestCase):
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aeroqual.connect()
+                self.aeroqual.connect()
 
 
 class TestAQMesh(unittest.TestCase):
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
-    aqmesh = AQMesh.AQMesh(cfg)
+    cfg = defaultdict(str)
+    fields = []
+    aqmesh = AQMesh.AQMesh(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
@@ -130,7 +131,7 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aqmesh.connect()
+                self.aqmesh.connect()
 
     # Unauthorised
     def test_401(self):
@@ -139,7 +140,7 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aqmesh.connect()
+                self.aqmesh.connect()
 
     # Forbidden
     def test_403(self):
@@ -148,7 +149,7 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aqmesh.connect()
+                self.aqmesh.connect()
 
     # Not found
     def test_404(self):
@@ -157,7 +158,7 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aqmesh.connect()
+                self.aqmesh.connect()
 
     # timeout
     def test_408(self):
@@ -166,7 +167,7 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = self.aqmesh.connect()
+                self.aqmesh.connect()
 
 
 class TestZephyr(unittest.TestCase):
@@ -175,23 +176,23 @@ class TestZephyr(unittest.TestCase):
     # so credential errors are only identified downstream when attempting to
     # pull data using the generated access token.
 
-    cfg = configparser.ConfigParser()
-    cfg.read("example.ini")
+    cfg = defaultdict(str)
+    fields = []
+    zephyr = Zephyr.Zephyr(cfg, fields)
 
     # Mock a status code return of 200
     def test_success(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(json_data={"access_token": "foo"}, text="foo")
         post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=post_mock)
             try:
-                zephyr.connect()
-                self.assertEqual(zephyr.api_token, "foo")
+                self.zephyr.connect()
+                self.assertEqual(self.zephyr.api_token, "foo")
                 post_mock.assert_called_once_with(
-                    zephyr.auth_url,
-                    data=zephyr.auth_params,
-                    headers=zephyr.auth_headers,
+                    self.zephyr.auth_url,
+                    data=self.zephyr.auth_params,
+                    headers=self.zephyr.auth_headers,
                 )
             except:
                 self.fail("Connect raised exception with status code 200")
@@ -202,58 +203,53 @@ class TestZephyr(unittest.TestCase):
 
     # Bad request
     def test_400(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(status=400, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = zephyr.connect()
-            self.assertIsNone(zephyr.api_token)
+                self.zephyr.connect()
+            self.assertIsNone(self.zephyr.api_token)
 
     # Unauthorised
     def test_401(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = zephyr.connect()
-            self.assertIsNone(zephyr.api_token)
+                self.zephyr.connect()
+            self.assertIsNone(self.zephyr.api_token)
 
     # Forbidden
     def test_403(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(status=403, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = zephyr.connect()
-            self.assertIsNone(zephyr.api_token)
+                self.zephyr.connect()
+            self.assertIsNone(self.zephyr.api_token)
 
     # Not found
     def test_404(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(status=404, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = zephyr.connect()
-            self.assertIsNone(zephyr.api_token)
+                self.zephyr.connect()
+            self.assertIsNone(self.zephyr.api_token)
 
     # timeout
     def test_408(self):
-        zephyr = Zephyr.Zephyr(self.cfg)
         resp = build_mock_response(status=401, raise_for_status=HTTPError(""))
 
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=Mock(return_value=resp))
             with self.assertRaises(LoginError):
-                res = zephyr.connect()
-            self.assertIsNone(zephyr.api_token)
+                self.zephyr.connect()
+            self.assertIsNone(self.zephyr.api_token)
 
 
 class TestMyQuantAQ(unittest.TestCase):
@@ -261,40 +257,32 @@ class TestMyQuantAQ(unittest.TestCase):
     # Don't want to do any actual IO, so instead will just mock the
     # quantaq.get_account() method raising an error, an indication that the
     # login has failed
+    cfg = defaultdict(str)
+    fields = []
+    myquantaq = MyQuantAQ.MyQuantAQ(cfg, fields)
 
     def test_success(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        # Dummy API token just in case
-        cfg.set("QuantAQ", "api_token", "foo")
-        myquantaq = MyQuantAQ.MyQuantAQ(cfg)
         # mock the get_account method that is called to test authentication
         get_account_mock = Mock(return_value="foo", side_effect=None)
         with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
             # Ensure the patched Class returns a Mock instance
             mock_api.return_value = Mock(get_account=get_account_mock)
             try:
-                myquantaq.connect()
+                self.myquantaq.connect()
                 get_account_mock.assert_called_once()
             except:
                 self.fail("Error during supposedly successful connection.")
 
     def test_login_failure(self):
-        cfg = configparser.ConfigParser()
-        cfg.read("example.ini")
-        # Dummy API token just in case
-        cfg.set("QuantAQ", "api_token", "foo")
-        myquantaq = MyQuantAQ.MyQuantAQ(cfg)
         # give mock api a mock return value, that raises DataReadError when
         # .get_account() is called
         get_account_mock = Mock(side_effect=DataReadError)
         with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
             mock_api.return_value = Mock(get_account=get_account_mock)
             with self.assertRaises(LoginError):
-                myquantaq.connect()
+                self.myquantaq.connect()
                 get_account_mock.assert_called_once()
 
 
-# TODO Test only called once
 if __name__ == "__main__":
     unittest.main()

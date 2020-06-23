@@ -24,65 +24,84 @@
 import sys
 import os
 import logging
+import argparse
 import traceback
 import json
 from datetime import date, timedelta, datetime
-
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
+
 import quantscraper.utils as utils
 import quantscraper.cli as cli
+from quantscraper.factories import setup_manufacturers
+
+CONFIG_FN = "preprocessing.ini"
 
 
-def setup_config(cfg_fn):
+def parse_args():
     """
-    Loads configuration parameters from a file into memory.
+    Parses CLI arguments to the script.
 
     Args:
-        - cfg_fn (str): Filepath of the .ini file.
+        - None
 
     Returns:
-        A Python object, parsed from JSON.
+        An argparse.Namespace object.
     """
-    try:
-        with open(cfg_fn, "r") as in_file:
-            cfg = json.load(in_file)
-    except FileNotFoundError:
-        raise utils.SetupError("File not found: '{}'".format(cfg_fn))
-    except json.decoder.JSONDecodeError:
-        raise utils.SetupError("Error parsing JSON file '{}'".format(cfg_fn))
+    parser = argparse.ArgumentParser(description="QUANT preprocessing")
+    parser.add_argument(
+        "--devices",
+        metavar="DEVICE1 DEVICE2 ... DEVICEN",
+        nargs="+",
+        help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+    )
 
-    return cfg
+    parser.add_argument(
+        "--date",
+        metavar="DATE",
+        help="The date to collate data from, in the format YYY-mm-dd. Defaults to yesterday.",
+    )
+
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Uploads the pre-processed data to Google Drive.",
+    )
+
+    args = parser.parse_args()
+    return args
 
 
-def setup_scraping_timeframe(cfg):
+def setup_scraping_timeframe(day=None):
     """
     Sets up the day to process the data for.
 
     By default, this script attempts to collate data from yesterday,
-    although if a valid YYYY-mm-dd date is provided in the 'date' top-level
-    attribute of the config JSON file then that date is used instead.
+    although if a valid YYYY-mm-dd date is provided to the --date program
+    argument then that date is used instead.
 
     Args:
-        - cfg (Object): Contains the script configuration
-            settings.
+        - day (str, optional): The day to run the pre-processing routine for,
+        in YYYY-mm-dd format. If not provided then defaults to yesterday's date.
 
     Returns:
-        Updated version of config with the 'date' field set as a valid
-        date if it wasn't already.
+        The date to process for as a string in YYYY-mm-dd format.
     """
-    try:
-        date_dt = datetime.strptime(cfg["date"], "%Y-%m-%d")
-        cfg["date"] = date_dt.strftime("%Y-%m-%d")
-    except KeyError:
+    if day is None:
         yesterday = date.today() - timedelta(days=1)
-        cfg["date"] = yesterday.strftime("%Y-%m-%d")
+        day = yesterday.strftime("%Y-%m-%d")
+
+    # Ensure that the day is a valid date
+    try:
+        date_dt = datetime.strptime(day, "%Y-%m-%d")
     except ValueError:
         raise utils.TimeError(
-            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(cfg["date"])
+            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(day)
         )
 
-    return cfg
+    date_str = date_dt.strftime("%Y-%m-%d")
+    return date_str
 
 
 def get_data(folder, manufacturer, device_id, day):
@@ -244,8 +263,45 @@ def resample(dataframe, resolution):
     return df_resampled
 
 
-def main():
+def upload_files_google_drive(files):
+    """
+    Provides boiler plate code and error handling for all aspects of uploading a
+    list of files to Google Drive, including:
+        - Initiating connection to GoogleDrive API
+        - Obtaining the folder ID from an environment variable
+        - Calling the function that handles the file upload.
 
+    Args:
+        - files (str[]): List of local file-path of files to be uploaded.
+
+    Returns:
+        None. Uploads files to Google Drive as a side-effect.
+    """
+    try:
+        service = utils.auth_google_api()
+    except utils.GoogleAPIError:
+        logging.error("Cannot connect to Google API.")
+        logging.error(traceback.format_exc())
+        return
+
+    try:
+        drive_analysis_id = os.environ["GDRIVE_ANALYSIS_ID"]
+    except KeyError:
+        logging.error(
+            "GDRIVE_ANALYSIS_ID env var not found. Please set it with the ID of the Google Drive folder to upload the analysis data to."
+        )
+        return
+
+    for file in files:
+        try:
+            utils.upload_file_google_drive(service, file, drive_analysis_id, "text/csv")
+            logging.info("Upload successful.")
+        except utils.DataUploadError:
+            logging.error("Error in upload")
+            logging.error(traceback.format_exc())
+
+
+def main():
     # Just using same setup functions as cli.py here.
     # Don't think would be appropriate to refactor these functions into the
     # utils.py module, as these are script functions, rather than library
@@ -260,46 +316,72 @@ def main():
         logging.error("Terminating program")
         sys.exit()
 
-    # Parse args and config file
-    args = cli.parse_args()
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    load_dotenv()
+    # Parse JSON environment variable into separate env vars
     try:
-        cfg = setup_config(args.configfilepath)
+        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
+    except utils.SetupError:
+        logging.error(
+            "Error when initiating environment variables, terminating execution."
+        )
+        logging.error(traceback.format_exc())
+        sys.exit()
+
+    for k, v in vars.items():
+        os.environ[k] = v
+
+    # Parse args and config file
+    args = parse_args()
+    try:
+        cfg = utils.setup_config(CONFIG_FN)
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    # Default to yesterday's data if no parseable date provided in JSON
-    cfg = setup_scraping_timeframe(cfg)
+    # Default to yesterday's data if no parseable date provided in config
+    recording_date = setup_scraping_timeframe(args.date)
 
-    # Get useful properties from config
-    recording_date = cfg["date"]
-    local_clean_folder = cfg["local_folder_clean_data"]
-    local_analysis_folder = cfg["local_folder_analysis_data"]
-    credentials_fn = cfg["google_api_credentials_fn"]
-    drive_analysis_id = cfg["gdrive_analysis_folder_id"]
-    upload_google_drive = cfg["upload_analysis_gdrive"]
-    time_res = cfg["time_resolution"]
+    # Load config params
+    local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
+    local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
+    time_res = cfg.get("Analysis", "time_resolution")
+
+    try:
+        device_config = utils.load_device_configuration()
+    except utils.SetupError as ex:
+        logging.error("Cannot load device configuration: {}.".format(ex))
+        sys.exit()
+
+    # Load all selected devices
+    manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
+
+    files_to_upload = []
 
     # Load all manufacturers
-    for manufacturer in cfg["manufacturers"]:
+    for manufacturer in manufacturers:
 
-        logging.info("Manufacturer: {}".format(manufacturer["name"]))
+        logging.info("Manufacturer: {}".format(manufacturer.name))
 
         logging.info("Reading data from all devices...")
         dfs = []
-        for device in manufacturer["devices"]:
+        for device in manufacturer.devices:
             try:
                 dataframe = get_data(
                     local_clean_folder,
-                    manufacturer["name"],
-                    device["name"],
+                    manufacturer.name,
+                    device.device_id,
                     recording_date,
                 )
             except utils.DataReadingError as ex:
                 logging.error(
-                    "No clean data found for device '{}': {}".format(device["name"], ex)
+                    "No clean data found for device '{}': {}".format(
+                        device.device_id, ex
+                    )
                 )
                 continue
 
@@ -310,17 +392,21 @@ def main():
             combined_df = pd.concat(dfs)
         except ValueError:
             logging.error(
-                "No clean data found for manufacturer '{}'.".format(
-                    manufacturer["name"]
-                )
+                "No clean data found for manufacturer '{}'.".format(manufacturer.name)
             )
             continue
 
         # Convert into wide table
         try:
             logging.info("Converting to wide format.")
-            all_devices = [dev["name"] for dev in manufacturer["devices"]]
-            wide_df = long_to_wide(combined_df, manufacturer["fields"], all_devices)
+            # Obtain the available devices and measurands for this manufacturer,
+            # and ask that the output has a column for each combination of these
+            devices_to_include = [dev.device_id for dev in manufacturer.devices]
+            measurands_to_include = [m["id"] for m in manufacturer.measurands]
+            wide_df = long_to_wide(
+                combined_df, measurands_to_include, devices_to_include
+            )
+
         except utils.DataConversionError as ex:
             logging.error("Error when converting wide to long table: {}".format(ex))
             continue
@@ -342,7 +428,7 @@ def main():
         # Save pre-processed data frame locally
         logging.info("Saving file to disk.")
         filename = utils.ANALYSIS_DATA_FN.substitute(
-            man=manufacturer["name"], day=recording_date
+            man=manufacturer.name, day=recording_date
         )
         file_path = os.path.join(local_analysis_folder, filename)
         try:
@@ -351,24 +437,13 @@ def main():
             logging.error("Could not save file to disk: {}.".format(ex))
             continue
 
-        # Upload to GoogleDrive
-        if upload_google_drive:
-            logging.info("Initiating upload to GoogleDrive.")
-            try:
-                service = utils.auth_google_api(credentials_fn)
-            except utils.GoogleAPIError:
-                logging.error("Cannot connect to Google API.")
-                logging.error(traceback.format_exc())
-                continue
+        if args.upload:
+            files_to_upload.append(file_path)
 
-            try:
-                utils.upload_file_google_drive(
-                    service, file_path, drive_analysis_id, "text/csv"
-                )
-                logging.info("Upload successful.")
-            except utils.DataUploadError:
-                logging.error("Error in upload")
-                logging.error(traceback.format_exc())
+    # Upload files to Google Drive
+    if args.upload and len(files_to_upload) > 0:
+        logging.info("Initiating upload to GoogleDrive.")
+        upload_files_google_drive(files_to_upload)
 
 
 if __name__ == "__main__":

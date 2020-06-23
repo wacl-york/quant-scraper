@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="quantscraper",
-    version="0.2.1",
+    version="0.3.0",
     description="Scrapes data for the QUANT project.",
     long_description=readme(),  # NB: Only used if upload to PyPi
     url="https://github.com/wacl-york/QUANTscraper",
@@ -21,12 +21,14 @@ setup(
         ],
     },
     install_requires=[
+        "boto3",
         "bs4",
         "google-api-python-client",
         "google-auth-httplib2",
         "google-auth-oauthlib",
         "requests",
         "pandas",
+        "python-dotenv",
         "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
     ],
     include_package_data=True,

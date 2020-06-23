@@ -12,6 +12,7 @@ import json
 import csv
 import socket
 from string import Template
+import configparser
 
 from google.oauth2 import service_account
 import googleapiclient.discovery
@@ -21,6 +22,8 @@ from googleapiclient.errors import HttpError
 RAW_DATA_FN = Template("${man}_${device}_${day}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
 ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
+
+DEVICES_FN = "devices.json"
 
 
 class LoginError(Exception):
@@ -147,30 +150,57 @@ def is_float(x):
     return parseable
 
 
-def auth_google_api(credentials_fn):
+def parse_JSON_environment_variable(name):
+    """
+    Parses JSON keyword-value environment variable into a Python dict.
+
+    Args:
+        - name (str). Name of the JSON formatted environment variable.
+
+    Returns:
+        A dict with each keyword-value loaded.
+    """
+    try:
+        raw_params = os.environ[name]
+    except KeyError:
+        raise SetupError("Environment variable {} not found.".format(name)) from None
+
+    try:
+        params = json.loads(raw_params)
+    except json.decoder.JSONDecodeError:
+        raise SetupError(
+            "Unable to parse environment variable {} as JSON.".format(name)
+        )
+
+    return params
+
+
+def auth_google_api():
     """
     Authorizes connection to GoogleDrive API.
+
+    Requires GOOGLE_CREDS environment variable to be set, containing the
+    contents of the JSON credential file, formatted as a string.
 
     Uses v3 of the GoogleDrive API, see examples at:
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        - credentials_fn (str): Path to JSON file that has Google API credentials
-            saved.
+        None. Loads credentials from environment variable.
 
     Returns:
         A googleapiclient.discovery.Resource object.
     """
     scopes = ["https://www.googleapis.com/auth/drive.file"]
+    try:
+        params = parse_JSON_environment_variable("GOOGLE_CREDS")
+    except SetupError as ex:
+        raise GoogleAPIError(ex)
 
     try:
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_fn, scopes=scopes
+        credentials = service_account.Credentials.from_service_account_info(
+            params, scopes=scopes
         )
-    except FileNotFoundError:
-        raise GoogleAPIError(
-            "Credential file '{}' not found".format(credentials_fn)
-        ) from None
     except ValueError:
         raise GoogleAPIError("Credential file is not formatted as expected") from None
 
@@ -320,3 +350,36 @@ def load_html_template(filename):
         raise DataReadingError("Unable to read file {}.".format(filename)) from None
 
     return Template(template_raw)
+
+
+def setup_config(cfg_fn):
+    """
+    Loads configuration parameters from a file into memory.
+
+    Args:
+        - cfg_fn (str): Filepath of the .ini file.
+
+    Returns:
+        A configparser.Namespace instance.
+    """
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_fn)
+
+    if len(cfg.sections()) == 0:
+        raise SetupError("No sections found in '{}'".format(cfg_fn))
+
+    return cfg
+
+
+def load_device_configuration():
+    """
+    """
+    try:
+        with open(DEVICES_FN, "r") as infile:
+            device_config = json.load(infile)
+    except FileNotFoundError:
+        raise SetupError("Cannot open file {}".format(DEVICES_FN)) from None
+    except json.decoder.JSONDecodeError:
+        raise SetupError("Cannot parse file {} into JSON".format(DEVICES_FN)) from None
+
+    return device_config

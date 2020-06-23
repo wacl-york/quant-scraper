@@ -6,9 +6,9 @@
     quality instrumentation device manufacturer.
 """
 
-from datetime import date
 from string import Template
 import csv
+import os
 import requests as re
 from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
@@ -26,27 +26,31 @@ class Aeroqual(Manufacturer):
 
     name = "Aeroqual"
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fields):
         """
         Sets up object with parameters needed to scrape data.
 
         Args:
-            - cfg (configparser.Namespace): Instance of ConfigParser.
+            - cfg (dict): Keyword-argument properties set in the Manufacturer's
+                'properties' attribute.
+            - fields (list): List of dicts detailing the measurands available
+                for this manufacturer and their properties.
 
         Returns:
             None.
         """
         self.session = None
-        self.auth_url = cfg.get(self.name, "auth_url")
-        self.select_device_url = cfg.get(self.name, "select_device_url")
-        self.data_url = cfg.get(self.name, "data_url")
-        self.dl_url = cfg.get(self.name, "dl_url")
-        self.lines_skip = cfg.getint(self.name, "lines_skip")
+        self.auth_url = cfg["auth_url"]
+        self.select_device_url = cfg["select_device_url"]
+        self.calibration_url = cfg["calibration_url"]
+        self.data_url = cfg["data_url"]
+        self.dl_url = cfg["dl_url"]
+        self.lines_skip = cfg["lines_skip"]
 
         # Authentication
         self.auth_params = {
-            "Username": cfg.get(self.name, "Username"),
-            "Password": cfg.get(self.name, "Password"),
+            "Username": os.environ["AEROQUAL_USER"],
+            "Password": os.environ["AEROQUAL_PW"],
             "RememberMe": "true",
         }
         self.auth_headers = {
@@ -70,29 +74,16 @@ class Aeroqual(Manufacturer):
             "connection": "keep-alive",
         }
 
-        # Load start and end scraping datetimes
-        start_datetime = cfg.get("Main", "start_time")
-        start_datetime = date.fromisoformat(start_datetime)
-        end_datetime = cfg.get("Main", "end_time")
-        end_datetime = date.fromisoformat(end_datetime)
-
-        # Can't specify times for scraping window, just dates.
-        # Will just convert datetime to date and doesn't matter too much since
-        # Aeroqual treats limits as inclusive, so will scrape too much data
-        # Needs to be in US format MM/DD/YYYY
-        start_date = start_datetime.strftime("%m/%d/%Y")
-        end_date = end_datetime.strftime("%m/%d/%Y")
-
         self.data_params = {
-            "Period": "{} to {}".format(start_date, end_date),
-            "AvgMinutes": cfg.get(self.name, "averaging_window"),
-            "IncludeJournal": cfg.get(self.name, "include_journal"),
+            "Period": Template("${start} to ${end}"),
+            "AvgMinutes": cfg["averaging_window"],
+            "IncludeJournal": cfg["include_journal"],
         }
 
         # Download data
         self.dl_headers = {"content-type": "text/csv"}
 
-        super().__init__(cfg)
+        super().__init__(cfg, fields)
 
     def connect(self):
         """
@@ -132,21 +123,22 @@ class Aeroqual(Manufacturer):
             self.session.close()
             raise LoginError("Login failed")
 
-    def scrape_device(self, device_id):
+    def select_device(self, device_id):
         """
-        Downloads the data for a given device from the website.
+        Selects the device we're about to query.
 
-        This process requires several HTTP requests to be made:
-            - A POST call to select the device
-            - A POST call to generate the data for a given time-frame
-            - A GET call to obtain the data.
+        Rather than specifiying the device ID when running any queries (such as
+        downloading configuration information or measurement data), the Aeroqual
+        website requires that the device is specified in a prior POST call.
+        This function runs that POST call for the specified device.
 
         Args:
-            device_id (str): The website device_id to scrape for.
+            - device_id (str): The ID used by the website to refer to the
+                device.
 
         Returns:
-            A string containing the raw data in CSV format, i.e. rows are
-            delimited by '\r\n' characters and columns by ','.
+            None. Modifies the server-side environment and our session instance
+            attribute to refer to this device as side-effects.
         """
         try:
             result = self.session.post(
@@ -162,9 +154,111 @@ class Aeroqual(Manufacturer):
                 "Connection error when selecting device.\n{}".format(ex)
             ) from None
 
+    def log_device_status(self, device_id):
+        """
+        Scrapes information about a device's operating condition.
+
+        Abstract method that must have a concrete implementation provided by
+        sub-classes.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+
+        Returns:
+            A dict of keyword-value parameters.
+        """
+        params = {}
+
+        # Select device
+        try:
+            self.select_device(device_id)
+        except DataDownloadError as ex:
+            raise ex
+
+        # Download calibration page
+        try:
+            result = self.session.get(self.calibration_url)
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot open calibration page.\n{}".format(ex)
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when opening calibration page.\n{}".format(ex)
+            ) from None
+
+        # Scrape device calibration page
+        soup = BeautifulSoup(result.text, features="html.parser")
+        calibration_table = soup.find(id="modulesTable")
+
+        if calibration_table is None:
+            self.session.close()
+            raise DataDownloadError(
+                "Could not find modulesTable id in {}".format(self.calibration_url)
+            )
+
+        # Find all input tags with required attributes, indicating a calibration
+        # param
+        required_attrs = ["data-parameter", "data-sensor", "value"]
+        calibration_tags = soup.findAll("input", {k: True for k in required_attrs})
+
+        # Form into neat keyword-value pair
+        for tag in calibration_tags:
+            key = "_".join(
+                (
+                    tag["data-sensor"].replace(" ", ""),
+                    tag["data-parameter"].replace(" ", ""),
+                )
+            )
+            val = tag["value"]
+            params[key] = val
+
+        # Order by sensor, rather than by slope then intercept
+        params = {k: params[k] for k in sorted(params)}
+
+        return params
+
+    def scrape_device(self, device_id, start, end):
+        """
+        Downloads the data for a given device from the website.
+
+        This process requires several HTTP requests to be made:
+            - A POST call to select the device
+            - A POST call to generate the data for a given time-frame
+            - A GET call to obtain the data.
+
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
+
+        Returns:
+            A string containing the raw data in CSV format, i.e. rows are
+            delimited by '\r\n' characters and columns by ','.
+        """
+        # Select device
+        try:
+            self.select_device(device_id)
+        except DataDownloadError as ex:
+            raise ex
+
+        # Can't specify times for scraping window, just dates.
+        # Will just convert datetime to date and doesn't matter too much since
+        # Aeroqual treats limits as inclusive, so will scrape too much data
+        # Needs to be in US format MM/DD/YYYY
+        start_fmt = start.strftime("%m/%d/%Y")
+        end_fmt = end.strftime("%m/%d/%Y")
+        this_params = self.data_params.copy()
+        this_params["Period"] = this_params["Period"].substitute(
+            start=start_fmt, end=end_fmt
+        )
+
         try:
             result = self.session.post(
-                self.data_url, data=self.data_params, headers=self.data_headers
+                self.data_url, data=this_params, headers=self.data_headers
             )
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:

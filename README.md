@@ -5,9 +5,112 @@
 
 Scrapes data from the websites of air quality instrumentation system manufacturers for the QUANT project.
 
-# Installation
+# Running QUANTscraper on AWS
 
-## Python 3.7
+## Setup
+
+A CloudFormation template of all the required resources is provided in the file `aws_cloudformation.template`. 
+Firstly, create a Stack from this template in the `CloudFormation` page using the default settings. 
+This will create all the necessary resources tied to the AWS account from which it was run, although a few additional bits of configuration are required before the program is ready to be run.
+
+### Populate Secrets
+
+Open `Secrets Manager` in AWS and you will notice there are 3 secrets with placeholder values.
+These should be self-explanatory and are all available in LastPass.
+
+Take care when copying values over; it is best to use the `plaintext` editor rather than the GUI `Secret key/value` GUI.
+There are 2 reasons for this; firstly you can copy a whole JSON secret in one motion with the `plaintext` editor rather than having to copy each key/value pair at a time, and secondly the GUI escapes special characters such as `\n`, which is particularly frustrating when copying over the Google Service Account credentials JSON.
+
+### Create IAM credentials
+
+The Stack includes 2 IAM users:
+
+  - `QUANT_IAM_ECR`: Can upload Docker images to ECR
+  - `QUANT_IAM_RunAdHoc`: Can run one-off tasks from a local machine using `boto3`
+
+Before these IAM users can be used, access tokens need to be generated and saved to your local machine.
+
+Go into the `Security credentials` tab on each user's page and click `Create access key`. 
+Download the resulting `access key id` and `secret access key` and save them into `~/.aws/credentials` under the profiles `QUANTECRPush` and `QUANTRunAdHocTask` respectively.
+
+### Push Docker image to repository
+
+The `Makefile` includes the functionality to push images to the ECR repository.
+Environment variables need to be configured before the first push.
+
+Create a file called `deploy.env` in your working directory with the following values:
+
+```
+APP_NAME=<reponame>
+DOCKER_REPO=<userid>.dkr.ecr.<awsregion>.amazonaws.com
+AWS_CLI_REGION=<awsregion>
+AWS_ECR_PROFILE=QUANTECRPush
+```
+
+`<reponame>` is the repository name, found in the ECR table as the string in the `Repository Name` column.
+
+`<userid>` is the numeric user id found in the same row of the table as the first part of the `URI` column.
+
+`<awsregion>` is the region identifier for the region the account is based in.
+
+`QUANTECRPush` is the IAM profile setup in the previous step.
+
+**NB: You don't have to use a deploy.env file, as long as these 4 environment variables are available to the Makefile**
+
+Once this has been setup, run `make release` to build the latest image, tag it, and push it to the repository.
+
+### DKIM
+
+This section will be completed once DKIM has been setup to allow emails to be sent from the `york.ac.uk` domain. 
+
+### Configuration to run ad-hoc scraping tasks
+
+If you wish to run one-off scraping jobs from the command line of a local machine then more environment variables will need creating.
+
+Create a file called `run.env` with the following values:
+
+```
+CLUSTER_ID=<clusterid>
+AWS_TASK_PROFILE=QUANTRunAdHocTask
+QUANT_TASK_ARN=<taskArn>
+SUBNET_1=<subnet1id>
+SUBNET_2=<subnet2id>
+SECURITY_GROUP=<securitygroupid>
+AWS_CLI_REGION=<awsregion>
+```
+
+`QUANTRunAdHocTask` is the name of the profile in `~/.aws/credentials` that should have been populated previously with the access keys.
+
+`<clusterid>` is the name of the Cluster, which by default is `QUANTCluster` (check this on the Clusters page, accessed from the ECS page).
+
+`<taskArn>` takes the form `arn:aws:ecs:<awsregion>:<userid>:task-definition/QUANTTasks`, where `QUANTTasks` is the default task family name and `<userid>` and `<awsregion>` are the same as when setting up the ECR env vars.
+
+`<subnet1id>` and `<subnet2id>` are the `Subnet ID` column values from the table of available subnets where the name is `QUANT Subnet 1/2` (navigate to the `VPC` page then click `Subnets` in the left-hand navigation panel).
+
+Also from the `VPC` page, click `Security Groups` in the navigation panel and use the `Security group ID` column value where the name is `QUANT SecurityGroup` for `<securitygroupid>`
+
+## Scheduled scrapes
+
+By default, a full scrape of all devices from the previous day is run at 13:00 UTC.
+This can be configured by clicking the `Scheduled Tasks` tab of the Cluster page (in itself accessed from the ECS page).
+To change the scraping parameters, add the appropriate flags to `Command override`.
+The available flags can be viewed by running `python entry.py --help`.
+
+## One-off scraping runs
+
+To run ad-hoc scrapes, the `run_scrape.py` provides a wrapper around running the container on Fargate, passing in command-line arguments to it.
+Setup the package dependencies as described in the following section and ensure the values in `run.env` are correct and that you have downloaded `run_scrape.py` (it isn't yet bundled into the package).
+
+Then simply run `python run_scrape.py --help` to see the available options.
+
+# Running QUANTscraper locally
+
+The scraping can also be run locally rather than from AWS.
+This requires installing the `quantscraper` Python package in a local environment and interfacing with it using command line arguments and configuration files.
+
+## Installation
+
+### Python 3.7
 
 A recent installation of Python (>= 3.7) needs to be available.
 This can be installed manually, or through the `conda` environment manager.
@@ -23,44 +126,55 @@ And can be used through
 
 `conda activate <ENVNAME>`
 
-# Installing QUANTscraper
+### `quantscraper` installation
 
-Once a suitable version of Python has been made available, the `quantscraper` package can be installed from GitHub by using the following command.
+Once a suitable version of Python has been made available, the latest stable version of `quantscraper` can be installed from GitHub by using the following command.
 
 `pip install git+https://github.com/wacl-york/QUANTscraper.git@master`
 
-# Running the scraper
+## Running the scraper 
 
 The installation processes places an executable called `quant_scrape` in the user's `PATH` and is run with the following command.
 
-`quant_scrape example.ini`
+`quant_scrape`
 
-This takes one obligatory argument: the location of an INI file containing configuration parameters for the scraping, including:
+By default, the scraper will run for all available instruments over the 24 hour period from midnight of the previous day to 1 second before midnight of the current day.
+A summary of the scraping is output to `stdout`, while a log will be displayed on `stderr`.
+Command line arguments allow for the specification of the instruments to scrape and the timeframe, in addition to uploading the resultant data to Google Drive and saving an HTML summary table.
 
-  - website credentials
-  - timeframe to collect data from
-  - parameters for each website
-  - where to save output data to
+Run `quant_scrape --help` to see the available options.
 
-The example configuration file (`example.ini`) shows the required format.
+### Configuration
 
-A log will be displayed on `stdout`, which can be redirected to a file for long-term logging.
+The `quant_scrape` command requires a configuration file called `config.ini` to be present in the directory where the executable is called from.
+This file provides parameters for the scraping; `example.ini` shows the required format.
 
-# Running the pre-processing
+### Manufacturer and device specification
+
+In addition, it requires the presence of a file called `devices.json` in the working directory.
+This file maps the relationship between the manufacturers and the devices in the study.
+Each entry in the `manufacturers` list reflects an air quality instrumentation company included in the study, with the `properties` object providing keyword-value properties that must be completed before running the program.
+The `fields` list defines the measurands recorded by devices from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this measurand by the company in the downloaded data (`webid`), and a `scale` parameter that is multiplied by the raw value.
+The `devices` list holds a record of the physical instruments installed from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this device by the company on their system (`webid`), and a description of where the device is installed (`location`).
+
+The example file `example_devices.json` shows the required layout.
+
+## Running the pre-processing
 
 In addition to the CLI scraping program there is a pre-processing script, which takes the cleaned and validated data as stored by the `quant_scrape` command, and organises the data into a format suitable for analysis.
 
 In particular, it converts the data from being saved in long format with 1 file per device, into wide format with 1 file per manufacturer.
 It also resamples the time-series so that the air quality data from all manufacturers is saved at the same sampling rate.
 
-The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation and accepts a JSON configuration file. 
-The JSON file specifies which manufacturers and devices should be scraped, along with other settings similar to the `.ini` file used by the scraper.
-An example file is provided in this repo for reference.
+The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation. 
 
-`quant_preprocess example_preprocessing.json`
+As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
+It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
+An example is provided by `example_preprocessing.ini`.
 
-By default the program pre-processes the previous day's cleaned data, although this behaviour can be configured by specifying the date at the top level of the JSON file, i.e. `'date': '2020-03-17'`.
-If provided, it must be in YYYY-mm-dd format.
+By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
+Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.
+Run `quant_preprocess --help` to see the available options.
 
 # Contributing to development
 
@@ -68,7 +182,7 @@ To contribute to the development of `quantscraper`, firstly clone this repositor
 
 `git clone https://github.com/wacl-york/QUANTscraper.git`
 
-## conda 
+## conda setup
 
 The development environment can be replicated by creating a new `conda` environment from the supplied configuration file.
 
@@ -81,15 +195,20 @@ Use this environment by entering
 
 `conda activate QUANTscraper`
 
-## Manual
+## Manual setup
 
 Optionally, the dependencies can be installed manually.
 The scraper runs on Python 3.7 or higher, and requires a number of packages to be installed from `pip`:
 
+  - `boto3`
+  - `bs4`
+  - `google-api-python-client`
+  - `google-auth-httplib2`
+  - `google-auth-oauthlib`
   - `pandas`
   - `numpy`
+  - `python-dotenv`
   - `requests`
-  - `bs4`
 
 In addition to these packages, there is a [Python wrapper](https://github.com/quant-aq/py-quantaq) for accessing QuantAQ's API, which can be installed from GitHub using the following command:
 
