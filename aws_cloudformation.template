@@ -49,7 +49,7 @@
                 "LogConfiguration": {
                     "LogDriver": "awslogs",
                     "Options": {
-                        "awslogs-group": "/ecs/quantscraper-demo",
+                        "awslogs-group": { "Ref": "QUANTLogGroup" },
                         "awslogs-region": { "Ref": "AWS::Region" },
                         "awslogs-stream-prefix": "quantscrape"
                     }
@@ -350,6 +350,13 @@
               "Name" : "QUANTEmailCredentials",
               "SecretString" : '{"EMAIL_SENDER_ADDRESS": "QUANT scraper <foo@domain.com>","IDENTITY_ARN":"arn:aws:ses:REGION:FOO:FOO"}'
             }
+    },
+    "QUANTLogGroup": {
+      "Type" : "AWS::Logs::LogGroup",
+      "Properties" : {
+          "LogGroupName" : "/ecs/QUANT-scraping-logs",
+          "RetentionInDays" : 1827
+        }
     },
     "QUANTVPC": {
       "Type": "AWS::EC2::VPC",
