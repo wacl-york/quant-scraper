@@ -29,7 +29,7 @@ setup(
         "requests",
         "pandas",
         "python-dotenv",
-        "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
+        "quantaq @ git+https://github.com/quant-aq/py-quantaq@v0.3.0#egg=quantaq",
     ],
     include_package_data=True,
     license="MIT",
