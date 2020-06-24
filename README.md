@@ -59,9 +59,19 @@ AWS_ECR_PROFILE=QUANTECRPush
 
 Once this has been setup, run `make release` to build the latest image, tag it, and push it to the repository.
 
-### DKIM
+### Authenticating emails
 
-This section will be completed once DKIM has been setup to allow emails to be sent from the `york.ac.uk` domain. 
+The summary emails will be sent from the address `quant_scraper.york.ac.uk`, which is authorised to send emails through a University *Identity*.
+This is specified by an ARN in the `EMAIL_CREDS` JSON secret, which is stored on LastPass and should have been used to populate the initial empty Secret in the first step of this setup process.
+Nothing else needs to be done to authorise emails from the **sending** end.
+
+Any addresses that are going to **receive** emails must be verified through the SES webpage.
+This involves sending a verification email to the desired account and clicking the included link to confirm verification.
+
+**The project Google Group has already been verified on the current AWS project account so this step shouldn't be needed again, although it is worth bearing in mind for future projects or if the AWS account changes.**
+
+NB: Google Groups by default cannot receive emails sent externally of the `york.ac.uk` domain, and must have the `Post` permission extended to include *Anyone on the web*.
+This allows the Group address to receive the verification request, although the `Post` permission can (and should in many cases) be reverted back to *All organisation members* afterwards and it will still be able to receive the automated summary emails.
 
 ### Configuration to run ad-hoc scraping tasks
 
