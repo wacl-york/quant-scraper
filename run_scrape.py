@@ -72,6 +72,9 @@ def main():
         if args.upload_raw:
             cmd.append("--upload-raw")
 
+        if args.upload_availability:
+            cmd.append("--upload-availability")
+
         if args.upload_preprocess:
             cmd.append("--upload-preprocess")
 
@@ -140,6 +143,12 @@ def parse_args():
         "--upload-clean",
         action="store_true",
         help="Uploads clean data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--upload-availability",
+        action="store_true",
+        help="Uploads availability data to Google Drive.",
     )
 
     parser.add_argument(

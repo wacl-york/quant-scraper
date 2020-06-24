@@ -240,6 +240,8 @@ def upload_file_google_drive(service, filepath, folder_id, mime_type):
         raise DataUploadError("Connection timed out") from None
     except HttpError as ex:
         raise DataUploadError("HTTP error: {}.".format(ex)) from None
+    except AttributeError as ex:
+        raise DataUploadError("Service account not authenticated") from None
 
 
 def save_json_file(data, filename):
