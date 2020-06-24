@@ -5,10 +5,13 @@
     Sends email containing scraping summary.
 """
 
+import sys
+import traceback
 import argparse
 import os
 import boto3
 from botocore.exceptions import ClientError
+from quantscraper import utils
 from dotenv import load_dotenv
 
 
@@ -19,6 +22,17 @@ def main():
     # Load environment parameters containing AWS runtime details
     env_fn = "email.env"
     load_dotenv(dotenv_path=env_fn)
+    # Parse JSON environment variable into separate env vars
+    try:
+        vars = utils.parse_JSON_environment_variable("EMAIL_CREDS")
+    except utils.SetupError:
+        # TODO Turn all prints into logging statements
+        print("Error when initiating environment variables, terminating execution.")
+        print(traceback.format_exc())
+        sys.exit()
+
+    for k, v in vars.items():
+        os.environ[k] = v
 
     # Read HTML file
     try:
@@ -37,6 +51,14 @@ def main():
     except KeyError:
         print(
             "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
+        )
+        return
+
+    try:
+        identity_arn = os.environ["IDENTITY_ARN"]
+    except KeyError:
+        print(
+            "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
         )
         return
 
@@ -61,7 +83,9 @@ def main():
                 "Subject": {"Charset": charset, "Data": subject,},
             },
             Source=sender,
+            SourceArn=identity_arn,
             ReturnPath=sender,
+            ReturnPathArn=identity_arn,
         )
     except ClientError as e:
         print(e.response["Error"]["Message"])
