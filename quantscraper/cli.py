@@ -923,7 +923,6 @@ def main():
                 manufacturer_template,
                 styles,
                 start_time,
-                end_time,
             )
 
         try:
