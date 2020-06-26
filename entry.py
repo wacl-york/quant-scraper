@@ -29,7 +29,7 @@ def main():
     # Base calls
     scrape_call = ["quant_scrape", "--save-raw", "--save-clean", "--html", email_fn]
     preprocess_call = ["quant_preprocess"]
-    email_call = ["python", "send_email.py", "--file", email_fn]
+    email_call = ["quant_email", "--file", email_fn]
 
     # Always pass in date
     scrape_call.extend(["--start", parse_date, "--end", parse_date])

@@ -18,6 +18,7 @@ setup(
         "console_scripts": [
             "quant_scrape = quantscraper.cli:main",
             "quant_preprocess = quantscraper.daily_preprocessing:main",
+            "quant_email = quantscraper.send_email:main",
         ],
     },
     install_requires=[

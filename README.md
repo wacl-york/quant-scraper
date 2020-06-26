@@ -157,7 +157,7 @@ Run `quant_scrape --help` to see the available options.
 ### Configuration
 
 The `quant_scrape` command requires a configuration file called `config.ini` to be present in the directory where the executable is called from.
-This file provides parameters for the scraping; `example.ini` shows the required format.
+This file provides parameters for the scraping; `resources/example.ini` shows the required format.
 
 ### Manufacturer and device specification
 
@@ -167,7 +167,7 @@ Each entry in the `manufacturers` list reflects an air quality instrumentation c
 The `fields` list defines the measurands recorded by devices from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this measurand by the company in the downloaded data (`webid`), and a `scale` parameter that is multiplied by the raw value.
 The `devices` list holds a record of the physical instruments installed from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this device by the company on their system (`webid`), and a description of where the device is installed (`location`).
 
-The example file `example_devices.json` shows the required layout.
+The example file `resources/example_devices.json` shows the required layout.
 
 ## Running the pre-processing
 
@@ -180,7 +180,7 @@ The program is run using the `quant_preprocess` command that should be added to 
 
 As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
 It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
-An example is provided by `example_preprocessing.ini`.
+An example is provided by `resources/example_preprocessing.ini`.
 
 By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
 Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.
