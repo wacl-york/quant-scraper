@@ -63,7 +63,7 @@ def main():
     # Only send email if have provided recipients
     if args.recipients is not None:
         email_call.extend(["--recipients", *args.recipients])
-        print("Calling send_email with call: {}".format(email_call))
+        print("Calling quant_email with call: {}".format(email_call))
         subprocess.run(email_call)
 
 
