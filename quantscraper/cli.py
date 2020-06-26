@@ -656,12 +656,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
 
 
 def generate_html_summary(
-    tables,
-    email_template,
-    manufacturer_template,
-    manufacturer_styles,
-    start_date,
-    end_date,
+    tables, email_template, manufacturer_template, manufacturer_styles, start_date
 ):
     """
     Generates an HTML document summarising the device availability from the
@@ -688,7 +683,6 @@ def generate_html_summary(
         - manufacturer styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
         - start_date (date): The scraping window starting date.
-        - end_date (date): The scraping window ending date.
 
     Returns:
         A string containing a fully completed HTML document.
@@ -705,9 +699,7 @@ def generate_html_summary(
     # Fill in email template
     try:
         email_html = email_template.substitute(
-            summary=manufacturer_html,
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
+            summary=manufacturer_html, start=start_date.strftime("%Y-%m-%d")
         )
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
