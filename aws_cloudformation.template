@@ -2,6 +2,12 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "QUANT Scraping Stack",
   "Parameters": {
+    "EmailRecipient": {
+        "Type": "String",
+        "AllowedPattern" : ".+",
+        "ConstraintDescription": "EmailRecipient must be completed.",
+        "Description": "Email address to send the automated daily emails to."
+    },
     "TaskFamily": {
         "Type": "String",
         "Default": "QUANTTasks",
@@ -116,6 +122,21 @@
                 "Fn::GetAtt" : [ "QUANTRoleScheduledScrape", "Arn" ] 
             },
             "Id": "quant_scheduled_daily_scrape",
+            "Input": {"Fn::Sub": '{
+                "containerOverrides": [
+                    {
+                        "name": "quant",
+                        "command": [
+                            "--upload-raw",
+                            "--upload-clean",
+                            "--upload-preprocess",
+                            "--upload-availability",
+                            "--recipients",
+                            "${EmailRecipient}"
+                        ]
+                    }
+                ]
+            }'},
             "EcsParameters": {
               "TaskDefinitionArn": {
                   "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"

@@ -9,9 +9,12 @@ Scrapes data from the websites of air quality instrumentation system manufacture
 
 ## Setup
 
+### Creating CloudFormation Stack
+
 A CloudFormation template of all the required resources is provided in the file `aws_cloudformation.template`. 
-Firstly, create a Stack from this template in the `CloudFormation` page using the default settings. 
-This will create all the necessary resources tied to the AWS account from which it was run, although a few additional bits of configuration are required before the program is ready to be run.
+Firstly, create a Stack from this template in the `CloudFormation`, the only value that needs to be filled in is the email address that automated summaries will be sent to.
+
+The stack contains all the necessary AWS resources to run the data scraping, although a few additional bits of configuration are required before the program is ready to be run.
 
 ### Populate Secrets
 
@@ -68,10 +71,10 @@ Nothing else needs to be done to authorise emails from the **sending** end.
 Any addresses that are going to **receive** emails must be verified through the SES webpage.
 This involves sending a verification email to the desired account and clicking the included link to confirm verification.
 
-**The project Google Group has already been verified on the current AWS project account so this step shouldn't be needed again, although it is worth bearing in mind for future projects or if the AWS account changes.**
+**The project Google Group has already been verified on the current AWS project account so this step shouldn't be necessary again, although it is worth bearing in mind for future projects or if the AWS account changes.**
 
 NB: Google Groups by default cannot receive emails sent externally of the `york.ac.uk` domain, and must have the `Post` permission extended to include *Anyone on the web*.
-This allows the Group address to receive the verification request, although the `Post` permission can (and should in many cases) be reverted back to *All organisation members* afterwards and it will still be able to receive the automated summary emails.
+This allows the Group address to receive the verification request, although the `Post` permission can (and should in many cases) be reverted back to *All organisation members* afterwards and it will still be able to receive the summary emails.
 
 ### Configuration to run ad-hoc scraping tasks
 
@@ -101,10 +104,14 @@ Also from the `VPC` page, click `Security Groups` in the navigation panel and us
 
 ## Scheduled scrapes
 
-By default, a full scrape of all devices from the previous day is run at 13:00 UTC.
+By default, a full scrape of all devices from the previous day is run at 13:00 UTC, with the resulting data uploaded to Google Drive.
 This can be configured by clicking the `Scheduled Tasks` tab of the Cluster page (in itself accessed from the ECS page).
 To change the scraping parameters, add the appropriate flags to `Command override`.
 The available flags can be viewed by running `python entry.py --help`.
+
+For example, Seba has requested that not all devices are included in the pre-processed `Analysis` CSV files, which is specified through the `--preprocess-devices` flag.
+
+**NB: sometimes just changing the CRON specification can remove the command override parameters, make sure to back them up before modifying any part of the scheduled task.**
 
 ## One-off scraping runs
 
