@@ -9,26 +9,37 @@ import sys
 import traceback
 import argparse
 import os
+import logging
 import boto3
 from botocore.exceptions import ClientError
+
 from quantscraper import utils
-from dotenv import load_dotenv
+import quantscraper.cli as cli
 
 
 def main():
-
     args = parse_args()
 
-    # Load environment parameters containing AWS runtime details
-    env_fn = "email.env"
-    load_dotenv(dotenv_path=env_fn)
+    # Just using same setup functions as cli.py here.
+    # Don't think would be appropriate to refactor these functions into the
+    # utils.py module, as these are script functions, rather than library
+    # functions associated with the collection of air quality data
+    try:
+        cli.setup_loggers()
+    except utils.SetupError:
+        logging.error("Error in setting up loggers.")
+        logging.error(traceback.format_exc())
+        logging.error("Terminating program")
+        sys.exit()
+
     # Parse JSON environment variable into separate env vars
     try:
         vars = utils.parse_JSON_environment_variable("EMAIL_CREDS")
     except utils.SetupError:
-        # TODO Turn all prints into logging statements
-        print("Error when initiating environment variables, terminating execution.")
-        print(traceback.format_exc())
+        logging.error(
+            "Error when initiating environment variables, terminating execution."
+        )
+        logging.error(traceback.format_exc())
         sys.exit()
 
     for k, v in vars.items():
@@ -39,7 +50,7 @@ def main():
         with open(args.file, "r") as infile:
             body_html = infile.read()
     except FileNotFoundError:
-        print(
+        logging.error(
             "Error. Cannot open HTML file '{}'. Terminating executation.".format(
                 args.file
             )
@@ -49,7 +60,7 @@ def main():
     try:
         sender = os.environ["EMAIL_SENDER_ADDRESS"]
     except KeyError:
-        print(
+        logging.error(
             "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
         )
         return
@@ -57,7 +68,7 @@ def main():
     try:
         identity_arn = os.environ["IDENTITY_ARN"]
     except KeyError:
-        print(
+        logging.error(
             "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
         )
         return
@@ -72,7 +83,7 @@ def main():
 
     client = boto3.client("ses")
     try:
-        print("Attemping to send email...")
+        logging.info("Attemping to send email...")
         response = client.send_email(
             Destination={"ToAddresses": args.recipients,},
             Message={
@@ -88,10 +99,10 @@ def main():
             ReturnPathArn=identity_arn,
         )
     except ClientError as e:
-        print(e.response["Error"]["Message"])
+        logging.error(e.response["Error"]["Message"])
     else:
-        print("Email sent! Message ID:"),
-        print(response["MessageId"])
+        logging.info("Email sent with message ID:"),
+        logging.info(response["MessageId"])
 
 
 def parse_args():
