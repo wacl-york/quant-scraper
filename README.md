@@ -12,7 +12,24 @@ Scrapes data from the websites of air quality instrumentation system manufacture
 ### Creating CloudFormation Stack
 
 A CloudFormation template of all the required resources is provided in the file `aws_cloudformation.template`. 
-Firstly, create a Stack from this template in the `CloudFormation`, the only value that needs to be filled in is the email address that automated summaries will be sent to.
+
+Firstly, create a Stack from this template in the `CloudFormation` website (or via the CLI), passing in the following values:
+
+  - Stack name: `QUANTScrapingStack`
+  - Parameters:
+    - `EmailRecipient`: An email address that the automated summarise will be sent to, preferably a mailing list.
+    - `TaskFamily`: Leave as default.
+  - Tags:
+    - `group`: `RESEARCH`
+    - `project`: `quant`
+    - `status`: `prod`
+    - `pushed_by`: `manual`
+    - `defined_in`: `cloudformation`
+    - `repo_name`: `wacl-york/quantscraper`
+    - `user`: `sl561`
+    - `team`: `rhpc`
+
+Don't forget to click the box in `Capabilities` to acknowledge that CloudFormation is going to create IAM resources.
 
 The stack contains all the necessary AWS resources to run the data scraping, although a few additional bits of configuration are required before the program is ready to be run.
 

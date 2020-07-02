@@ -21,12 +21,12 @@
         "RepositoryName": "wacl/quantscraper",
         "Tags": [
           {
-            "Key": "Description",
+            "Key": "description",
             "Value": "Repository for Docker images."
           },
           {
-            "Key": "Name",
-            "Value": "QUANT Repository"
+            "Key": "name",
+            "Value": "Docker image repository"
           }
         ]
       }
@@ -37,12 +37,12 @@
         "ClusterName": "QUANTCluster",
         "Tags": [
           {
-            "Key": "Description",
+            "Key": "description",
             "Value": "Cluster to run QUANT scraping tasks in."
           },
           {
-            "Key": "Name",
-            "Value": "QUANT Cluster"
+            "Key": "name",
+            "Value": "ECS Cluster"
           } ]
       }
     },
@@ -96,12 +96,8 @@
         "Cpu": "256",
         "Tags": [
           {
-            "Key": "Description",
-            "Value": "Cluster to run QUANT scraping tasks in."
-          },
-          {
-            "Key": "Name",
-            "Value": "QUANT Cluster"
+            "Key": "name",
+            "Value": "Scraping task definition"
           }
         ]
       }
@@ -187,6 +183,12 @@
     "QUANTIAMECR": {
       "Type" : "AWS::IAM::User",
       "Properties" : {
+          "Tags": [
+            {
+              "Key": "name",
+              "Value": "ECR push IAM user"
+            }
+          ],
           "UserName" : "QUANT_IAM_ECR",
           "Policies" : [ 
             {
@@ -230,6 +232,12 @@
                 "Ref": "QUANTPolicyPassRole"
               }
           ],
+          "Tags": [
+            {
+              "Key": "name",
+              "Value": "Adhoc task running IAM user"
+            }
+          ],
           "Policies" : [ 
             {
                 "PolicyName": "RunQUANTTaskAdHoc",
@@ -255,6 +263,12 @@
       "Type" : "AWS::IAM::Role",
       "Properties" : {
           "RoleName" : "QUANT_scraping",
+          "Tags": [
+            {
+              "Key": "name",
+              "Value": "Scraping role"
+            }
+          ],
           "AssumeRolePolicyDocument" : {
             "Version": "2012-10-17",
              "Statement": [
@@ -304,6 +318,12 @@
       "Type" : "AWS::IAM::Role",
       "Properties" : {
           "RoleName" : "QUANT_scheduled_task",
+          "Tags": [
+            {
+              "Key": "name",
+              "Value": "Scheduled event role"
+            }
+          ],
           "AssumeRolePolicyDocument" : {
             "Version": "2012-10-17",
              "Statement": [
@@ -351,6 +371,12 @@
     "QUANTSecretQUANTCredentials": {
           "Type" : "AWS::SecretsManager::Secret",
           "Properties" : {
+              "Tags": [
+                {
+                  "Key": "name",
+                  "Value": "Webportals credentials secret"
+                }
+              ],
               "Description" : "Credentials for web portal",
               "Name" : "QUANTCredentials",
               "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_USER": "foo","AQMESH_PW": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo","GDRIVE_RAW_ID": "foo","GDRIVE_CLEAN_ID": "foo","GDRIVE_ANALYSIS_ID": "foo", "GDRIVE_AVAILABILITY_ID": "foo"}'
@@ -359,6 +385,12 @@
     "QUANTSecretGoogleCredentials": {
           "Type" : "AWS::SecretsManager::Secret",
           "Properties" : {
+              "Tags": [
+                {
+                  "Key": "name",
+                  "Value": "Google service account secret"
+                }
+              ],
               "Description" : "Credentials for Google Service Account that writes to Google Drive",
               "Name" : "GoogleCredentials",
               "SecretString" : '{"type": "foo","project_id": "foo","private_key_id": "foo","private_key": "foo","client_email": "foo","client_id": "foo","auth_uri": "foo","token_uri": "foo","auth_provider_x509_cert_url": "foo","client_x509_cert_url": "foo"}'
@@ -367,6 +399,12 @@
     "QUANTSecretEmailAccount": {
           "Type" : "AWS::SecretsManager::Secret",
           "Properties" : {
+              "Tags": [
+                {
+                  "Key": "name",
+                  "Value": "Email credentials secret"
+                }
+              ],
               "Description" : "Details of the account to send the automated email from",
               "Name" : "QUANTEmailCredentials",
               "SecretString" : '{"EMAIL_SENDER_ADDRESS": "QUANT scraper <foo@domain.com>","IDENTITY_ARN":"arn:aws:ses:REGION:FOO:FOO"}'
@@ -388,13 +426,9 @@
         "EnableDnsHostnames": "true",
         "Tags": [
           {
-            "Key": "Name",
-            "Value": "QUANT VPC"
+            "Key": "name",
+            "Value": "VPC"
           },
-          {
-            "Key": "Description",
-            "Value": "VPC used by QUANT scraping tasks"
-          }
         ]
       }
     },
@@ -408,12 +442,8 @@
         },
         "Tags": [
           {
-            "Key": "Description",
-            "Value": "Used in QUANT scraping tasks"
-          },
-          {
-            "Key": "Name",
-            "Value": "QUANT Subnet 1"
+            "Key": "name",
+            "Value": "Subnet 1"
           }
         ]
       }
@@ -428,12 +458,8 @@
         },
         "Tags": [
           {
-            "Key": "Description",
-            "Value": "Used in QUANT scraping tasks"
-          },
-          {
-            "Key": "Name",
-            "Value": "QUANT Subnet 2"
+            "Key": "name",
+            "Value": "Subnet 2"
           }
         ]
       }
@@ -443,12 +469,8 @@
       "Properties": {
         "Tags": [
           {
-            "Key": "Description",
-            "Value": "Created for QUANT"
-          },
-          {
-            "Key": "Name",
-            "Value": "QUANT Internet Gateway"
+            "Key": "name",
+            "Value": "Internet gateway"
           }
         ]
       }
@@ -456,15 +478,27 @@
     "QUANTDHCPopt": {
       "Type": "AWS::EC2::DHCPOptions",
       "Properties": {
+        "Tags": [
+          {
+            "Key": "name",
+            "Value": "DHCP options"
+          }
+        ],
         "DomainName": { "Fn::Sub": "${AWS::Region}.compute.internal" },
         "DomainNameServers": [
           "AmazonProvidedDNS"
         ]
       }
     },
-    "ACL": {
+    "QUANTACL": {
       "Type": "AWS::EC2::NetworkAcl",
       "Properties": {
+        "Tags": [
+          {
+            "Key": "name",
+            "Value": "ACL"
+          }
+        ],
         "VpcId": {
           "Ref": "QUANTVPC"
         }
@@ -478,12 +512,8 @@
         },
         "Tags": [
           {
-            "Key": "Description",
-            "Value": "Created for QUANT"
-          },
-          {
-            "Key": "Name",
-            "Value": "QUANT RouteTable"
+            "Key": "name",
+            "Value": "Route table"
           }
         ]
       }
@@ -497,12 +527,8 @@
         },
         "Tags": [
           {
-            "Key": "Name",
-            "Value": "QUANT SecurityGroup"
-          },
-          {
-            "Key": "Description",
-            "Value": "Created for QUANT"
+            "Key": "name",
+            "Value": "Security group"
           }
         ]
       }
@@ -516,7 +542,7 @@
         "RuleAction": "allow",
         "RuleNumber": "100",
         "NetworkAclId": {
-          "Ref": "ACL"
+          "Ref": "QUANTACL"
         }
       }
     },
@@ -528,7 +554,7 @@
         "RuleAction": "allow",
         "RuleNumber": "100",
         "NetworkAclId": {
-          "Ref": "ACL"
+          "Ref": "QUANTACL"
         }
       }
     },
@@ -536,7 +562,7 @@
       "Type": "AWS::EC2::SubnetNetworkAclAssociation",
       "Properties": {
         "NetworkAclId": {
-          "Ref": "ACL"
+          "Ref": "QUANTACL"
         },
         "SubnetId": {
           "Ref": "QUANTSubnet1"
@@ -547,7 +573,7 @@
       "Type": "AWS::EC2::SubnetNetworkAclAssociation",
       "Properties": {
         "NetworkAclId": {
-          "Ref": "ACL"
+          "Ref": "QUANTACL"
         },
         "SubnetId": {
           "Ref": "QUANTSubnet2"
@@ -614,6 +640,12 @@
     "ingress1": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
+        "Tags": [
+          {
+            "Key": "name",
+            "Value": "Security group ingress 1"
+          }
+        ],
         "GroupId": {
           "Ref": "QUANTSecurityGroup"
         },
@@ -626,6 +658,12 @@
     "ingress2": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
+        "Tags": [
+          {
+            "Key": "name",
+            "Value": "Security group ingress 2"
+          }
+        ],
         "GroupId": {
           "Ref": "QUANTSecurityGroup"
         },
