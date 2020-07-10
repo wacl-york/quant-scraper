@@ -18,7 +18,8 @@
                 {
                     "id": "CO2",
                     "webid": "CO2 (ppb)",
-                    "scale": 1
+                    "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
@@ -48,7 +49,8 @@
                 {
                     "id": "CO2",
                     "webid": "CO2-Scaled",
-                    "scale": 1
+                    "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
@@ -76,7 +78,8 @@
                 {
                     "id": "CO",
                     "webid": "co",
-                    "scale": 1
+                    "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
@@ -98,7 +101,8 @@
                 {
                     "id": "CO",
                     "webid": "co",
-                    "scale": 1
+                    "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
