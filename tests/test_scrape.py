@@ -15,6 +15,7 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+import quantscraper.manufacturers.AURN as AURN
 from quantscraper.utils import DataDownloadError
 from utils import build_mock_response
 
@@ -443,6 +444,91 @@ class TestMyQuantAQ(unittest.TestCase):
         mock_end = date(2020, 5, 3)
         with self.assertRaises(DataDownloadError):
             self.myquantaq.scrape_device("foo", mock_start, mock_end)
+
+
+class TestAURN(unittest.TestCase):
+
+    # AURN just runs a single POST request to get the data,
+    cfg = defaultdict(str)
+    fields = []
+    aurn = AURN.AURN(cfg, fields)
+
+    def test_success(self):
+        mock_post_resp = build_mock_response(
+            status=200, json_data={"foo": [1, 2, 3], "bar": [5, 8, 9]}
+        )
+        mock_post = Mock(return_value=mock_post_resp)
+        session_return = Mock(post=mock_post)
+        self.aurn.session = session_return
+        self.aurn.timeseries_ids = ["foo", "bar"]
+        self.aurn.api_url = "foo.com"
+
+        # Make same substitution with device ID into the GET params and assert
+        # that these are used in the function call
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
+        try:
+            res = self.aurn.scrape_device("123", mock_start, mock_end)
+            self.assertEqual(res, {"foo": [1, 2, 3], "bar": [5, 8, 9]})
+            mock_post.assert_called_once_with(
+                "foo.com",
+                json={
+                    "timespan": "2020-04-03T00:00:00Z/2020-05-03T23:59:59Z",
+                    "timeseries": ["foo", "bar"],
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+            )
+        except:
+            self.fail("Connect raised exception with status code 200")
+
+    # Test that custom DataDownloadError is raised under a variety of failure
+    # conditions
+    def test_400(self):
+        mock_post_resp = build_mock_response(status=400, raise_for_status=HTTPError())
+        mock_post = Mock(return_value=mock_post_resp)
+        session_return = Mock(post=mock_post)
+        self.aurn.session = session_return
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
+
+        with self.assertRaises(DataDownloadError):
+            self.aurn.scrape_device("123", mock_start, mock_end)
+
+    def test_404(self):
+        mock_post_resp = build_mock_response(status=404, raise_for_status=HTTPError())
+        mock_post = Mock(return_value=mock_post_resp)
+        session_return = Mock(post=mock_post)
+        self.aurn.session = session_return
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
+
+        with self.assertRaises(DataDownloadError):
+            self.aurn.scrape_device("123", mock_start, mock_end)
+
+    def test_403(self):
+        mock_post_resp = build_mock_response(status=403, raise_for_status=HTTPError())
+        mock_post = Mock(return_value=mock_post_resp)
+        session_return = Mock(post=mock_post)
+        self.aurn.session = session_return
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
+
+        with self.assertRaises(DataDownloadError):
+            self.aurn.scrape_device("123", mock_start, mock_end)
+
+    def test_401(self):
+        mock_post_resp = build_mock_response(status=401, raise_for_status=HTTPError())
+        mock_post = Mock(return_value=mock_post_resp)
+        session_return = Mock(post=mock_post)
+        self.aurn.session = session_return
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
+
+        with self.assertRaises(DataDownloadError):
+            self.aurn.scrape_device("123", mock_start, mock_end)
 
 
 if __name__ == "__main__":

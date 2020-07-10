@@ -6,15 +6,11 @@
     web portal.
 """
 
-from string import Template
-from datetime import datetime, timedelta, time
-import csv
-import os
+from datetime import datetime, time
 import requests as re
-from bs4 import BeautifulSoup
 import pandas as pd
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError, DataParseError
+from quantscraper.utils import DataDownloadError, DataParseError
 
 
 class AURN(Manufacturer):
@@ -51,8 +47,10 @@ class AURN(Manufacturer):
         """
         Establishes an HTTP connection to the AURN API.
 
-        The instance attribute 'session' stores a handle to the connection,
-        holding any generated cookies and the history of requests.
+        Since the AURN API doesn't require any authentication, this method
+        doesn't do anything except setup an instance attribute for an HTTP
+        session, which stores a handle to the connection, holding any
+        generated cookies and the history of requests.
 
         Args:
             - None.
@@ -67,8 +65,8 @@ class AURN(Manufacturer):
         """
         Scrapes information about a device's operating condition.
 
-        Abstract method that must have a concrete implementation provided by
-        sub-classes.
+        This method doesn't do anything for the AURN API and returns an empty
+        dictionary.
 
         Args:
             - device_id (str): The ID used by the website to refer to the
@@ -82,12 +80,7 @@ class AURN(Manufacturer):
 
     def scrape_device(self, device_id, start, end):
         """
-        Downloads the data for a given device from the website.
-
-        This process requires several HTTP requests to be made:
-            - A POST call to select the device
-            - A POST call to generate the data for a given time-frame
-            - A GET call to obtain the data.
+        Downloads the data for a given device.
 
         Args:
             - device_id (str): The ID used by the website to refer to the
@@ -96,8 +89,8 @@ class AURN(Manufacturer):
             - end (date): The end of the scraping window.
 
         Returns:
-            A string containing the raw data in CSV format, i.e. rows are
-            delimited by '\r\n' characters and columns by ','.
+            The raw data in JSON format, with each pollutant having its own
+            object in the top-level object.
         """
         start_dt = datetime.combine(start, time.min)
         end_dt = datetime.combine(end, time.max)
@@ -113,10 +106,10 @@ class AURN(Manufacturer):
             result = self.session.post(self.api_url, json=params, headers=headers)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
-            raise DataDownloadError("Cannot select device.\n{}".format(ex)) from None
+            raise DataDownloadError("Cannot download data.\n{}".format(ex)) from None
         except re.exceptions.ConnectionError as ex:
             raise DataDownloadError(
-                "Connection error when selecting device.\n{}".format(ex)
+                "Connection error when downloading data.\n{}".format(ex)
             ) from None
         raw = result.json()
 
@@ -126,34 +119,58 @@ class AURN(Manufacturer):
         """
         Parses the raw data into a 2D list format.
 
-        The raw data is already in CSV format, so it simply needs delimiting by
-        carriage return to get the rows, and then separating columns by commas.
+        The raw data is stored in a JSON format with one object per sensor,
+        containing timestamps and recordings.
+        To get a single data structure representing this device (or station),
+        these sensor-specific streams need to combined.
+        Since we can't guarantee the timestamps will be identical across the
+        sensors, each stream is loaded into a long pandas DataFrame which are
+        then vertically stacked together.
+        The overall CSV is formed by pivoting this into a wide DataFrame, before
+        being converted into a 2D list.
 
         Args:
-            - raw_data (str): A string containing the raw data in CSV format,
-                i.e. rows are delimited by '\r\n' characters and columns by ','.
+            - raw_data (str): A string containing the raw data in JSON format.
 
         Returns:
             A 2D list representing the data in a tabular format, so that each
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        data = raw_data
-
         # Turn list of dicts from raw data into list of long pandas DataFrames
         dfs = []
         for field_id in raw_data.keys():
             try:
                 df = pd.DataFrame(raw_data[field_id]["values"])
-            except pd.errors.EmptyDataError:
+            except (pd.errors.EmptyDataError, KeyError):
                 continue
+            # Filter to rows which have timestamp, otherwise can't
+            # pivot later as well have duplicate keys (i.e. NaN timestamp)
+            try:
+                df = df[df.timestamp.notnull()]
+            except AttributeError:
+                continue
+
+            if len(df) == 0:
+                continue
+
             df["field"] = field_id
             dfs.append(df)
+
+        if len(dfs) == 0:
+            return []
+
         long_combined = pd.concat(dfs)
         # Convert timestamp from Unix into ISO8061
         long_combined["timestamp"] = pd.to_datetime(
-            long_combined["timestamp"], unit="ms"
+            long_combined["timestamp"], unit="ms", errors="coerce"
         )
+        # Filter to rows which have valid timestamp, otherwise can't
+        # pivot later as well have duplicate keys (i.e. NaN timestamp)
+        try:
+            long_combined = long_combined[long_combined.timestamp.notnull()]
+        except AttributeError:
+            return []
 
         # Cast to wide and then form into 2D list
         try:
@@ -162,7 +179,7 @@ class AURN(Manufacturer):
             ).reset_index()
         except ValueError:
             raise DataParseError("Could not convert long column to wide")
-        wide["timestamp"] = wide["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        wide["timestamp"] = wide["timestamp"].dt.strftime(self.timestamp_format)
         wide_list = [wide.columns.tolist()] + wide.values.tolist()
 
         return wide_list
