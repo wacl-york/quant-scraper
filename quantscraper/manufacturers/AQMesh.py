@@ -46,8 +46,8 @@ class AQMesh(Manufacturer):
 
         # Authentication
         self.auth_params = {
-            "username": os.environ["AQMESH_USER"],
-            "password": os.environ["AQMESH_PW"],
+            "username": (None, os.environ["AQMESH_USER"]),
+            "password": (None, os.environ["AQMESH_PW"]),
         }
         self.auth_headers = {"referer": cfg["auth_referer"]}
 
@@ -105,7 +105,7 @@ class AQMesh(Manufacturer):
 
         try:
             result = self.session.post(
-                self.auth_url, data=self.auth_params, headers=self.auth_headers
+                self.auth_url, files=self.auth_params, headers=self.auth_headers
             )
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:

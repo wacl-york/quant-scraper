@@ -23,7 +23,7 @@ from test_utils import build_mock_response
 os.environ["AEROQUAL_USER"] = "foo"
 os.environ["AEROQUAL_PW"] = "foo"
 os.environ["AQMESH_USER"] = "foo"
-os.environ["AQMESH_PW"] = "foo"
+os.environ["AQMESH_PW"] = "bar"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
@@ -102,6 +102,8 @@ class TestAeroqual(unittest.TestCase):
 
 class TestAQMesh(unittest.TestCase):
     cfg = defaultdict(str)
+    cfg["auth_url"] = "foo.com"
+    cfg["auth_referer"] = "ref.com"
     fields = []
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
@@ -114,9 +116,9 @@ class TestAQMesh(unittest.TestCase):
             try:
                 self.aqmesh.connect()
                 post_mock.assert_called_once_with(
-                    self.aqmesh.auth_url,
-                    data=self.aqmesh.auth_params,
-                    headers=self.aqmesh.auth_headers,
+                    "foo.com",
+                    files={"username": (None, "foo"), "password": (None, "bar")},
+                    headers={"referer": "ref.com"},
                 )
             except:
                 self.fail("Connect raised exception with status code 200")
