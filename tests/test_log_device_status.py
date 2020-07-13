@@ -13,6 +13,7 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+import quantscraper.manufacturers.AURN as AURN
 from quantscraper.utils import DataDownloadError
 from utils import build_mock_response
 
@@ -474,7 +475,7 @@ class TestZephyr(unittest.TestCase):
 
 
 class TestMyQuantAQ(unittest.TestCase):
-    # This method isn't currently implemented for Zephyr, so test it returns
+    # This method isn't currently implemented for QuantAQ, so test it returns
     # an empty dict
     cfg = defaultdict(str)
     fields = []
@@ -483,6 +484,21 @@ class TestMyQuantAQ(unittest.TestCase):
     def test_success(self):
         try:
             res = self.myquantaq.log_device_status("foo")
+            self.assertEqual(res, {})
+        except:
+            self.fail("Connect raised exception with status code 200")
+
+
+class TestAURN(unittest.TestCase):
+    # This method isn't currently implemented for AURN, so test it returns
+    # an empty dict
+    cfg = defaultdict(str)
+    fields = []
+    myaurn = AURN.AURN(cfg, fields)
+
+    def test_success(self):
+        try:
+            res = self.myaurn.log_device_status("foo")
             self.assertEqual(res, {})
         except:
             self.fail("Connect raised exception with status code 200")

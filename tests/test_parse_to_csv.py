@@ -12,7 +12,9 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+import quantscraper.manufacturers.AURN as AURN
 from quantscraper.utils import DataParseError
+import numpy as np
 
 # NB: The calling function, Manufacturer.process() shouldn't allow any None
 # values to be passed into parse_csv(), so am currently not testing for it,
@@ -410,6 +412,212 @@ class TestQuantAQ(unittest.TestCase):
         ]
         res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
+
+
+class TestAURN(unittest.TestCase):
+    # The JSON returned by the API call has 1 entry per pollutant.
+    # Each of these objects has a single object, "values", which is a list of
+    # dicts representing recordings, where each dict has a "timestamp" (POSIX ms)
+    # and a "value" (float).
+    # The pollutants have numerical IDs
+    cfg = defaultdict(str)
+    fields = []
+    aurn = AURN.AURN(cfg, fields)
+
+    def test_success(self):
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": 23.2},
+                    {"timestamp": 1584806800000, "value": 43.3},
+                ]
+            },
+            "2383": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": -21.2},
+                    {"timestamp": 1584806800000, "value": 0.0},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2380", "2383"],
+            ["2020-03-17 01:00:00", 23.2, -21.2],
+            ["2020-03-21 16:06:40", 43.3, 0.0],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_empty_dict(self):
+        # A completely empty dict should return empty rows
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {}
+
+        exp = []
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_no_values_attributes(self):
+        # If have time series objects but not values attribute
+        # then shouldn't return any data for this object
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {"2380": {"foo": "bar"}, "2383": {"bar": "foo"}}
+
+        exp = []
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_1_missing_values(self):
+        # If have values attribute for one time series but not the other
+        # should just get 1 column in output
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {"foo": "bar"},
+            "2383": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": -21.2},
+                    {"timestamp": 1584806800000, "value": 0.0},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2383"],
+            ["2020-03-17 01:00:00", -21.2],
+            ["2020-03-21 16:06:40", 0.0],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_empty_values_attributes(self):
+        # If have empty values then should return empty list
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {"2380": {"values": []}, "2383": {"values": []}}
+
+        exp = []
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_1_empty_values(self):
+        # If empty values attribute for one time series but not the other
+        # should just get 1 column in output
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {"values": []},
+            "2383": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": -21.2},
+                    {"timestamp": 1584806800000, "value": 0.0},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2383"],
+            ["2020-03-17 01:00:00", -21.2],
+            ["2020-03-21 16:06:40", 0.0],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+        self.assertEqual(res, exp)
+
+    def test_no_timestamp_or_value(self):
+        # If missing a timestamp attribute from a data record then
+        # this value shouldn't be in the CSV.
+        # If we're just missing a value attribute but have timestamp available
+        # then should have a missing (i.e. NaN) value in this column
+        # In this test, only the second value from 2383 has both required fields
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {"values": [{"value": 23.2}, {"timestamp": 1584806800000,}]},
+            "2383": {
+                "values": [
+                    {"foo": "bar"},
+                    {"timestamp": 1584806800000, "value": 0.0},
+                    {"timestamp": 1584806900000, "value": 0.1},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2380", "2383"],
+            ["2020-03-21 16:06:40", float("nan"), 0.0],
+            ["2020-03-21 16:08:20", float("nan"), 0.1],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+
+        # Need to cast all to string here, as otherwise can't compare NaN
+        # I.e. in python NaN == NaN returns False
+        exp_str = [[str(x) for x in row] for row in exp]
+        res_str = [[str(x) for x in row] for row in res]
+        self.assertEqual(res_str, exp_str)
+
+    def test_timestamp_isnt_posix(self):
+        # Here the first value from 2380 isn't posix, so should get nan for
+        # this timestamp since 2383 has a clean timestamp for this time
+        # And the third timestamp for 2383 isn't posix so shouldn't get any row
+        # for this value as don't have a corresponding clean timestamp for 2380
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {
+                "values": [
+                    {"timestamp": "foo", "value": 23.2},
+                    {"timestamp": 1584806800000, "value": 43.3},
+                ]
+            },
+            "2383": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": -21.2},
+                    {"timestamp": 1584806800000, "value": 0.0},
+                    {"timestamp": "foo", "value": 3.0},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2380", "2383"],
+            ["2020-03-17 01:00:00", np.float("nan"), -21.2],
+            ["2020-03-21 16:06:40", 43.3, 0.0],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+        # Need to cast all to string here, as otherwise can't compare NaN
+        # I.e. in python NaN == NaN returns False
+        exp_str = [[str(x) for x in row] for row in exp]
+        res_str = [[str(x) for x in row] for row in res]
+        self.assertEqual(res_str, exp_str)
+
+    def test_negative_float_timestamps(self):
+        # Negatives and floating timestamps should parse correctly,
+        # i.e. as days before Epoch and fractions of seconds.
+        # It isn't the role of this method to identify 'unreasonable' timestamps
+        self.aurn.timestamp_format = "%Y-%m-%d %H:%M:%S"
+        raw = {
+            "2380": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": 23.2},
+                    {"timestamp": -23200, "value": 43.3},
+                ]
+            },
+            "2383": {
+                "values": [
+                    {"timestamp": 1584406800000, "value": -21.2},
+                    {"timestamp": 3141.59, "value": 0.0},
+                ]
+            },
+        }
+
+        exp = [
+            ["timestamp", "2380", "2383"],
+            ["1969-12-31 23:59:36", 43.3, float("nan")],
+            ["1970-01-01 00:00:03", float("nan"), 0.0],
+            ["2020-03-17 01:00:00", 23.2, -21.2],
+        ]
+        res = self.aurn.parse_to_csv(raw)
+        # Need to cast all to string here, as otherwise can't compare NaN
+        # I.e. in python NaN == NaN returns False
+        exp_str = [[str(x) for x in row] for row in exp]
+        res_str = [[str(x) for x in row] for row in res]
+        self.assertEqual(res_str, exp_str)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+import quantscraper.manufacturers.AURN as AURN
 from quantscraper.utils import LoginError
 from test_utils import build_mock_response
 
@@ -282,6 +283,27 @@ class TestMyQuantAQ(unittest.TestCase):
             with self.assertRaises(LoginError):
                 self.myquantaq.connect()
                 get_account_mock.assert_called_once()
+
+
+class TestAURN(unittest.TestCase):
+    # AURN doesn't do anything in the connect() method except instantiate a
+    # Session.
+    cfg = defaultdict(str)
+    fields = []
+    myaurn = AURN.AURN(cfg, fields)
+
+    def test_success(self):
+        # mock the get_account method that is called to test authentication
+        session = Mock(return_value="foo", side_effect=None)
+        with patch("quantscraper.manufacturers.AURN.re") as mock_re:
+            mock_sesh = Mock(return_value="5")
+            mock_re.Session = mock_sesh
+            try:
+                self.myaurn.connect()
+                mock_sesh.assert_called_once()
+                self.assertEqual(self.myaurn.session, "5")
+            except:
+                self.fail("Error during supposedly successful connection.")
 
 
 if __name__ == "__main__":
