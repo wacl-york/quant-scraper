@@ -15,6 +15,7 @@ import os
 import sys
 import math
 import re
+import pandas as pd
 from datetime import date, timedelta, time, datetime
 import traceback
 from dotenv import load_dotenv
@@ -879,8 +880,19 @@ def main():
         for manufacturer, csv_data in summary_tables.items():
             fn = filename_template.format(manufacturer=manufacturer, date=start_time)
             filepath = os.path.join(cfg.get("Main", "local_folder_availability"), fn)
+
+            # Create separate column for percentages
+            df = pd.DataFrame(data=csv_data[1:], columns=csv_data[0])
+            for col in df.columns[2:]:
+                new_col = "{}_pct".format(col)
+                # Split "<val> (<pct>%) into 2 separate columns
+                df[[col, new_col]] = df[col].str.split(" \(", n=1, expand=True)
+                # Remove the %)
+                df[new_col] = df[new_col].str.replace("%\)", "")
+            df = df.set_index("Device ID")
+
             try:
-                utils.save_csv_file(csv_data, filepath)
+                utils.save_dataframe(df, filepath)
             except utils.DataSavingError as ex:
                 logging.error(
                     "Cannot save data availability for {}: {}".format(manufacturer, ex)

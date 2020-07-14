@@ -291,7 +291,7 @@ def save_csv_file(data, filename):
 
 def save_dataframe(data, filename):
     """
-    Saves a pandas dataframe to disk.
+    Saves a pandas dataframe to disk as CSV.
 
     Args:
         - data (pandas.DataFrame): Input data frame.
