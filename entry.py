@@ -29,7 +29,7 @@ def main():
     # Base calls
     scrape_call = ["quant_scrape", "--save-raw", "--save-clean", "--html", email_fn]
     preprocess_call = ["quant_preprocess"]
-    email_call = ["python", "send_email.py", "--file", email_fn]
+    email_call = ["quant_email", "--file", email_fn]
 
     # Always pass in date
     scrape_call.extend(["--start", parse_date, "--end", parse_date])
@@ -46,6 +46,9 @@ def main():
     if args.upload_clean:
         scrape_call.append("--upload-clean")
 
+    if args.upload_availability:
+        scrape_call.append("--upload-availability")
+
     if args.preprocess_devices is not None:
         preprocess_call.extend(["--devices", *args.preprocess_devices])
 
@@ -60,7 +63,7 @@ def main():
     # Only send email if have provided recipients
     if args.recipients is not None:
         email_call.extend(["--recipients", *args.recipients])
-        print("Calling send_email with call: {}".format(email_call))
+        print("Calling quant_email with call: {}".format(email_call))
         subprocess.run(email_call)
 
 
@@ -103,6 +106,12 @@ def parse_args():
         "--upload-clean",
         action="store_true",
         help="Uploads clean data to Google Drive.",
+    )
+
+    parser.add_argument(
+        "--upload-availability",
+        action="store_true",
+        help="Uploads availability data to Google Drive.",
     )
 
     parser.add_argument(

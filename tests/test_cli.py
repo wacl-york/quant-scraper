@@ -121,6 +121,11 @@ class TestParseArgs(unittest.TestCase):
                     help="Uploads clean data to Google Drive.",
                 ),
                 call(
+                    "--upload-availability",
+                    action="store_true",
+                    help="Uploads availability CSV data to Google Drive.",
+                ),
+                call(
                     "--html",
                     metavar="FN",
                     help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",

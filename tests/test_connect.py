@@ -15,6 +15,7 @@ import quantscraper.manufacturers.Aeroqual as Aeroqual
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
+import quantscraper.manufacturers.AURN as AURN
 from quantscraper.utils import LoginError
 from test_utils import build_mock_response
 
@@ -22,7 +23,7 @@ from test_utils import build_mock_response
 os.environ["AEROQUAL_USER"] = "foo"
 os.environ["AEROQUAL_PW"] = "foo"
 os.environ["AQMESH_USER"] = "foo"
-os.environ["AQMESH_PW"] = "foo"
+os.environ["AQMESH_PW"] = "bar"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
@@ -101,6 +102,8 @@ class TestAeroqual(unittest.TestCase):
 
 class TestAQMesh(unittest.TestCase):
     cfg = defaultdict(str)
+    cfg["auth_url"] = "foo.com"
+    cfg["auth_referer"] = "ref.com"
     fields = []
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
@@ -113,9 +116,9 @@ class TestAQMesh(unittest.TestCase):
             try:
                 self.aqmesh.connect()
                 post_mock.assert_called_once_with(
-                    self.aqmesh.auth_url,
-                    data=self.aqmesh.auth_params,
-                    headers=self.aqmesh.auth_headers,
+                    "foo.com",
+                    files={"username": (None, "foo"), "password": (None, "bar")},
+                    headers={"referer": "ref.com"},
                 )
             except:
                 self.fail("Connect raised exception with status code 200")
@@ -282,6 +285,27 @@ class TestMyQuantAQ(unittest.TestCase):
             with self.assertRaises(LoginError):
                 self.myquantaq.connect()
                 get_account_mock.assert_called_once()
+
+
+class TestAURN(unittest.TestCase):
+    # AURN doesn't do anything in the connect() method except instantiate a
+    # Session.
+    cfg = defaultdict(str)
+    fields = []
+    myaurn = AURN.AURN(cfg, fields)
+
+    def test_success(self):
+        # mock the get_account method that is called to test authentication
+        session = Mock(return_value="foo", side_effect=None)
+        with patch("quantscraper.manufacturers.AURN.re") as mock_re:
+            mock_sesh = Mock(return_value="5")
+            mock_re.Session = mock_sesh
+            try:
+                self.myaurn.connect()
+                mock_sesh.assert_called_once()
+                self.assertEqual(self.myaurn.session, "5")
+            except:
+                self.fail("Error during supposedly successful connection.")
 
 
 if __name__ == "__main__":

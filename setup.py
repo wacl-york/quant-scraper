@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="quantscraper",
-    version="0.3.0",
+    version="0.4.0",
     description="Scrapes data for the QUANT project.",
     long_description=readme(),  # NB: Only used if upload to PyPi
     url="https://github.com/wacl-york/QUANTscraper",
@@ -18,6 +18,7 @@ setup(
         "console_scripts": [
             "quant_scrape = quantscraper.cli:main",
             "quant_preprocess = quantscraper.daily_preprocessing:main",
+            "quant_email = quantscraper.send_email:main",
         ],
     },
     install_requires=[
@@ -29,7 +30,7 @@ setup(
         "requests",
         "pandas",
         "python-dotenv",
-        "quantaq @ https://github.com/quant-aq/py-quantaq/tarball/master/#egg=0.3.0",
+        "quantaq @ git+https://github.com/quant-aq/py-quantaq@v0.3.0#egg=quantaq",
     ],
     include_package_data=True,
     license="MIT",

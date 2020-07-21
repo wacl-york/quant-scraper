@@ -9,9 +9,29 @@ Scrapes data from the websites of air quality instrumentation system manufacture
 
 ## Setup
 
+### Creating CloudFormation Stack
+
 A CloudFormation template of all the required resources is provided in the file `aws_cloudformation.template`. 
-Firstly, create a Stack from this template in the `CloudFormation` page using the default settings. 
-This will create all the necessary resources tied to the AWS account from which it was run, although a few additional bits of configuration are required before the program is ready to be run.
+
+Firstly, create a Stack from this template in the `CloudFormation` website (or via the CLI), passing in the following values:
+
+  - Stack name: `QUANTScrapingStack`
+  - Parameters:
+    - `EmailRecipient`: An email address that the automated summarise will be sent to, preferably a mailing list.
+    - `TaskFamily`: Leave as default.
+  - Tags:
+    - `group`: `RESEARCH`
+    - `project`: `quant`
+    - `status`: `prod`
+    - `pushed_by`: `manual`
+    - `defined_in`: `cloudformation`
+    - `repo_name`: `wacl-york/quantscraper`
+    - `user`: `sl561`
+    - `team`: `rhpc`
+
+Don't forget to click the box in `Capabilities` to acknowledge that CloudFormation is going to create IAM resources.
+
+The stack contains all the necessary AWS resources to run the data scraping, although a few additional bits of configuration are required before the program is ready to be run.
 
 ### Populate Secrets
 
@@ -59,9 +79,19 @@ AWS_ECR_PROFILE=QUANTECRPush
 
 Once this has been setup, run `make release` to build the latest image, tag it, and push it to the repository.
 
-### DKIM
+### Authenticating emails
 
-This section will be completed once DKIM has been setup to allow emails to be sent from the `york.ac.uk` domain. 
+The summary emails will be sent from the address `quant_scraper.york.ac.uk`, which is authorised to send emails through a University *Identity*.
+This is specified by an ARN in the `EMAIL_CREDS` JSON secret, which is stored on LastPass and should have been used to populate the initial empty Secret in the first step of this setup process.
+Nothing else needs to be done to authorise emails from the **sending** end.
+
+Any addresses that are going to **receive** emails must be verified through the SES webpage.
+This involves sending a verification email to the desired account and clicking the included link to confirm verification.
+
+**The project Google Group has already been verified on the current AWS project account so this step shouldn't be necessary again, although it is worth bearing in mind for future projects or if the AWS account changes.**
+
+NB: Google Groups by default cannot receive emails sent externally of the `york.ac.uk` domain, and must have the `Post` permission extended to include *Anyone on the web*.
+This allows the Group address to receive the verification request, although the `Post` permission can (and should in many cases) be reverted back to *All organisation members* afterwards and it will still be able to receive the summary emails.
 
 ### Configuration to run ad-hoc scraping tasks
 
@@ -91,10 +121,14 @@ Also from the `VPC` page, click `Security Groups` in the navigation panel and us
 
 ## Scheduled scrapes
 
-By default, a full scrape of all devices from the previous day is run at 13:00 UTC.
+By default, a full scrape of all devices from the previous day is run at 13:00 UTC, with the resulting data uploaded to Google Drive.
 This can be configured by clicking the `Scheduled Tasks` tab of the Cluster page (in itself accessed from the ECS page).
 To change the scraping parameters, add the appropriate flags to `Command override`.
 The available flags can be viewed by running `python entry.py --help`.
+
+For example, Seba has requested that not all devices are included in the pre-processed `Analysis` CSV files, which is specified through the `--preprocess-devices` flag.
+
+**NB: sometimes just changing the CRON specification can remove the command override parameters, make sure to back them up before modifying any part of the scheduled task.**
 
 ## One-off scraping runs
 
@@ -147,7 +181,7 @@ Run `quant_scrape --help` to see the available options.
 ### Configuration
 
 The `quant_scrape` command requires a configuration file called `config.ini` to be present in the directory where the executable is called from.
-This file provides parameters for the scraping; `example.ini` shows the required format.
+This file provides parameters for the scraping; `resources/example.ini` shows the required format.
 
 ### Manufacturer and device specification
 
@@ -157,7 +191,7 @@ Each entry in the `manufacturers` list reflects an air quality instrumentation c
 The `fields` list defines the measurands recorded by devices from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this measurand by the company in the downloaded data (`webid`), and a `scale` parameter that is multiplied by the raw value.
 The `devices` list holds a record of the physical instruments installed from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this device by the company on their system (`webid`), and a description of where the device is installed (`location`).
 
-The example file `example_devices.json` shows the required layout.
+The example file `resources/example_devices.json` shows the required layout.
 
 ## Running the pre-processing
 
@@ -170,7 +204,7 @@ The program is run using the `quant_preprocess` command that should be added to 
 
 As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
 It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
-An example is provided by `example_preprocessing.ini`.
+An example is provided by `resources/example_preprocessing.ini`.
 
 By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
 Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.

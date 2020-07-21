@@ -402,7 +402,9 @@ def main():
             # Obtain the available devices and measurands for this manufacturer,
             # and ask that the output has a column for each combination of these
             devices_to_include = [dev.device_id for dev in manufacturer.devices]
-            measurands_to_include = [m["id"] for m in manufacturer.measurands]
+            measurands_to_include = [
+                m["id"] for m in manufacturer.measurands if m["include_analysis"]
+            ]
             wide_df = long_to_wide(
                 combined_df, measurands_to_include, devices_to_include
             )
