@@ -1,8 +1,6 @@
-# Application configuration
+# Sensitive information
 *.env
-config.ini
-preprocessing.ini
-devices.json
+googleapi_credentials.json
 
 data/*
 *.swp
@@ -22,6 +20,3 @@ __pycache__/*
 # Testing related outputs
 .coverage
 .coverage.*
-
-# GoogleAPI
-googleapi_credentials.json
