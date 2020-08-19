@@ -23,5 +23,3 @@ repos:
         language: script
         pass_filenames: false
         stages: [commit]
-
-
