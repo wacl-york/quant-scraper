@@ -13,6 +13,11 @@
         "Type": "String",
         "Default": "QUANTTasks",
         "Description": "Task family name. Doesn't need to be supplied. Setup as parameter so can reference it as a variable."
+    },
+    "StackName": {
+        "Type": "String",
+        "Default": "QUANTScrapingStack",
+        "Description": "Stack family name. Setup as parameter so can reference it as a variable so can restrict IAM CloudFormation permissions to the stack resulting from this template."
     }
   },
   "Resources": {
@@ -226,49 +231,6 @@
             ]
           }
         }
-    },
-    "QUANTIAMECR": {
-      "Type" : "AWS::IAM::User",
-      "Properties" : {
-          "Tags": [
-            {
-              "Key": "name",
-              "Value": "ECR push IAM user"
-            }
-          ],
-          "UserName" : "QUANT_IAM_ECR",
-          "Policies" : [ 
-            {
-                "PolicyName": "PushImageECR",
-                "PolicyDocument":  {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Sid": "",
-                            "Effect": "Allow",
-                            "Action": [
-                                "ecr:BatchGetImage",
-                                "ecr:CompleteLayerUpload",
-                                "ecr:UploadLayerPart",
-                                "ecr:InitiateLayerUpload",
-                                "ecr:BatchCheckLayerAvailability",
-                                "ecr:PutImage"
-                            ],
-                            "Resource": [
-                                { "Fn::GetAtt" : [ "QUANTRepository", "Arn" ] }
-                            ]
-                        },
-                        {
-                            "Sid": "",
-                            "Effect": "Allow",
-                            "Action": "ecr:GetAuthorizationToken",
-                            "Resource": "*"
-                        }
-                    ]
-                }
-            }
-          ]
-      }
     },
     "QUANTIAMRunAdHoc": {
       "Type" : "AWS::IAM::User",
