@@ -5,137 +5,125 @@
 
 Scrapes data from the websites of air quality instrumentation system manufacturers for the QUANT project.
 
-# Running QUANTscraper on AWS
+# Setting up scheduled scraping
 
-## Setup
+QUANTScraper runs on AWS Fargate and is currently configured to run in an account associated with the QUANT project.
+The app is deployed through a GitHub Action that is triggered by a pull-request into the `master` branch of this repository.
 
-### Creating CloudFormation Stack
+## Creating deploy IAM user
 
-A CloudFormation template of all the required resources is provided in the file `aws_cloudformation.template`. 
+An IAM user that handles deployment needs to be created.
+Follow the steps listed on the [University's documentation](https://wiki.york.ac.uk/display/AWS/AWS%3A+Github+Actions) to create a User that initially just belongs to the University's `GithubActionsDeployments` group, this is sufficient for providing the permissions to deploy CloudFront Stacks.
 
-Firstly, create a Stack from this template in the `CloudFormation` website (or via the CLI), passing in the following values:
+Permissions will also need to be added to this user to allow it to push images to the ECR repository.
+A minimal working example is shown below, remember to substitute in the `awsaccountid`.
 
-  - Stack name: `QUANTScrapingStack`
-  - Parameters:
-    - `EmailRecipient`: An email address that the automated summarise will be sent to, preferably a mailing list.
-    - `TaskFamily`: Leave as default.
-  - Tags:
-    - `group`: `RESEARCH`
-    - `project`: `quant`
-    - `status`: `prod`
-    - `pushed_by`: `manual`
-    - `defined_in`: `cloudformation`
-    - `repo_name`: `wacl-york/quantscraper`
-    - `user`: `sl561`
-    - `team`: `rhpc`
+Finally, save the access token and its id somewhere safe.
 
-Don't forget to click the box in `Capabilities` to acknowledge that CloudFormation is going to create IAM resources.
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowPush",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:PutImage",
+                "ecr:InitiateLayerUpload",
+                "ecr:UploadLayerPart",
+                "ecr:CompleteLayerUpload"
+            ],
+            "Resource": "arn:aws:ecr:eu-west-1:<awsaccountid>:repository/wacl/quantscraper"
+        },
+        {
+            "Sid": "GetAuthToken",
+            "Effect": "Allow",
+            "Action": "ecr:GetAuthorizationToken",
+            "Resource": "*"
+        }
+    ]
+}
+```
 
-The stack contains all the necessary AWS resources to run the data scraping, although a few additional bits of configuration are required before the program is ready to be run.
+## Deploying
 
-### Populate Secrets
+Create (or update if already present) the following 3 Secrets in this GitHub repository:
 
-Open `Secrets Manager` in AWS and you will notice there are 3 secrets with placeholder values.
-These should be self-explanatory and are all available in LastPass.
+  - `AWS_ACCESS_KEY_ID`: from the deploy IAM user created above
+  - `AWS_SECRET_ACCESS_KEY`: from the deploy IAM user created above
+  - `AWS_USER_ID`: The AWS account ID where the app is to be deployed
+
+The scraping app can now be deployed by accepting a new pull request into `master`.
+This will either create a new Stack if one doesn't already exist or update the existing one, and then push the latest Docker image to ECR.
+
+## Populate Secrets
+
+Before the app can run, the scraping secrets on AWS need to be populated.
+Open `Secrets Manager` in the AWS console to see 3 secrets with placeholder values - these should be self-explanatory and are all available in LastPass.
 
 Take care when copying values over; it is best to use the `plaintext` editor rather than the GUI `Secret key/value` GUI.
-There are 2 reasons for this; firstly you can copy a whole JSON secret in one motion with the `plaintext` editor rather than having to copy each key/value pair at a time, and secondly the GUI escapes special characters such as `\n`, which is particularly frustrating when copying over the Google Service Account credentials JSON.
+There are 2 reasons for this; firstly you can copy a whole JSON secret in one motion with the `plaintext` editor rather than having to copy each key/value pair at a time, and secondly the GUI escapes special characters such as `\n`.
 
-### Create IAM credentials
+## Authenticating emails
 
-The Stack includes 2 IAM users:
-
-  - `QUANT_IAM_ECR`: Can upload Docker images to ECR
-  - `QUANT_IAM_RunAdHoc`: Can run one-off tasks from a local machine using `boto3`
-
-Before these IAM users can be used, access tokens need to be generated and saved to your local machine.
-
-Go into the `Security credentials` tab on each user's page and click `Create access key`. 
-Download the resulting `access key id` and `secret access key` and save them into `~/.aws/credentials` under the profiles `QUANTECRPush` and `QUANTRunAdHocTask` respectively.
-
-### Push Docker image to repository
-
-The `Makefile` includes the functionality to push images to the ECR repository.
-Environment variables need to be configured before the first push.
-
-Create a file called `deploy.env` in your working directory with the following values:
-
-```
-APP_NAME=<reponame>
-DOCKER_REPO=<userid>.dkr.ecr.<awsregion>.amazonaws.com
-AWS_CLI_REGION=<awsregion>
-AWS_ECR_PROFILE=QUANTECRPush
-```
-
-`<reponame>` is the repository name, found in the ECR table as the string in the `Repository Name` column.
-
-`<userid>` is the numeric user id found in the same row of the table as the first part of the `URI` column.
-
-`<awsregion>` is the region identifier for the region the account is based in.
-
-`QUANTECRPush` is the IAM profile setup in the previous step.
-
-**NB: You don't have to use a deploy.env file, as long as these 4 environment variables are available to the Makefile**
-
-Once this has been setup, run `make release` to build the latest image, tag it, and push it to the repository.
-
-### Authenticating emails
+It is unlikely that any the automated emails will need any configuration, but for reference the process is listed here.
 
 The summary emails will be sent from the address `quant_scraper.york.ac.uk`, which is authorised to send emails through a University *Identity*.
-This is specified by an ARN in the `EMAIL_CREDS` JSON secret, which is stored on LastPass and should have been used to populate the initial empty Secret in the first step of this setup process.
-Nothing else needs to be done to authorise emails from the **sending** end.
+The authentication identity is specified by an ARN in the `EMAIL_CREDS` JSON secret and should have been populated in the previous step.
+Nothing else needs to be done to authorise emails from the **sending** end except if the app is being deployed on a new AWS account ID, in which case put a Footprint in to Systems so that they can register the new account at their end.
 
 Any addresses that are going to **receive** emails must be verified through the SES webpage.
 This involves sending a verification email to the desired account and clicking the included link to confirm verification.
 
-**The project Google Group has already been verified on the current AWS project account so this step shouldn't be necessary again, although it is worth bearing in mind for future projects or if the AWS account changes.**
-
+The project Google Group has already been verified on the current AWS project account so this step shouldn't be necessary again, although it is worth bearing in mind for future projects or if the AWS account changes.
 NB: Google Groups by default cannot receive emails sent externally of the `york.ac.uk` domain, and must have the `Post` permission extended to include *Anyone on the web*.
-This allows the Group address to receive the verification request, although the `Post` permission can (and should in many cases) be reverted back to *All organisation members* afterwards and it will still be able to receive the summary emails.
-
-### Configuration to run ad-hoc scraping tasks
-
-If you wish to run one-off scraping jobs from the command line of a local machine then more environment variables will need creating.
-
-Create a file called `run.env` with the following values:
-
-```
-CLUSTER_ID=<clusterid>
-AWS_TASK_PROFILE=QUANTRunAdHocTask
-QUANT_TASK_ARN=<taskArn>
-SUBNET_1=<subnet1id>
-SUBNET_2=<subnet2id>
-SECURITY_GROUP=<securitygroupid>
-AWS_CLI_REGION=<awsregion>
-```
-
-`QUANTRunAdHocTask` is the name of the profile in `~/.aws/credentials` that should have been populated previously with the access keys.
-
-`<clusterid>` is the name of the Cluster, which by default is `QUANTCluster` (check this on the Clusters page, accessed from the ECS page).
-
-`<taskArn>` takes the form `arn:aws:ecs:<awsregion>:<userid>:task-definition/QUANTTasks`, where `QUANTTasks` is the default task family name and `<userid>` and `<awsregion>` are the same as when setting up the ECR env vars.
-
-`<subnet1id>` and `<subnet2id>` are the `Subnet ID` column values from the table of available subnets where the name is `QUANT Subnet 1/2` (navigate to the `VPC` page then click `Subnets` in the left-hand navigation panel).
-
-Also from the `VPC` page, click `Security Groups` in the navigation panel and use the `Security group ID` column value where the name is `QUANT SecurityGroup` for `<securitygroupid>`
+This allows the Group address to receive the verification request, although the `Post` permission can (and should) be reverted back to *All organisation members* afterwards and it will still be able to receive the summary emails.
 
 ## Scheduled scrapes
 
-By default, a full scrape of all devices from the previous day is run at 13:00 UTC, with the resulting data uploaded to Google Drive.
-This can be configured by clicking the `Scheduled Tasks` tab of the Cluster page (in itself accessed from the ECS page).
-To change the scraping parameters, add the appropriate flags to `Command override`.
-The available flags can be viewed by running `python entry.py --help`.
+By default, a full scrape of all devices from the previous day is run at 09:00 GMT with the resulting data uploaded to Google Drive and a summary email sent to `quant-group@york.ac.uk`.
+If this doesn't run successfully, look in the `/ecs/QUANT-scraping-logs` log group in CloudWatch.
+
+The scheduled scraping parameters are defined in the `cloudformation/main.yml` template, and can also be changed in the AWS console.
+The available flags can be viewed by running `python entry.py --help` 
 
 For example, Seba has requested that not all devices are included in the pre-processed `Analysis` CSV files, which is specified through the `--preprocess-devices` flag.
 
-**NB: sometimes just changing the CRON specification can remove the command override parameters, make sure to back them up before modifying any part of the scheduled task.**
+# Running ad-hoc scraping tasks
 
-## One-off scraping runs
+As well as running the daily scrape, it is also desirable to be able to run one-off jobs every now and then.
+This is also run through Fargate, with events being triggered by `boto` calls.
 
-To run ad-hoc scrapes, the `run_scrape.py` provides a wrapper around running the container on Fargate, passing in command-line arguments to it.
-Setup the package dependencies as described in the following section and ensure the values in `run.env` are correct and that you have downloaded `run_scrape.py` (it isn't yet bundled into the package).
+## Setup
 
-Then simply run `python run_scrape.py --help` to see the available options.
+The CloudFormation Stack setup an IAM user called `QUANT_IAM_RunAdHoc` that has the required permissions to launch these jobs.
+
+To use it, generate access tokens (in the `Security credentials` tab of the User's Console page) and save them to `~/.aws/credentials` under a profile called `QUANTRunAdHocTask`.
+
+Then, create a file called `run.env` with the following values:
+
+```
+CLUSTER_ID=QUANTCluster
+AWS_TASK_PROFILE=QUANTRunAdHocTask
+QUANT_TASK_ARN=arn:aws:ecs:eu-west-1:<awsaccountid>:task-definition/QUANTTasks
+SUBNET_1=<subnet1id>
+SUBNET_2=<subnet2id>
+SECURITY_GROUP=<securitygroupid>
+AWS_CLI_REGION=eu-west-1
+```
+
+`<subnet1id>` and `<subnet2id>` are the `Subnet ID` column values from the table of available subnets where the name is `QUANT Subnet 1/2` (navigate to the `VPC` page then click `Subnets` in the left-hand navigation panel).
+Also from the `VPC` page, click `Security Groups` in the navigation panel and use the `Security group ID` column value where the name is `QUANT SecurityGroup` for `<securitygroupid>`.
+
+Finally, download the `run_scrape.py` script from this repository and install `boto3` if it hasn't been already.
+
+## Submitting jobs
+
+`run_scrape.py` provides an interface to the Docker image with the same command line arguments and uses `boto` to launch the task.
+See `python run_scrape.py --help` for all the available options.
 
 # Running QUANTscraper locally
 
@@ -143,8 +131,6 @@ The scraping can also be run locally rather than from AWS.
 This requires installing the `quantscraper` Python package in a local environment and interfacing with it using command line arguments and configuration files.
 
 ## Installation
-
-### Python 3.7
 
 A recent installation of Python (>= 3.7) needs to be available.
 This can be installed manually, or through the `conda` environment manager.
@@ -160,17 +146,13 @@ And can be used through
 
 `conda activate <ENVNAME>`
 
-### `quantscraper` installation
-
-Once a suitable version of Python has been made available, the latest stable version of `quantscraper` can be installed from GitHub by using the following command.
+The latest stable version of `quantscraper` can then be installed from GitHub by using the following command.
 
 `pip install git+https://github.com/wacl-york/QUANTscraper.git@master`
 
 ## Running the scraper 
 
-The installation processes places an executable called `quant_scrape` in the user's `PATH` and is run with the following command.
-
-`quant_scrape`
+The installation processes places an executable called `quant_scrape` in the user's `PATH`.
 
 By default, the scraper will run for all available instruments over the 24 hour period from midnight of the previous day to 1 second before midnight of the current day.
 A summary of the scraping is output to `stdout`, while a log will be displayed on `stderr`.
@@ -178,37 +160,12 @@ Command line arguments allow for the specification of the instruments to scrape 
 
 Run `quant_scrape --help` to see the available options.
 
-### Configuration
+## Running the pre-processing script
 
-The `quant_scrape` command requires a configuration file called `config.ini` to be present in the directory where the executable is called from.
-This file provides parameters for the scraping; `resources/example.ini` shows the required format.
+In addition to the CLI scraping program there is a pre-processing script that takes the cleaned and validated data as stored by the `quant_scrape` command, and organises it into a format suitable for immediate analysis.
+In particular, it converts the data into a wide format with 1 file per manufacturer and resamples all time-series to 1 minute resolution.
 
-### Manufacturer and device specification
-
-In addition, it requires the presence of a file called `devices.json` in the working directory.
-This file maps the relationship between the manufacturers and the devices in the study.
-Each entry in the `manufacturers` list reflects an air quality instrumentation company included in the study, with the `properties` object providing keyword-value properties that must be completed before running the program.
-The `fields` list defines the measurands recorded by devices from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this measurand by the company in the downloaded data (`webid`), and a `scale` parameter that is multiplied by the raw value.
-The `devices` list holds a record of the physical instruments installed from this company, represented by an object containing a human readable label (`id`), an ID used to refer to this device by the company on their system (`webid`), and a description of where the device is installed (`location`).
-
-The example file `resources/example_devices.json` shows the required layout.
-
-## Running the pre-processing
-
-In addition to the CLI scraping program there is a pre-processing script, which takes the cleaned and validated data as stored by the `quant_scrape` command, and organises the data into a format suitable for analysis.
-
-In particular, it converts the data from being saved in long format with 1 file per device, into wide format with 1 file per manufacturer.
-It also resamples the time-series so that the air quality data from all manufacturers is saved at the same sampling rate.
-
-The program is run using the `quant_preprocess` command that should be added to the `PATH` as part of the installation. 
-
-As with the scraping program, it requires the presence of `devices.json` in the working directory to define the manufacturers and devices included in the study.
-It also requires its own separate configuration file to be present in the working directory: `preprocessing.ini`.
-An example is provided by `resources/example_preprocessing.ini`.
-
-By default the program pre-processes the previous day's cleaned data for all available instruments, although this behaviour can be configured by setting a YYYY-mm-dd formatted date to the `--date` argument and specifying the devices with the `--devices` flag.
-Furthermore, the resultant processed data can be uploaded to Google Drive by setting the `--upload` flag.
-Run `quant_preprocess --help` to see the available options.
+The program is run using the `quant_preprocess` command; see `quant_preprocess --help` for the available options.
 
 # Contributing to development
 
@@ -246,7 +203,7 @@ The scraper runs on Python 3.7 or higher, and requires a number of packages to b
 
 In addition to these packages, there is a [Python wrapper](https://github.com/quant-aq/py-quantaq) for accessing QuantAQ's API, which can be installed from GitHub using the following command:
 
-`pip install git+https://github.com/quant-aq/py-quantaq.git`
+`pip install git://github.com/quant-aq/py-quantaq.git@v0.3.0#egg=quantaq`
 
 Finally, the [`Black` formatter](https://github.com/psf/black) is used in development as a pre-commit hook to ensure consistent formatting across source files. 
 It can also be installed through `pip`.
