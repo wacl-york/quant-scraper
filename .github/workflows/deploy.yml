@@ -2,8 +2,7 @@ name: "Deploy new release"
 on: 
  push:
    # fixme remove test branch
-    branches:
-      - [ master, feature/aws-deploy ]
+    branches: [ master, feature/aws-deploy ]
  pull_request:
     branches:
       - master
