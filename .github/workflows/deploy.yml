@@ -15,7 +15,7 @@ jobs:
     - name: Deploy CloudFormation Stack
       uses: university-of-york/aws-cfn-deploy-action@v1.0
       env:
-        TEMPLATE: cloudformation/main.yaml
+        TEMPLATE: cloudformation/main.yml
         # fixme Revert to QUANTScrapingStack and production
         PARAMETER_FILE: cloudformation/configs/dev.json
         AWS_STACK_NAME: QUANTScrapingStackDev
