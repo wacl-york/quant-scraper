@@ -15,4 +15,13 @@ repos:
         language_version: python3.8
         pass_filenames: false
         stages: [commit]
+  - repo: local
+    hooks:
+      - id: fixme
+        name: fixme checker
+        entry: fixme_hook.sh
+        language: script
+        pass_filenames: false
+        stages: [commit]
+
 

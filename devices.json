@@ -1,0 +1,525 @@
+{
+    "manufacturers": [
+        {
+            "name": "Aeroqual",
+            "properties": {
+                "timestamp_column": "Time",
+                "timestamp_format": "%Y/%m/%d %H:%M:%S",
+                "recording_frequency_per_hour": 60,
+                "auth_url": "https://cloud.aeroqual.com/Account/Login",
+                "select_device_url": "https://cloud.aeroqual.com/Home/Instrument",
+                "calibration_url": "https://cloud.aeroqual.com/Calibration/ManualEntry",
+                "data_url": "https://cloud.aeroqual.com/ManageData/GenerateExportData",
+                "dl_url": "https://cloud.aeroqual.com/ManageData/DownloadExportData",
+                "include_journal": "true",
+                "averaging_window": "0",
+                "lines_skip": 6
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "NO2 (ppb)",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3 (ppb)",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5 (µg/m³)",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10 (µg/m³)",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "TEMP (°C)",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "RH (%)",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "DewPoint",
+                    "webid": "DP (°C)",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "AQY872",
+                    "webid": "AQY BB-872",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQY873A",
+                    "webid": "AQY-BB-873A",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQY874",
+                    "webid": "AQY BB-874",
+                    "location": "London"
+                },
+                {
+                    "id": "AQY875",
+                    "webid": "AQY BB-875A",
+                    "location": "York"
+                },
+                {
+                    "id": "AQY878",
+                    "webid": "AQY BB-878",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQY436A",
+                    "webid": "AQY-BA-436A",
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
+            "name": "AQMesh",
+            "properties": {
+                "timestamp_column": "Timestamp",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 60,
+                "auth_url": "https://www.airmonitors.net/handles/login.php",
+                "auth_referer": "https://www.airmonitors.net/login",
+                "data_url": "https://airmonitors.net/handles/api",
+                "data_referer": "https://airmonitors.net/telemetry",
+                "averaging_window": "0",
+                "units": "absolute",
+                "data_type": "scaled",
+                "timezone": "00:00"
+            },
+            "fields": [
+                {
+                    "id": "AirPressure",
+                    "webid": "AIRPRES-Scaled",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "CO2",
+                    "webid": "CO2-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "HUM-Scaled",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "PM1-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5-Scaled",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM4",
+                    "webid": "PM4-Scaled",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "TEMP-Scaled",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Voltage",
+                    "webid": "VOLTAGE-Scaled",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+
+                    "id": "AQM388",
+                    "webid": "388245", 
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQM389",
+                    "webid": "389245",
+                    "location": "London"
+                },
+                {
+                    "id": "AQM390",
+                    "webid": "390245",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQM391",
+                    "webid": "391245",
+                    "location": "York"
+                },
+                {
+                    "id": "AQM173",
+                    "webid": "173245",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "AQM801",
+                    "webid": "801150",
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
+            "name": "Zephyr",
+            "properties": {
+                "timestamp_column": "dateTime",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S%z",
+                "recording_frequency_per_hour": 360,
+                "auth_url": "https://api2.earthsense.co.uk/api/getToken",
+                "auth_referer": "https://portal.earthsense.co.uk/login",
+                "data_url": "https://portal-zephyr.earthsense.co.uk/dataForViewBySlotsAveraged",
+                "averaging_window": "Unaveraged",
+                "slot": "slotB"
+            },
+            "fields": [
+                {
+                    "id": "Temperature",
+                    "webid": "tempC",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "humidity",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Lat",
+                    "webid": "latitude",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lon",
+                    "webid": "longitude",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM1",
+                    "webid": "particulatePM1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "particulatePM25",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "particulatePM10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "TempAmb",
+                    "webid": "ambTempC",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumAmb",
+                    "webid": "ambHumidity",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "ambPressure",
+                    "webid": "PressureAmb",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "Zep188",
+                    "webid": "188", 
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Zep309",
+                    "webid": "309",
+                    "location": "York"
+                },
+                {
+                    "id": "Zep344",
+                    "webid": "344",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Zep311",
+                    "webid": "311",
+                    "location": "London"
+                }
+            ]
+        },
+        {
+            "name": "QuantAQ",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S",
+                "recording_frequency_per_hour": 60
+            },
+            "fields": [
+                {
+                    "id": "CO",
+                    "webid": "co",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "CO2",
+                    "webid": "co2",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "no",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "no2",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Noise",
+                    "webid": "noise",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "O3",
+                    "webid": "o3",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm25",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pressure",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumMan",
+                    "webid": "rh_manifold",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Solar",
+                    "webid": "solar",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "TempBox",
+                    "webid": "temp_box",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "TempMan",
+                    "webid": "temp_manifold",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "WindDir",
+                    "webid": "wind_dir",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "WindSpeed",
+                    "webid": "wind_speed",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lat",
+                    "webid": "lat",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lon",
+                    "webid": "lon",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "Ari086",
+                    "webid": "SN000-086",
+                    "location": "London"
+                },
+                {
+                    "id": "Ari093",
+                    "webid": "SN000-093",
+                    "location": "York"
+                },
+                {
+                    "id": "Ari063",
+                    "webid": "SN000-063",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Ari078",
+                    "webid": "SN000-078",
+                    "location": "WACL"
+                },
+                {
+                    "id": "Ari038",
+                    "webid": "SN000-038",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Ari076",
+                    "webid": "SN000-076",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Ari080",
+                    "webid": "SN000-080",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Ari096",
+                    "webid": "SN000-096",
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
+            "name": "AURN",
+            "properties": {
+                "recording_frequency_per_hour": 1,
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "timeseries_ids": ["2380", "2383"],
+                "api_url": "https://uk-air.defra.gov.uk/sos-ukair/api/v1/timeseries/getData"
+            },
+            "fields": [
+                {
+                    "id": "PM2.5",
+                    "webid": "2383",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "2380",
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "AURNYorkFishergate",
+                    "webid": "",
+                    "location": "York"
+                }
+            ]
+        }
+    ]
+}
