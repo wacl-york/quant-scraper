@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Deploy CloudFormation Stack
-      uses: university-of-york/aws-cfn-deploy-action@v1.0
+      uses: university-of-york/aws-cfn-deploy-action@v1.1
       env:
         TEMPLATE: cloudformation/main.yml
         PARAMETER_FILE: cloudformation/configs/production.json
