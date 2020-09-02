@@ -1,5 +1,5 @@
 include README.md
-include example.ini
-include example_preprocessing.ini
-include example_devices.json
+include config.ini
+include preprocessing.ini
+include devices.json
 include environment.yml

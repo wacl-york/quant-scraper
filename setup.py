@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="quantscraper",
-    version="0.4.0",
+    version="0.5.0",
     description="Scrapes data for the QUANT project.",
     long_description=readme(),  # NB: Only used if upload to PyPi
     url="https://github.com/wacl-york/QUANTscraper",
