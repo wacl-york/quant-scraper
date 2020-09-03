@@ -48,15 +48,12 @@ class TestAeroqual(unittest.TestCase):
         session_return = Mock(post=mock_post)
         aeroqual.session = session_return
 
-        try:
-            aeroqual.select_device("foo")
-            mock_post.assert_called_once_with(
-                "foo.com",
-                json=[aeroqual.select_device_string.substitute(device="foo")],
-                headers=aeroqual.select_device_headers,
-            )
-        except:
-            self.fail("Connect raised exception with status code 200")
+        aeroqual.select_device("foo")
+        mock_post.assert_called_once_with(
+            "foo.com",
+            json=[aeroqual.select_device_string.substitute(device="foo")],
+            headers=aeroqual.select_device_headers,
+        )
 
     def test_select_device_400(self):
         # Select device raises error when POST returns 400
@@ -108,20 +105,15 @@ class TestAeroqual(unittest.TestCase):
 
         session_return = Mock(post=mock_post, get=mock_get)
         aeroqual.session = session_return
-        try:
-            aeroqual.scrape_device("foo", mock_start, mock_end)
-            exp_params = aeroqual.data_params.copy()
-            exp_params["Period"] = exp_params["Period"].substitute(
-                start="04/03/2020", end="05/03/2020"
-            )
-            mock_post.assert_called_once_with(
-                aeroqual.data_url, data=exp_params, headers=aeroqual.data_headers,
-            )
-            mock_get.assert_called_once_with(
-                aeroqual.dl_url, headers=aeroqual.dl_headers
-            )
-        except:
-            self.fail("Connect raised exception with status code 200")
+        aeroqual.scrape_device("foo", mock_start, mock_end)
+        exp_params = aeroqual.data_params.copy()
+        exp_params["Period"] = exp_params["Period"].substitute(
+            start="04/03/2020", end="05/03/2020"
+        )
+        mock_post.assert_called_once_with(
+            aeroqual.data_url, data=exp_params, headers=aeroqual.data_headers,
+        )
+        mock_get.assert_called_once_with(aeroqual.dl_url, headers=aeroqual.dl_headers)
 
     def test_retrieves_content(self):
         # Now test that actually download the content we expected
@@ -141,17 +133,12 @@ class TestAeroqual(unittest.TestCase):
 
         session_return = Mock(post=mock_post, get=mock_get)
         aeroqual.session = session_return
-        try:
-            resp = aeroqual.scrape_device("foo", mock_start, mock_end)
-            self.assertEqual(resp, "DummyData")
-            mock_post.assert_called_once_with(
-                aeroqual.data_url, data=exp_params, headers=aeroqual.data_headers,
-            )
-            mock_get.assert_called_once_with(
-                aeroqual.dl_url, headers=aeroqual.dl_headers
-            )
-        except:
-            self.fail("Connect raised exception with status code 200")
+        resp = aeroqual.scrape_device("foo", mock_start, mock_end)
+        self.assertEqual(resp, "DummyData")
+        mock_post.assert_called_once_with(
+            aeroqual.data_url, data=exp_params, headers=aeroqual.data_headers,
+        )
+        mock_get.assert_called_once_with(aeroqual.dl_url, headers=aeroqual.dl_headers)
 
     def test_select_device_failure_400(self):
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
@@ -257,14 +244,11 @@ class TestAQMesh(unittest.TestCase):
 
         mock_start = date(2020, 4, 3)
         mock_end = date(2020, 5, 3)
-        try:
-            res = self.aqmesh.scrape_device("123", mock_start, mock_end)
-            self.assertEqual(res, {"Data": [1, 2, 3]})
-            mock_get.assert_called_once_with(
-                "https://api.airmonitors.net/3.5/GET/myid/mytoken/stationdata/reverse/AVG-5/2020-04-03T00:00:00/2020-05-03T23:59:59/123"
-            )
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aqmesh.scrape_device("123", mock_start, mock_end)
+        self.assertEqual(res, {"Data": [1, 2, 3]})
+        mock_get.assert_called_once_with(
+            "https://api.airmonitors.net/3.5/GET/myid/mytoken/stationdata/reverse/AVG-5/2020-04-03T00:00:00/2020-05-03T23:59:59/123"
+        )
 
     # Test that custom DataDownloadError is raised under a variety of failure
     # conditions
@@ -338,12 +322,9 @@ class TestZephyr(unittest.TestCase):
             start="20200403000000",
             end="20200504000000",
         )
-        try:
-            res = self.zephyr.scrape_device("123", mock_start, mock_end)
-            self.assertEqual(res, {"CO2": [1, 2, 3], "NO": [4, 5, 6]})
-            mock_get.assert_called_once_with(mock_url, headers=self.zephyr.data_headers)
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.zephyr.scrape_device("123", mock_start, mock_end)
+        self.assertEqual(res, {"CO2": [1, 2, 3], "NO": [4, 5, 6]})
+        mock_get.assert_called_once_with(mock_url, headers=self.zephyr.data_headers)
 
     # Test that custom DataDownloadError is raised under a variety of failure
     # conditions
@@ -406,25 +387,22 @@ class TestMyQuantAQ(unittest.TestCase):
         self.myquantaq.api_obj = mock_api_obj
         mock_start = date(2020, 4, 3)
         mock_end = date(2020, 5, 3)
-        try:
-            res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
-            self.assertEqual(
-                res,
-                {
-                    "raw": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
-                    "final": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
-                },
-            )
-            exp_filter = self.myquantaq.query_string.substitute(
-                start="2020-04-03", end="2020-05-04"
-            )
-            exp_calls = [
-                call(sn="foo", final_data=False, params=dict(filter=exp_filter)),
-                call(sn="foo", final_data=True, params=dict(filter=exp_filter)),
-            ]
-            self.assertEqual(mock_get_data.mock_calls, exp_calls)
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.myquantaq.scrape_device("foo", mock_start, mock_end)
+        self.assertEqual(
+            res,
+            {
+                "raw": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
+                "final": {"CO2": [1, 2, 3], "NO2": [4, 5, 6]},
+            },
+        )
+        exp_filter = self.myquantaq.query_string.substitute(
+            start="2020-04-03", end="2020-05-04"
+        )
+        exp_calls = [
+            call(sn="foo", final_data=False, params=dict(filter=exp_filter)),
+            call(sn="foo", final_data=True, params=dict(filter=exp_filter)),
+        ]
+        self.assertEqual(mock_get_data.mock_calls, exp_calls)
 
     def test_failure(self):
         mock_get_data = Mock(side_effect=DataReadError)
@@ -457,22 +435,16 @@ class TestAURN(unittest.TestCase):
         # that these are used in the function call
         mock_start = date(2020, 4, 3)
         mock_end = date(2020, 5, 3)
-        try:
-            res = self.aurn.scrape_device("123", mock_start, mock_end)
-            self.assertEqual(res, {"foo": [1, 2, 3], "bar": [5, 8, 9]})
-            mock_post.assert_called_once_with(
-                "foo.com",
-                json={
-                    "timespan": "2020-04-03T00:00:00Z/2020-05-03T23:59:59Z",
-                    "timeseries": ["foo", "bar"],
-                },
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-            )
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aurn.scrape_device("123", mock_start, mock_end)
+        self.assertEqual(res, {"foo": [1, 2, 3], "bar": [5, 8, 9]})
+        mock_post.assert_called_once_with(
+            "foo.com",
+            json={
+                "timespan": "2020-04-03T00:00:00Z/2020-05-03T23:59:59Z",
+                "timeseries": ["foo", "bar"],
+            },
+            headers={"Content-Type": "application/json", "Accept": "application/json",},
+        )
 
     # Test that custom DataDownloadError is raised under a variety of failure
     # conditions

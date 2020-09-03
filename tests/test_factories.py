@@ -35,41 +35,29 @@ class TestManufacturerFactory(unittest.TestCase):
         self.cfg["name"] = "Aeroqual"
 
         # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(self.cfg)
-            self.assertIsInstance(res, Manufacturer)
-        except:
-            self.fail("Error was unexpectedly raised.")
+        res = manufacturer_factory(self.cfg)
+        self.assertIsInstance(res, Manufacturer)
 
     def test_aqmesh_success(self):
         self.cfg["name"] = "Aeroqual"
 
         # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(self.cfg)
-            self.assertIsInstance(res, Manufacturer)
-        except:
-            self.fail("Error was unexpectedly raised.")
+        res = manufacturer_factory(self.cfg)
+        self.assertIsInstance(res, Manufacturer)
 
     def test_zephyr_success(self):
         self.cfg["name"] = "Zephyr"
 
         # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(self.cfg)
-            self.assertIsInstance(res, Manufacturer)
-        except:
-            self.fail("Error was unexpectedly raised.")
+        res = manufacturer_factory(self.cfg)
+        self.assertIsInstance(res, Manufacturer)
 
     def test_quantaq_success(self):
         self.cfg["name"] = "QuantAQ"
 
         # Shouldn't raise any errors
-        try:
-            res = manufacturer_factory(self.cfg)
-            self.assertIsInstance(res, Manufacturer)
-        except:
-            self.fail("Error was unexpectedly raised.")
+        res = manufacturer_factory(self.cfg)
+        self.assertIsInstance(res, Manufacturer)
 
     def test_key_error_raised(self):
         # Typo on quantAQ, so factory should raise KeyError
@@ -83,16 +71,13 @@ class TestDeviceFactory(unittest.TestCase):
     def test_success(self):
         props = {"id": "foo", "webid": "bar", "location": "york", "a": "too"}
 
-        try:
-            dev = device_factory(props)
-            # Should set all 3 required attrs, plus any additional ones
-            self.assertIsInstance(dev, Device)
-            self.assertEqual(dev.device_id, "foo")
-            self.assertEqual(dev.web_id, "bar")
-            self.assertEqual(dev.location, "york")
-            self.assertEqual(dev.a, "too")
-        except:
-            self.fail("Error was unexpectedly raised.")
+        dev = device_factory(props)
+        # Should set all 3 required attrs, plus any additional ones
+        self.assertIsInstance(dev, Device)
+        self.assertEqual(dev.device_id, "foo")
+        self.assertEqual(dev.web_id, "bar")
+        self.assertEqual(dev.location, "york")
+        self.assertEqual(dev.a, "too")
 
     def test_miss_id(self):
         props = {"webid": "bar", "location": "york", "a": "too"}

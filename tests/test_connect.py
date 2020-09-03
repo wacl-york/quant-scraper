@@ -40,15 +40,12 @@ class TestAeroqual(unittest.TestCase):
         post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.Aeroqual.re.Session") as mock_session:
             mock_session.return_value = Mock(post=post_mock)
-            try:
-                self.aeroqual.connect()
-                post_mock.assert_called_once_with(
-                    self.aeroqual.auth_url,
-                    data=self.aeroqual.auth_params,
-                    headers=self.aeroqual.auth_headers,
-                )
-            except:
-                self.fail("Connect raised exception with status code 200")
+            self.aeroqual.connect()
+            post_mock.assert_called_once_with(
+                self.aeroqual.auth_url,
+                data=self.aeroqual.auth_params,
+                headers=self.aeroqual.auth_headers,
+            )
 
     # Should definitely be able to DRY these HTTP errors once have more
     # familiarity with mock library.
@@ -112,13 +109,10 @@ class TestAQMesh(unittest.TestCase):
         with patch("quantscraper.manufacturers.AQMesh.re.Session") as mock_session:
             mock_session.return_value = Mock(get=get_mock)
 
-            try:
-                self.aqmesh.connect()
-                get_mock.assert_called_once_with(
-                    "https://api.airmonitors.net/3.5/GET/myid/mytoken/stations"
-                )
-            except:
-                self.fail("Connect raised exception with status code 200")
+            self.aqmesh.connect()
+            get_mock.assert_called_once_with(
+                "https://api.airmonitors.net/3.5/GET/myid/mytoken/stations"
+            )
 
     # Should definitely be able to DRY these HTTP errors once have more
     # familiarity with mock library.
@@ -195,16 +189,13 @@ class TestZephyr(unittest.TestCase):
         post_mock = Mock(return_value=resp)
         with patch("quantscraper.manufacturers.Zephyr.re.Session") as mock_session:
             mock_session.return_value = Mock(post=post_mock)
-            try:
-                self.zephyr.connect()
-                self.assertEqual(self.zephyr.api_token, "foo")
-                post_mock.assert_called_once_with(
-                    self.zephyr.auth_url,
-                    data=self.zephyr.auth_params,
-                    headers=self.zephyr.auth_headers,
-                )
-            except:
-                self.fail("Connect raised exception with status code 200")
+            self.zephyr.connect()
+            self.assertEqual(self.zephyr.api_token, "foo")
+            post_mock.assert_called_once_with(
+                self.zephyr.auth_url,
+                data=self.zephyr.auth_params,
+                headers=self.zephyr.auth_headers,
+            )
 
     # Should definitely be able to DRY these HTTP errors once have more
     # familiarity with mock library.
@@ -276,11 +267,8 @@ class TestMyQuantAQ(unittest.TestCase):
         with patch("quantscraper.manufacturers.MyQuantAQ.quantaq.QuantAQ") as mock_api:
             # Ensure the patched Class returns a Mock instance
             mock_api.return_value = Mock(get_account=get_account_mock)
-            try:
-                self.myquantaq.connect()
-                get_account_mock.assert_called_once()
-            except:
-                self.fail("Error during supposedly successful connection.")
+            self.myquantaq.connect()
+            get_account_mock.assert_called_once()
 
     def test_login_failure(self):
         # give mock api a mock return value, that raises DataReadError when
@@ -306,12 +294,9 @@ class TestAURN(unittest.TestCase):
         with patch("quantscraper.manufacturers.AURN.re") as mock_re:
             mock_sesh = Mock(return_value="5")
             mock_re.Session = mock_sesh
-            try:
-                self.myaurn.connect()
-                mock_sesh.assert_called_once()
-                self.assertEqual(self.myaurn.session, "5")
-            except:
-                self.fail("Error during supposedly successful connection.")
+            self.myaurn.connect()
+            mock_sesh.assert_called_once()
+            self.assertEqual(self.myaurn.session, "5")
 
 
 if __name__ == "__main__":

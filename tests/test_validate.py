@@ -57,11 +57,8 @@ class TestValidate(unittest.TestCase):
         ]
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        try:
-            res, _ = aeroqual.validate_data(data)
-            self.assertCountEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        self.assertCountEqual(res, exp)
 
     def test_special_chars(self):
         # Test NaN, exponent notation, Inf
@@ -79,11 +76,8 @@ class TestValidate(unittest.TestCase):
         ]
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        try:
-            res, _ = aeroqual.validate_data(data)
-            self.assertEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        self.assertEqual(res, exp)
 
     def test_no_header(self):
         data = [
@@ -108,12 +102,9 @@ class TestValidate(unittest.TestCase):
         ]
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        try:
-            res, _ = aeroqual.validate_data(data)
-            exp = [["timestamp", "measurand", "value"]]
-            self.assertEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        exp = [["timestamp", "measurand", "value"]]
+        self.assertEqual(res, exp)
 
     def test_empty_list(self):
         data = []
@@ -177,11 +168,8 @@ class TestValidate(unittest.TestCase):
             ["2040-12-31 00:28:00", "bar", 90.2],
         ]
 
-        try:
-            res, _ = aeroqual.validate_data(data)
-            self.assertCountEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        self.assertCountEqual(res, exp)
 
     def test_invalid_timestamp_format(self):
         # If forget to add the %%s, then timestamps won't be parsed and thus
@@ -202,12 +190,9 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
-        try:
-            res, _ = aeroqual.validate_data(data)
-            exp = [["timestamp", "measurand", "value"]]
-            self.assertEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        exp = [["timestamp", "measurand", "value"]]
+        self.assertEqual(res, exp)
 
     def test_invalid_timestamp_format2(self):
         # If ask for wrong format, i.e. %y (00, 01) rather than %Y (2000, 2001),
@@ -227,12 +212,9 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
-        try:
-            res, _ = aeroqual.validate_data(data)
-            exp = [["timestamp", "measurand", "value"]]
-            self.assertEqual(res, exp)
-        except:
-            self.fail("validate_data raised exception when it should have succeeded")
+        res, _ = aeroqual.validate_data(data)
+        exp = [["timestamp", "measurand", "value"]]
+        self.assertEqual(res, exp)
 
 
 if __name__ == "__main__":

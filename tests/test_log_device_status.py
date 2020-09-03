@@ -57,13 +57,9 @@ class TestAeroqual(unittest.TestCase):
 
         session_return = Mock(get=mock_get)
         self.aeroqual.session = session_return
-        try:
-            res = self.aeroqual.log_device_status("foo")
-            mock_get.assert_called_once_with(self.aeroqual.calibration_url)
-            self.assertEqual(res, successful_params)
-
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aeroqual.log_device_status("foo")
+        mock_get.assert_called_once_with(self.aeroqual.calibration_url)
+        self.assertEqual(res, successful_params)
 
     def test_no_modulesTable(self):
         # When don't have a table with required id, raise DataDownloadError
@@ -128,13 +124,9 @@ class TestAeroqual(unittest.TestCase):
 
         session_return = Mock(get=mock_get)
         self.aeroqual.session = session_return
-        try:
-            res = self.aeroqual.log_device_status("foo")
-            mock_get.assert_called_once_with(self.aeroqual.calibration_url)
-            self.assertEqual(res, successful_params)
-
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aeroqual.log_device_status("foo")
+        mock_get.assert_called_once_with(self.aeroqual.calibration_url)
+        self.assertEqual(res, successful_params)
 
     def test_no_valid_inputs(self):
         # When don't have any input tags with all 3 required attributes
@@ -158,13 +150,9 @@ class TestAeroqual(unittest.TestCase):
 
         session_return = Mock(get=mock_get)
         self.aeroqual.session = session_return
-        try:
-            res = self.aeroqual.log_device_status("foo")
-            mock_get.assert_called_once_with(self.aeroqual.calibration_url)
-            self.assertEqual(res, successful_params)
-
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aeroqual.log_device_status("foo")
+        mock_get.assert_called_once_with(self.aeroqual.calibration_url)
+        self.assertEqual(res, successful_params)
 
     def test_select_device_fails(self):
         # If select_device() throws an error it should be propagated up
@@ -228,11 +216,8 @@ class TestAQMesh(unittest.TestCase):
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
-        try:
-            res = self.aqmesh.log_device_status("123")
-            self.assertEqual(res, {})
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.aqmesh.log_device_status("123")
+        self.assertEqual(res, {})
 
 
 class TestZephyr(unittest.TestCase):
@@ -243,11 +228,8 @@ class TestZephyr(unittest.TestCase):
     zephyr = Zephyr.Zephyr(cfg, fields)
 
     def test_success(self):
-        try:
-            res = self.zephyr.log_device_status("123")
-            self.assertEqual(res, {})
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.zephyr.log_device_status("123")
+        self.assertEqual(res, {})
 
 
 class TestMyQuantAQ(unittest.TestCase):
@@ -258,11 +240,8 @@ class TestMyQuantAQ(unittest.TestCase):
     myquantaq = MyQuantAQ.MyQuantAQ(cfg, fields)
 
     def test_success(self):
-        try:
-            res = self.myquantaq.log_device_status("foo")
-            self.assertEqual(res, {})
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.myquantaq.log_device_status("foo")
+        self.assertEqual(res, {})
 
 
 class TestAURN(unittest.TestCase):
@@ -273,11 +252,8 @@ class TestAURN(unittest.TestCase):
     myaurn = AURN.AURN(cfg, fields)
 
     def test_success(self):
-        try:
-            res = self.myaurn.log_device_status("foo")
-            self.assertEqual(res, {})
-        except:
-            self.fail("Connect raised exception with status code 200")
+        res = self.myaurn.log_device_status("foo")
+        self.assertEqual(res, {})
 
 
 if __name__ == "__main__":
