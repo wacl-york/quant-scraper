@@ -5,6 +5,7 @@
     Unit tests for Manufacturer.scrape_device() methods.
 """
 
+import os
 import unittest
 from collections import defaultdict
 from unittest.mock import Mock, call
@@ -239,39 +240,28 @@ class TestAQMesh(unittest.TestCase):
     # AQMesh just runs a single GET request to get the data,
     # which is returned in the 'Data' attribute of the resultant JSON
     cfg = defaultdict(str)
-    cfg["timezone"] = "+02:00"
+    cfg["time_convention"] = "reverse"
+    cfg["averaging_window"] = "-5"
+    os.environ["AQMESH_API_ID"] = "myid"
+    os.environ["AQMESH_API_TOKEN"] = "mytoken"
+
     fields = []
+
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
-        mock_get_resp = build_mock_response(
-            status=200, json_data={"Foo": "Bar", "Data": [1, 2, 3]}
-        )
+        mock_get_resp = build_mock_response(status=200, json_data={"Data": [1, 2, 3]})
         mock_get = Mock(return_value=mock_get_resp)
         session_return = Mock(get=mock_get)
         self.aqmesh.session = session_return
-
-        # Make same substitution with device ID into the GET params and assert
-        # that these are used in the function call
-        mock_params = self.aqmesh.data_params.copy()
-        mock_params["UniqueId"] = mock_params["UniqueId"].substitute(device="123")
-        mock_params["Channels"] = mock_params["Channels"].substitute(device="123")
-        mock_params["Start"] = mock_params["Start"].substitute(
-            start="2020-04-03T00:00:00 +02:00"
-        )
-        mock_params["End"] = mock_params["End"].substitute(
-            end="2020-05-04T00:00:00 +02:00"
-        )
 
         mock_start = date(2020, 4, 3)
         mock_end = date(2020, 5, 3)
         try:
             res = self.aqmesh.scrape_device("123", mock_start, mock_end)
-            self.assertEqual(res, [1, 2, 3])
+            self.assertEqual(res, {"Data": [1, 2, 3]})
             mock_get.assert_called_once_with(
-                self.aqmesh.data_url,
-                headers=self.aqmesh.data_headers,
-                params=mock_params,
+                "https://api.airmonitors.net/3.5/GET/myid/mytoken/stationdata/reverse/AVG-5/2020-04-03T00:00:00/2020-05-03T23:59:59/123"
             )
         except:
             self.fail("Connect raised exception with status code 200")

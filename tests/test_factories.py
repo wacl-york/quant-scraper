@@ -19,8 +19,8 @@ from quantscraper.manufacturers.Manufacturer import Manufacturer, Device
 # Setup dummy env variables
 os.environ["AEROQUAL_USER"] = "foo"
 os.environ["AEROQUAL_PW"] = "foo"
-os.environ["AQMESH_USER"] = "foo"
-os.environ["AQMESH_PW"] = "foo"
+os.environ["AQMESH_API_ID"] = "myid"
+os.environ["AQMESH_API_TOKEN"] = "mytoken"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
