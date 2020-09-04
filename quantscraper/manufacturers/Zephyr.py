@@ -109,9 +109,6 @@ class Zephyr(Manufacturer):
         """
         Scrapes information about a device's operating condition.
 
-        Abstract method that must have a concrete implementation provided by
-        sub-classes.
-
         Args:
             - device_id (str): The ID used by the website to refer to the
                 device.
