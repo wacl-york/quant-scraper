@@ -299,7 +299,6 @@ class TestAURN(unittest.TestCase):
             mock_sesh.assert_called_once()
             self.assertEqual(self.myaurn.session, "5")
 
-
 class TestPurpleAir(unittest.TestCase):
     # PurpleAir hasn't implemented a connect method yet
     cfg = defaultdict(str)
