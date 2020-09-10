@@ -1,0 +1,26 @@
+# Don't include sensitive information
+*.env
+googleapi_credentials.json
+
+# Don't need examples
+example*
+
+__pycache__/*
+*.swp
+data/*
+
+# Compiled python modules.
+*.pyc
+
+# Setuptools distribution folder.
+/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
+
+# Testing related outputs
+.coverage
+.coverage.*
+
+cloudformation/*
+tests/*

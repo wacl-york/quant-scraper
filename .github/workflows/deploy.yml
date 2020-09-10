@@ -38,7 +38,7 @@ jobs:
         ECR_REPOSITORY: wacl/quantscraper
       run: |
         VERSION=$(sh ./version.sh)
-        docker build -t $ECR_REPOSITORY .
+        docker build -t $ECR_REPOSITORY -f docker/scraper/Dockerfile .
         # Tag with latest version number
         docker tag $ECR_REPOSITORY $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
