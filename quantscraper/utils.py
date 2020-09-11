@@ -15,6 +15,8 @@ import socket
 from string import Template
 import configparser
 
+import boto3
+from botocore.exceptions import ClientError
 from google.oauth2 import service_account
 import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
@@ -23,6 +25,7 @@ from googleapiclient.errors import HttpError
 RAW_DATA_FN = Template("${man}_${device}_${day}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
 ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
+AVAILABILITY_DATA_FN = Template("availability_${man}_${date}.csv")
 
 DEVICES_FN = "devices.json"
 
@@ -30,6 +33,12 @@ DEVICES_FN = "devices.json"
 class LoginError(Exception):
     """
     Custom exception class for situations where a login attempt has failed.
+    """
+
+
+class EmailSendingError(Exception):
+    """
+    Custom exception class for situations where an email didn't send.
     """
 
 
@@ -445,3 +454,42 @@ def list_files_googledrive(service, drive_id, query=None):
         if page_token is None:
             break
     return files
+
+
+def send_email_ses(
+    subject, body_html, body_text, sender, recipients, identity_arn, charset="UTF-8"
+):
+    """
+    Sends an email through AWS SES.
+
+    Args:
+        - subject (str): Email subject.
+        - body_html (str): Email body with embedded HTML.
+        - body_text (str): Fallback body to use when HTML can't be rendered.
+        - sender (str): Email address of sender.
+        - recipients (list): List of email recipients.
+        - identity_arn (str): University of York identity ARN to authenticate
+            through.
+        - charset (str): Charset, defaults to UTF-8.
+
+    Returns:
+        None, sends email as a side-effect.
+    """
+    client = boto3.client("ses")
+    try:
+        client.send_email(
+            Destination={"ToAddresses": recipients,},
+            Message={
+                "Body": {
+                    "Html": {"Charset": charset, "Data": body_html,},
+                    "Text": {"Charset": charset, "Data": body_text,},
+                },
+                "Subject": {"Charset": charset, "Data": subject,},
+            },
+            Source=sender,
+            SourceArn=identity_arn,
+            ReturnPath=sender,
+            ReturnPathArn=identity_arn,
+        )
+    except ClientError as e:
+        raise EmailSendingError

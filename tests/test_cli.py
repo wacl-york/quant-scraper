@@ -126,9 +126,11 @@ class TestParseArgs(unittest.TestCase):
                     help="Uploads availability CSV data to Google Drive.",
                 ),
                 call(
-                    "--html",
-                    metavar="FN",
-                    help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+                    "--recipients",
+                    metavar="EMAIL@DOMAIN",
+                    nargs="+",
+                    help="The recipients to send the email to.",
+                    required=True,
                 ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)

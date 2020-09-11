@@ -36,7 +36,7 @@ import quantscraper.utils as utils
 import quantscraper.cli as cli
 from quantscraper.factories import setup_manufacturers
 
-CONFIG_FN = "preprocessing.ini"
+CONFIG_FN = "config.ini"
 
 
 def parse_args():
@@ -347,8 +347,8 @@ def main():
     recording_date = setup_scraping_timeframe(args.date)
 
     # Load config params
-    local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
-    local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
+    local_clean_folder = cfg.get("Main", "local_folder_clean_data")
+    local_analysis_folder = cfg.get("Main", "local_folder_analysis_data")
     time_res = cfg.get("Analysis", "time_resolution")
 
     try:

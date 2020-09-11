@@ -31,7 +31,7 @@ import quantscraper.cli as cli
 from dotenv import load_dotenv
 from quantscraper.factories import setup_manufacturers
 
-CONFIG_FN = "purpleair.ini"
+CONFIG_FN = "config.ini"
 
 
 def main():
@@ -146,16 +146,38 @@ def main():
     tables = tabular_summary(summaries, PA_manufacturer.recording_frequency)
 
     # Save HTML if asked
-    if args.html:
+    if args.recipients is not None:
         # Load style options for manufacturer summary
-        styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
-        save_html_summary(
-            tables,
-            args.html,
-            cfg.get("HTMLSummary", "email_template"),
-            cfg.get("HTMLSummary", "day_template"),
-            styles,
-        )
+        email_html = generate_html_summary(tables, cfg)
+
+        if email_html is not None:
+            try:
+                sender = os.environ["EMAIL_SENDER_ADDRESS"]
+            except KeyError:
+                logging.error(
+                    "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
+                )
+            try:
+                identity_arn = os.environ["IDENTITY_ARN"]
+            except KeyError:
+                logging.error(
+                    "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
+                )
+
+            try:
+                logging.info("Attemping to send email...")
+                utils.send_email_ses(
+                    "PurpleAir upload summary",
+                    email_html,
+                    f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
+                    sender,
+                    args.recipients,
+                    identity_arn,
+                )
+            except utils.EmailSendingError as ex:
+                logging.error("Email sending failed: {}".format(ex))
+            else:
+                logging.info("Email sent.")
 
 
 def parse_env_vars():
@@ -227,42 +249,6 @@ def instantiate_PA_manufacturer():
     return PA_manufacturer
 
 
-def save_html_summary(tables, fn, email_template_fn, day_template_fn, styles):
-    """
-    Saves an HTML summary of the data availability to file.
-
-    Args:
-        - tables (list): 2D list containing data availability statistics in CSV
-            form.
-        - fn (str): Location to save the HTML summary to.
-        - email_template_fn (str): Location of the email HTML template.
-        - day_template_fn (str): Location of the HTML template containing the
-            availability tables.
-        - styles (dict): Keyword-value CSS styles to apply to the template.
-
-    Returns:
-        None, saves HTML file to disk as a side-effect.
-    """
-    try:
-        email_template = utils.load_html_template(email_template_fn)
-    except utils.DataReadingError as ex:
-        logging.error("Cannot load email HTML template: {}".format(ex))
-        email_template = None
-    try:
-        day_template = utils.load_html_template(day_template_fn)
-    except utils.DataReadingError as ex:
-        logging.error("Cannot load manufacturer HTML template: {}".format(ex))
-        manufacturer_template = None
-
-    if email_template is not None and day_template is not None:
-        email_html = generate_html_summary(tables, email_template, day_template, styles)
-
-    try:
-        utils.save_plaintext(email_html, fn)
-    except utils.DataSavingError as ex:
-        logging.error("Unable to save HTML email: {}".format(ex))
-
-
 def parse_args():
     """
     Parses CLI arguments to the script.
@@ -275,16 +261,20 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="QUANT scraper")
     parser.add_argument(
-        "--html",
-        metavar="FN",
-        help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+        "--recipients",
+        metavar="EMAIL@DOMAIN",
+        nargs="+",
+        help="The recipients to send the email to.",
+        required=True,
     )
+
+    # TODO uploading availability
 
     args = parser.parse_args()
     return args
 
 
-def generate_html_summary(tables, email_template, day_template, styles):
+def generate_html_summary(tables, cfg):
     """
     Generates an HTML document summarising the device availability from the
     scraping run.
@@ -297,22 +287,31 @@ def generate_html_summary(tables, email_template, day_template, styles):
             manufacturer name. The 2D list represents tabular data for the
             corresponding manufacturer, where the outer-most dimension is a row
             and the inner-most is a column.
-        - email_template (str): The HTML template of the whole document.
-          Formatted as Python string.Template(), with $placeholder tags.
-          Expect 1 placeholder:
-              - summary: Whatever HTML markup is going to consitute the body of
-              this document. This placeholder is located inside a <div>, which
-              is directly inside the <body> tags.
-        - day_template (str): The HTML template of the availability section.
-        - styles (dict): Various CSS settings to pass to
-            generate_manufacturer_summary().
+        - cfg (dict): Configuration object from the ini file.
 
     Returns:
         A string containing a fully completed HTML document.
     """
+    styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
+
+    try:
+        email_template = utils.load_html_template(
+            cfg.get("PurpleAirUpload", "email_template")
+        )
+    except utils.DataReadingError as ex:
+        logging.error("Cannot load email HTML template: {}".format(ex))
+        return None
+    try:
+        summary_template = utils.load_html_template(
+            cfg.get("HTMLSummary", "summary_table_template")
+        )
+    except utils.DataReadingError as ex:
+        logging.error("Cannot load manufacturer HTML template: {}".format(ex))
+        return None
+
     # Build HTML for each manufacturer section
     day_sections = [
-        cli.generate_manufacturer_html(day_template, date, tab, **styles)
+        cli.generate_manufacturer_html(summary_template, date, tab, **styles)
         for date, tab in tables.items()
     ]
     day_html = "\n".join(day_sections)
