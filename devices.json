@@ -515,6 +515,128 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "PurpleAir",
+            "properties": {
+                "timestamp_column": "UTCDateTime",
+                "timestamp_format": "%Y/%m/%dT%H:%M:%Sz",
+                "recording_frequency_per_hour": 30
+            },
+            "fields": [
+                {
+                    "id": "current_temp_f",
+                    "webid": "current_temp_f",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "current_humidity",
+                    "webid": "current_humidity",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "current_dewpoint_f",
+                    "webid": "current_dewpoint_f",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pressure",
+                    "webid": "pressure",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm1_0_atm",
+                    "webid": "pm1_0_atm",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm2_5_atm",
+                    "webid": "pm2_5_atm",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm10_0_atm",
+                    "webid": "pm10_0_atm",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm1_0_atm_b",
+                    "webid": "pm1_0_atm_b",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm2_5_atm_b",
+                    "webid": "pm2_5_atm_b",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "pm10_0_atm_b",
+                    "webid": "pm10_0_atm_b",
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "PA1",
+                    "webid": "PA1",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "PA2",
+                    "webid": "PA2",
+                    "location": "London"
+                },
+                {
+                    "id": "PA3",
+                    "webid": "PA3",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "PA4",
+                    "webid": "PA4",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "PA5",
+                    "webid": "PA5",
+                    "location": "London"
+                },
+                {
+                    "id": "PA6",
+                    "webid": "PA6",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "PA7",
+                    "webid": "PA7",
+                    "location": "York"
+                },
+                {
+                    "id": "PA8",
+                    "webid": "PA8",
+                    "location": "York"
+                },
+                {
+                    "id": "PA9",
+                    "webid": "PA9",
+                    "location": "London"
+                },
+                {
+                    "id": "PA10",
+                    "webid": "PA10",
+                    "location": "York"
+                }
+            ]
         }
     ]
 }

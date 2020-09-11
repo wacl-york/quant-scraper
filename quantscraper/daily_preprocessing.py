@@ -311,9 +311,9 @@ def main():
     try:
         cli.setup_loggers()
     except utils.SetupError:
-        logging.error("Error in setting up loggers.")
-        logging.error(traceback.format_exc())
-        logging.error("Terminating program")
+        print.error("Error in setting up loggers.")
+        print.error(traceback.format_exc())
+        print.error("Terminating program")
         sys.exit()
 
     # This sets up environment variables if they are explicitly provided in a .env

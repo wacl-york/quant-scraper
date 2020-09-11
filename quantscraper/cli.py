@@ -681,7 +681,7 @@ def generate_html_summary(
               this document. This placeholder is located inside a <div>, which
               is directly inside the <body> tags.
         - manufacturer_template (str): The HTML template of the manufacturer section.
-        - manufacturer styles (dict): Various CSS settings to pass to
+        - manufacturer_styles (dict): Various CSS settings to pass to
             generate_manufacturer_summary().
         - start_date (date): The scraping window starting date.
 

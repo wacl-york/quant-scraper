@@ -32,6 +32,8 @@ def main():
         logging.error("Terminating program")
         sys.exit()
 
+    # TODO Refactor this into utils functions, or Email class
+
     # Parse JSON environment variable into separate env vars
     try:
         vars = utils.parse_JSON_environment_variable("EMAIL_CREDS")

@@ -5,6 +5,7 @@
     Contains utility functions.
 """
 
+import io
 import math
 import os
 import pickle
@@ -16,7 +17,7 @@ import configparser
 
 from google.oauth2 import service_account
 import googleapiclient.discovery
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
 RAW_DATA_FN = Template("${man}_${device}_${day}.json")
@@ -175,7 +176,8 @@ def parse_JSON_environment_variable(name):
     return params
 
 
-def auth_google_api():
+def auth_google_api(scopes=["https://www.googleapis.com/auth/drive.file"]):
+
     """
     Authorizes connection to GoogleDrive API.
 
@@ -186,12 +188,13 @@ def auth_google_api():
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        None. Loads credentials from environment variable.
+        - scope (list): The permissions scope of this connection. Defaults to
+        view and manage files created by the service. See full docs at
+        https://developers.google.com/identity/protocols/oauth2/scopes#drive
 
     Returns:
         A googleapiclient.discovery.Resource object.
     """
-    scopes = ["https://www.googleapis.com/auth/drive.file"]
     try:
         params = parse_JSON_environment_variable("GOOGLE_CREDS")
     except SetupError as ex:
@@ -385,3 +388,60 @@ def load_device_configuration():
         raise SetupError("Cannot parse file {} into JSON".format(DEVICES_FN)) from None
 
     return device_config
+
+
+# TODO Make tests for this function
+def download_file(service, file_id):
+    """
+    Downloads a given file from Google Drive.
+
+    Args:
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - file_id (str): ID of the file to download.
+
+    Returns:
+        The file contents as a bytestream.
+    """
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    return fh
+
+
+# TODO Make tests
+def list_files_googledrive(service, drive_id, query=None):
+    """
+    Lists files that meet a certain criteria stored in a specific Google Drive.
+
+    Args:
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - drive_id (str): ID of the top-level Drive directory where to search.
+        - query (str, optional): Optional query to subset the results, as by
+            default it will return all files in the given drive id. See the
+            Google documentation for details of the syntax:
+                https://developers.google.com/drive/api/v3/search-files
+    """
+    page_token = None
+    files = []
+    while True:
+        results = (
+            service.files()
+            .list(
+                corpora="drive",
+                driveId=drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                q=query,
+                pageSize=1000,
+                fields="nextPageToken, files(id, name)",
+            )
+            .execute()
+        )
+        files.extend(results.get("files", []))
+        page_token = results.get("nextPageToken", None)
+        if page_token is None:
+            break
+    return files

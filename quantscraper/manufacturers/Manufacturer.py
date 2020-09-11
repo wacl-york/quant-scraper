@@ -260,12 +260,19 @@ class Manufacturer(ABC):
                 )
             except ValueError:
                 continue
+            except IndexError:
+                continue
             n_clean_vals["timestamp"] += 1
             timestamp_clean = timestamp_dt.strftime(output_format)
 
             # See if can parse each measurand as float
             for measurand in available_measurands:
-                val_raw = row[measurand_indices[measurand]]
+                try:
+                    val_raw = row[measurand_indices[measurand]]
+                except IndexError:
+                    # Should only be reached if header has different number of
+                    # columns to rows
+                    continue
 
                 if not utils.is_float(val_raw):
                     continue
