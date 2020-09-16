@@ -43,6 +43,7 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
         exp = [
             ["timestamp", "measurand", "value"],
             ["2019-03-02 15:30:00", "foo", 2.0],
@@ -57,7 +58,39 @@ class TestValidate(unittest.TestCase):
         ]
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        res, _ = aeroqual.validate_data(data)
+        res, _ = aeroqual.validate_data(data, fmt)
+        self.assertCountEqual(res, exp)
+
+    def test_timestamp_format(self):
+        # Testing a different output datetime format
+        data = [
+            ["not used", "foo", "timestamp", "bar", "unused", "car"],
+            ["5", "2", "2019-03-02 15:30", "23.9", "5.0", "bar"],
+            ["5", "2", "2019-03-02 15:31", "23.9", "5.0", "56.2"],
+            ["5", "2.5", "2019-03-02 15:32", "-5.2", "foo", "%%s"],
+            ["", " ", "2019-05-21 15:33", "", "", "1802"],
+            ["5", "4.5", "2019-03-02 15:32:50", "", "5.0", "bar"],
+            ["2.8", "3.2", "", "-23.9", "9.7", "%format"],
+            ["2.8", "3.2", " ", "-23.9", "9.7", "%format"],
+            ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
+            ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
+        ]
+        fmt = "%Y-%m-%dT %H:%M:%SZ+1"
+        exp = [
+            ["timestamp", "measurand", "value"],
+            ["2019-03-02T 15:30:00Z+1", "foo", 2.0],
+            ["2019-03-02T 15:30:00Z+1", "bar", 23.9],
+            ["2019-03-02T 15:31:00Z+1", "foo", 2.0],
+            ["2019-03-02T 15:31:00Z+1", "bar", 23.9],
+            ["2019-03-02T 15:31:00Z+1", "car", 56.2],
+            ["2019-03-02T 15:32:00Z+1", "foo", 2.5],
+            ["2019-03-02T 15:32:00Z+1", "bar", -5.2],
+            ["2019-05-21T 15:33:00Z+1", "car", 1802.0],
+            ["2040-12-31T 00:28:00Z+1", "bar", 90.2],
+        ]
+
+        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
+        res, _ = aeroqual.validate_data(data, fmt)
         self.assertCountEqual(res, exp)
 
     def test_special_chars(self):
@@ -70,13 +103,14 @@ class TestValidate(unittest.TestCase):
             ["5", "INF", "2019-03-02 15:32", "NAN", "5.0", "bar"],
             ["5", "Inf", "2019-03-02 15:33", "NaN", "5.0", "bar"],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
         exp = [
             ["timestamp", "measurand", "value"],
             ["2019-03-02 15:30:00", "car", 1e5],
         ]
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        res, _ = aeroqual.validate_data(data)
+        res, _ = aeroqual.validate_data(data, fmt)
         self.assertEqual(res, exp)
 
     def test_no_header(self):
@@ -91,33 +125,37 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            res, _ = aeroqual.validate_data(data)
+            res, _ = aeroqual.validate_data(data, fmt)
 
     def test_no_data(self):
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-        res, _ = aeroqual.validate_data(data)
+        res, _ = aeroqual.validate_data(data, fmt)
         exp = [["timestamp", "measurand", "value"]]
         self.assertEqual(res, exp)
 
     def test_empty_list(self):
         data = []
+        fmt = "%Y-%m-%d %H:%M:%S"
 
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            aeroqual.validate_data(data)
+            aeroqual.validate_data(data, fmt)
 
     def test_None(self):
         data = None
+        fmt = "%Y-%m-%d %H:%M:%S"
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            aeroqual.validate_data(data)
+            aeroqual.validate_data(data, fmt)
 
     def test_no_timestamp_col(self):
         data = [
@@ -132,9 +170,10 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
         aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         with self.assertRaises(utils.ValidateDataError):
-            aeroqual.validate_data(data)
+            aeroqual.validate_data(data, fmt)
 
     def test_missing_measurands(self):
         # Here are asking for measurands that aren't in the raw data. Should
@@ -155,6 +194,7 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
+        fmt = "%Y-%m-%d %H:%M:%S"
         exp = [
             ["timestamp", "measurand", "value"],
             ["2019-03-02 15:30:00", "foo", 2.0],
@@ -168,7 +208,7 @@ class TestValidate(unittest.TestCase):
             ["2040-12-31 00:28:00", "bar", 90.2],
         ]
 
-        res, _ = aeroqual.validate_data(data)
+        res, _ = aeroqual.validate_data(data, fmt)
         self.assertCountEqual(res, exp)
 
     def test_invalid_timestamp_format(self):
@@ -177,6 +217,7 @@ class TestValidate(unittest.TestCase):
         cfg_copy = self.cfg.copy()
         cfg_copy["timestamp_format"] = "Y-m-d H:M"
         aeroqual = Aeroqual.Aeroqual(cfg_copy, self.fields)
+        fmt = "%Y-%m-%d %H:%M:%S"
 
         data = [
             ["not used", "foo", "timestamp", "bar", "unused", "car"],
@@ -190,7 +231,7 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
-        res, _ = aeroqual.validate_data(data)
+        res, _ = aeroqual.validate_data(data, fmt)
         exp = [["timestamp", "measurand", "value"]]
         self.assertEqual(res, exp)
 
@@ -212,7 +253,8 @@ class TestValidate(unittest.TestCase):
             ["2.8", "3.2", "2018-02-31 18:00", "23.2", "9.7", "28.9"],
             ["23..8", "2str3", "2040-12-31 00:28", "90.2", "23", "  "],
         ]
-        res, _ = aeroqual.validate_data(data)
+        fmt = "%Y-%m-%d %H:%M:%S"
+        res, _ = aeroqual.validate_data(data, fmt)
         exp = [["timestamp", "measurand", "value"]]
         self.assertEqual(res, exp)
 

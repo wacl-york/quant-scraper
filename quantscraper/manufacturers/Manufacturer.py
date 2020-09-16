@@ -159,7 +159,7 @@ class Manufacturer(ABC):
         self._recording_frequency = cfg["recording_frequency_per_hour"]
         # Name of column that holds timestamp
         self.timestamp_col = cfg["timestamp_column"]
-        # String providing the format of the timestamp
+        # String providing the format of the timestamp used by this manufacturer
         self.timestamp_format = cfg["timestamp_format"]
         # Information about measurands parsed by this manufacturer
         self.measurands = fields
@@ -176,7 +176,7 @@ class Manufacturer(ABC):
         """
         self._devices.append(device)
 
-    def validate_data(self, data):
+    def validate_data(self, data, output_timestamp_format):
         """
         Runs QA validation checks on air quality data.
 
@@ -184,8 +184,11 @@ class Manufacturer(ABC):
         the validation summary dict, but it works for now.
 
         Args:
-            data (2D list): Data in the CSV format as returned by parse_to_csv.
+            - data (2D list): Data in the CSV format as returned by parse_to_csv.
                 The values themselves will still be stored as strings.
+            - output_timestamp_format (str): Desired format for the timestamp column in the
+                clean data.
+
 
         Returns:
             A tuple with:
@@ -222,8 +225,6 @@ class Manufacturer(ABC):
         data_vals.insert(0, header)
         data = data_vals
 
-        # TODO put desired output timestamp format in config?
-        output_format = "%Y-%m-%d %H:%M:%S"
         nrows = len(data)
         measurand_indices = {}
         scaling_factors = {}
@@ -263,7 +264,7 @@ class Manufacturer(ABC):
             except IndexError:
                 continue
             n_clean_vals["timestamp"] += 1
-            timestamp_clean = timestamp_dt.strftime(output_format)
+            timestamp_clean = timestamp_dt.strftime(output_timestamp_format)
 
             # See if can parse each measurand as float
             for measurand in available_measurands:

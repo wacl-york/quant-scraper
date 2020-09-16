@@ -190,7 +190,7 @@ def scrape(manufacturer, start, end):
             device.raw_data = None
 
 
-def process(manufacturer):
+def process(manufacturer, timestamp_format):
     """
     For each device belonging to a manufacturer, the raw JSON data is parsed
     into CSV format, before running a data cleaning proecedure to store only
@@ -201,6 +201,8 @@ def process(manufacturer):
 
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+        - timestamp_format (str): Datetime format to use for the timestamp column 
+            in the cleaned data.
 
     Returns:
         A dictionary summarising how many recordings are available for each
@@ -255,7 +257,9 @@ def process(manufacturer):
             continue
 
         try:
-            clean_data, measurand_summary = manufacturer.validate_data(csv_data)
+            clean_data, measurand_summary = manufacturer.validate_data(
+                csv_data, timestamp_format
+            )
 
             if len(clean_data) <= 1:
                 logging.error(
@@ -811,7 +815,7 @@ def main():
         logging.info("Downloading data from all devices:")
         scrape(manufacturer, start_time, end_time)
         logging.info("Processing raw data for all devices:")
-        man_summary = process(manufacturer)
+        man_summary = process(manufacturer, cfg.get("Main", "timestamp_format"))
 
         # Add device location and recording rate so can be displayed in summary
         # table
@@ -822,7 +826,7 @@ def main():
         summaries.append(man_summary)
 
         # Get start time date for naming output files
-        start_fmt = start_time.strftime("%Y-%m-%d")
+        start_fmt = start_time.strftime(cfg.get("Main", "filename_date_format"))
 
         if args.save_raw:
             logging.info("Saving raw data from all devices:")

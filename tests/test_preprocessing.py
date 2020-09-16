@@ -589,6 +589,8 @@ class TestResample(unittest.TestCase):
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
+    clean_fmt = "%Y-%m-%d"
+
     def test_no_date(self):
         # Don't pass in date, so output should have yesterday's date
 
@@ -597,23 +599,33 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
             mock_today = Mock(return_value=datetime.date(2012, 3, 17))
             mock_date.today = mock_today
 
-            res = daily_preprocessing.setup_scraping_timeframe()
+            res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt)
             self.assertEqual(res, "2012-03-16")
+
+    def test_date_format_1(self):
+        # Test the date format option is correctly used
+        res = daily_preprocessing.setup_scraping_timeframe("%Y-%d", "2019-23")
+        self.assertEqual(res, "2019-23")
+
+    def test_date_format_2(self):
+        # Test the date format option is correctly used
+        res = daily_preprocessing.setup_scraping_timeframe("%d %b %Y", "30 Aug 2020")
+        self.assertEqual(res, "30 Aug 2020")
 
     def test_date_provided(self):
         # Providing config with valid date attribute shouldn't modify it
-        res = daily_preprocessing.setup_scraping_timeframe("2019-05-23")
+        res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2019-05-23")
         self.assertEqual(res, "2019-05-23")
 
     def test_invalid_date(self):
         # Date is provided, but isn't in YYYY-mm-dd format so should raise error
         with self.assertRaises(utils.TimeError):
-            daily_preprocessing.setup_scraping_timeframe("2020/03/04")
+            daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2020/03/04")
 
     def test_zeropadding_added(self):
         # Valid date is provided but doesn't have zero padding, which is always
         # present in the clean data filenames
-        res = daily_preprocessing.setup_scraping_timeframe("2020-3-4")
+        res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2020-3-4")
         self.assertEqual(res, "2020-03-04")
 
 

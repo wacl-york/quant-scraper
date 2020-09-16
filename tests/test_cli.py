@@ -473,8 +473,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "dt"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected messages
         self.assertEqual(
@@ -494,9 +498,9 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -533,8 +537,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = None
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "footimezonedatetime"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -544,8 +552,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -583,8 +591,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%SZ"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -601,8 +613,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -640,8 +652,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%SZSAD"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -659,8 +675,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -698,8 +714,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%S"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -714,9 +734,9 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
