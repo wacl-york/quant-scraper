@@ -65,9 +65,11 @@ def main():
         clean_drive_id = os.environ["GDRIVE_CLEAN_ID"]
         toplevel_drive_id = os.environ["GDRIVE_QUANTSHARED_ID"]
         pa_drive_id = os.environ["GDRIVE_PURPLEAIR_ID"]
+        availability_id = os.environ["GDRIVE_AVAILABILITY_ID"]
+
     except KeyError:
         logging.error(
-            "Ensure the env vars 'GDRIVE_CLEAN_ID', 'GDRIVE_QUANTSHARED_ID', and 'GDRIVE_PURPLEAIR_ID' are set prior to running this program."
+            "Ensure the env vars 'GDRIVE_CLEAN_ID', 'GDRIVE_AVAILABILITY_ID', 'GDRIVE_QUANTSHARED_ID', and 'GDRIVE_PURPLEAIR_ID' are set prior to running this program."
         )
         sys.exit()
 
@@ -156,42 +158,50 @@ def main():
             else:
                 summaries[date][device.device_id] = summary
 
-    # Turn into tabular summary
+    # Combine summaries into 2D list
     tables = tabular_summary(summaries, PA_manufacturer.recording_frequency)
 
-    # Save HTML if asked
-    if args.recipients is not None:
-        # Load style options for manufacturer summary
-        email_html = generate_html_summary(tables, cfg)
+    # Upload availability statistics
+    for date, summary in tables.items():
+        cli.save_availability(
+            service,
+            {"PurpleAir": summary},
+            availability_id,
+            cfg.get("Main", "local_folder_availability"),
+            date,
+        )
 
-        if email_html is not None:
-            try:
-                sender = os.environ["EMAIL_SENDER_ADDRESS"]
-            except KeyError:
-                logging.error(
-                    "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
-                )
-            try:
-                identity_arn = os.environ["IDENTITY_ARN"]
-            except KeyError:
-                logging.error(
-                    "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
-                )
+    # Email HTML availability summary
+    email_html = generate_html_summary(tables, cfg)
 
-            try:
-                logging.info("Attemping to send email...")
-                utils.send_email_ses(
-                    "PurpleAir upload summary",
-                    email_html,
-                    f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
-                    sender,
-                    args.recipients,
-                    identity_arn,
-                )
-            except utils.EmailSendingError as ex:
-                logging.error("Email sending failed: {}".format(ex))
-            else:
-                logging.info("Email sent.")
+    if email_html is not None:
+        try:
+            sender = os.environ["EMAIL_SENDER_ADDRESS"]
+        except KeyError:
+            logging.error(
+                "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
+            )
+        try:
+            identity_arn = os.environ["IDENTITY_ARN"]
+        except KeyError:
+            logging.error(
+                "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
+            )
+
+        try:
+            logging.info("Attemping to send email...")
+            utils.send_email_ses(
+                "PurpleAir upload summary",
+                email_html,
+                f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
+                sender,
+                args.recipients,
+                identity_arn,
+            )
+        except utils.EmailSendingError as ex:
+            logging.error("Email sending failed: {}".format(ex))
+        else:
+            logging.info("Email sent.")
 
 
 def instantiate_PA_manufacturer():
@@ -244,8 +254,6 @@ def parse_args():
         help="The recipients to send the email to.",
         required=True,
     )
-
-    # TODO uploading availability
 
     args = parser.parse_args()
     return args
