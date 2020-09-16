@@ -30,13 +30,9 @@ import json
 from datetime import date, timedelta, datetime
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv
 
 import quantscraper.utils as utils
-import quantscraper.cli as cli
 from quantscraper.factories import setup_manufacturers
-
-CONFIG_FN = "config.ini"
 
 
 def parse_args():
@@ -309,34 +305,27 @@ def main():
 
     # Setup logging, which for now just logs to stdout
     try:
-        cli.setup_loggers()
+        utils.setup_loggers()
     except utils.SetupError:
-        print.error("Error in setting up loggers.")
-        print.error(traceback.format_exc())
-        print.error("Terminating program")
+        print("Error in setting up loggers.")
+        print(traceback.format_exc())
+        print("Terminating program")
         sys.exit()
 
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
-    load_dotenv()
-    # Parse JSON environment variable into separate env vars
-    try:
-        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
-    except utils.SetupError:
+    if not utils.parse_env_vars():
         logging.error(
             "Error when initiating environment variables, terminating execution."
         )
         logging.error(traceback.format_exc())
         sys.exit()
 
-    for k, v in vars.items():
-        os.environ[k] = v
-
     # Parse args and config file
     args = parse_args()
     try:
-        cfg = utils.setup_config(CONFIG_FN)
+        cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
@@ -348,7 +337,7 @@ def main():
 
     # Load config params
     local_clean_folder = cfg.get("Main", "local_folder_clean_data")
-    local_analysis_folder = cfg.get("Main", "local_folder_analysis_data")
+    local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
     time_res = cfg.get("Analysis", "time_resolution")
 
     try:

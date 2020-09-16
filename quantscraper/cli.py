@@ -23,40 +23,6 @@ from dotenv import load_dotenv
 import quantscraper.utils as utils
 from quantscraper.factories import setup_manufacturers
 
-CONFIG_FN = "config.ini"
-
-
-def setup_loggers(logfn=None):
-    """
-    Configures loggers.
-
-    By default, the error log is printed to standard out,
-    although it can be saved to file in addition.
-
-    Args:
-        - logfn (str, optional): File to save log to. If None then doesn't write log to file.
-
-    Returns:
-        None. the logger is accessed by the global module `logging`.
-    """
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    log_fmt = logging.Formatter(
-        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-    )
-    cli_logger = logging.StreamHandler()
-    cli_logger.setFormatter(log_fmt)
-    root_logger.addHandler(cli_logger)
-
-    if not logfn is None:
-        if os.path.isfile(logfn):
-            raise utils.SetupError(
-                ("Log file {} already exists. " "Halting execution.").format(logfn)
-            )
-        file_logger = logging.FileHandler(logfn)
-        file_logger.setFormatter(log_fmt)
-        root_logger.addHandler(file_logger)
-
 
 def parse_args():
     """
@@ -774,7 +740,7 @@ def main():
     """
     # Setup logging, which for now just logs to stderr
     try:
-        setup_loggers()
+        utils.setup_loggers()
     except utils.SetupError:
         logging.error("Error in setting up loggers.")
         logging.error(traceback.format_exc())
@@ -784,25 +750,18 @@ def main():
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
-    load_dotenv()
-    # Parse JSON environment variable into separate env vars
-    try:
-        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
-    except utils.SetupError:
+    if not utils.parse_env_vars():
         logging.error(
             "Error when initiating environment variables, terminating execution."
         )
         logging.error(traceback.format_exc())
         sys.exit()
 
-    for k, v in vars.items():
-        os.environ[k] = v
-
     # Parse args and config file
     args = parse_args()
 
     try:
-        cfg = utils.setup_config(CONFIG_FN)
+        cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())

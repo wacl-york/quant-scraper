@@ -14,6 +14,8 @@ import csv
 import socket
 from string import Template
 import configparser
+import logging
+from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
@@ -21,6 +23,7 @@ from google.oauth2 import service_account
 import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
+from dotenv import load_dotenv
 
 RAW_DATA_FN = Template("${man}_${device}_${day}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
@@ -28,6 +31,7 @@ ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
 AVAILABILITY_DATA_FN = Template("availability_${man}_${date}.csv")
 
 DEVICES_FN = "devices.json"
+CONFIG_FN = "config.ini"
 
 
 class LoginError(Exception):
@@ -366,21 +370,21 @@ def load_html_template(filename):
     return Template(template_raw)
 
 
-def setup_config(cfg_fn):
+def setup_config():
     """
     Loads configuration parameters from a file into memory.
 
     Args:
-        - cfg_fn (str): Filepath of the .ini file.
+        None. The configuration filename is available as a global variable.
 
     Returns:
         A configparser.Namespace instance.
     """
     cfg = configparser.ConfigParser()
-    cfg.read(cfg_fn)
+    cfg.read(CONFIG_FN)
 
     if len(cfg.sections()) == 0:
-        raise SetupError("No sections found in '{}'".format(cfg_fn))
+        raise SetupError("No sections found in '{}'".format(CONFIG_FN))
 
     return cfg
 
@@ -493,3 +497,66 @@ def send_email_ses(
         )
     except ClientError as e:
         raise EmailSendingError
+
+
+def setup_loggers(logfn=None):
+    """
+    Configures loggers.
+
+    By default, the error log is printed to standard out,
+    although it can be saved to file in addition.
+
+    Args:
+        - logfn (str, optional): File to save log to. If None then doesn't write log to file.
+
+    Returns:
+        None. the logger is accessed by the global module `logging`.
+    """
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    log_fmt = logging.Formatter(
+        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
+    cli_logger = logging.StreamHandler()
+    cli_logger.setFormatter(log_fmt)
+    root_logger.addHandler(cli_logger)
+
+    if not logfn is None:
+        if os.path.isfile(logfn):
+            raise SetupError(
+                ("Log file {} already exists. " "Halting execution.").format(logfn)
+            )
+        file_logger = logging.FileHandler(logfn)
+        file_logger.setFormatter(log_fmt)
+        root_logger.addHandler(file_logger)
+
+
+def parse_env_vars():
+    """
+    Parses environment variables.
+
+    Variables are either passed in as environment variables (when run in
+    production) or read in from a local file (when developing).
+    The dotenv package handles reading the environment variables in from either
+    source.
+
+    The env vars are stored in JSON format, so this function splits them up into
+    each keyword-value pair.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+
+    load_dotenv()
+    try:
+        env_vars = parse_JSON_environment_variable("QUANT_CREDS")
+    except SetupError:
+        return False
+
+    for k, v in env_vars.items():
+        os.environ[k] = v
+
+    return True

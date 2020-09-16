@@ -28,10 +28,7 @@ import logging
 from datetime import datetime
 import quantscraper.utils as utils
 import quantscraper.cli as cli
-from dotenv import load_dotenv
 from quantscraper.factories import setup_manufacturers
-
-CONFIG_FN = "config.ini"
 
 
 def main():
@@ -46,7 +43,7 @@ def main():
     """
     # Setup logging
     try:
-        cli.setup_loggers()
+        utils.setup_loggers()
     except utils.SetupError:
         print("Error in setting up loggers.")
         print(traceback.format_exc())
@@ -54,7 +51,15 @@ def main():
 
     # Read inputs from CLI and env vars
     args = parse_args()
-    parse_env_vars()
+    # This sets up environment variables if they are explicitly provided in a .env
+    # file. If system env variables are present (as they will be in production),
+    # then it doesn't overwrite them
+    if not utils.parse_env_vars():
+        logging.error(
+            "Error when initiating environment variables, terminating execution."
+        )
+        logging.error(traceback.format_exc())
+        sys.exit()
 
     try:
         clean_drive_id = os.environ["GDRIVE_CLEAN_ID"]
@@ -67,7 +72,7 @@ def main():
         sys.exit()
 
     try:
-        cfg = utils.setup_config(CONFIG_FN)
+        cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
@@ -178,43 +183,6 @@ def main():
                 logging.error("Email sending failed: {}".format(ex))
             else:
                 logging.info("Email sent.")
-
-
-def parse_env_vars():
-    """
-    Parses environment variables.
-
-    Variables are either passed in as environment variables (when run in
-    production) or read in from a local file (when developing). 
-    The dotenv package handles reading the environment variables in from either
-    source.
-
-    The env vars are stored in JSON format, so this function splits them up into
-    each keyword-value pair.
-
-    Args:
-        None
-
-    Returns:
-        None
-    """
-
-    # This sets up environment variables if they are explicitly provided in a .env
-    # file. If system env variables are present (as they will be in production),
-    # then it doesn't overwrite them
-    load_dotenv()
-    # Parse JSON environment variable into separate env vars
-    try:
-        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
-    except utils.SetupError:
-        logging.error(
-            "Error when initiating environment variables, terminating execution."
-        )
-        logging.error(traceback.format_exc())
-        sys.exit()
-
-    for k, v in vars.items():
-        os.environ[k] = v
 
 
 def instantiate_PA_manufacturer():
@@ -517,7 +485,7 @@ def get_raw_filenames(service, drive_id, pa_id, device_id):
     Args:
         service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
         - drive_id (str): The ID of the top-level QUANT shared drive.
-        - clean_id (str): The ID of the raw PurpleAir Google Drive folder.
+        - pa_id (str): The ID of the raw PurpleAir Google Drive folder.
         - device_id (str): Device ID.
 
     Returns:

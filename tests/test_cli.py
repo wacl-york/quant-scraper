@@ -8,13 +8,12 @@
 from datetime import date
 import unittest
 from collections import defaultdict
-import logging
 import os
 from unittest.mock import patch, MagicMock, Mock, call
 
+from utils import build_mock_today
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-from utils import build_mock_today
 from quantscraper.manufacturers.Manufacturer import Device
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 
@@ -26,45 +25,6 @@ os.environ["AQMESH_PW"] = "foo"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
-
-
-class TestSetupLoggers(unittest.TestCase):
-    # Capturing the log output is relatively tricky without a 3rd party library.
-    # This would be ideal to check that the log format is as expected, but not
-    # worth the additional dependency and test complexity for now.
-    # Instead will just ensure the setup is as expected.
-
-    def test_logger(self):
-        # By default, logger is set to warn (30) and has no handlers
-        logger = logging.getLogger()
-        self.assertEqual(logger.getEffectiveLevel(), 30)
-
-        # After running cli.seutp_loggers, the CLI logger should be set to
-        # record at INFO (20) and has handlers
-        cli.setup_loggers(None)
-        logger = logging.getLogger("cli")
-        self.assertEqual(logger.getEffectiveLevel(), 20)
-        self.assertTrue(logger.hasHandlers())
-
-    def test_formatter(self):
-        # Can't easily capture log output so instead will ensure that the
-        # formatter is setup as expected
-        with patch("quantscraper.cli.logging") as mock_logging:
-            # Mock the Formatter function that builds a format object
-            mock_fmt = Mock()
-            mock_formatter = MagicMock(return_value=mock_fmt)
-            mock_logging.Formatter = mock_formatter
-
-            # Mock the setFormatter setter to ensure that it is called with the
-            # returned format object
-            mock_setformatter = Mock()
-            mock_logging.StreamHandler.return_value.setFormatter = mock_setformatter
-
-            cli.setup_loggers(None)
-            mock_formatter.assert_called_once_with(
-                "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-            )
-            mock_setformatter.assert_called_once_with(mock_fmt)
 
 
 class TestParseArgs(unittest.TestCase):
