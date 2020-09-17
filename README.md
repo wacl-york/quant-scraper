@@ -1,4 +1,4 @@
-![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=master)
+![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=main)
 ![Test coverage](https://webfiles.york.ac.uk/WACL/QUANT/QUANTscraper/resources/coverage.svg)
 
 # QUANTscraper
@@ -8,7 +8,7 @@ Scrapes data from the websites of air quality instrumentation system manufacture
 # Setting up scheduled scraping
 
 QUANTScraper runs on AWS Fargate and is currently configured to run in an account associated with the QUANT project.
-The app is deployed through a GitHub Action that is triggered by a pull-request into the `master` branch of this repository.
+The app is deployed through a GitHub Action that is triggered by a pull-request into the `main` branch of this repository.
 
 ## Creating deploy IAM user
 
@@ -56,7 +56,7 @@ Create (or update if already present) the following 3 Secrets in this GitHub rep
   - `AWS_SECRET_ACCESS_KEY`: from the deploy IAM user created above
   - `AWS_USER_ID`: The AWS account ID where the app is to be deployed
 
-The scraping app can now be deployed by accepting a new pull request into `master`.
+The scraping app can now be deployed by accepting a new pull request into `main`.
 This will either create a new Stack if one doesn't already exist or update the existing one, and then push the latest Docker image to ECR.
 
 ## Populate Secrets
@@ -148,7 +148,7 @@ And can be used through
 
 The latest stable version of `quantscraper` can then be installed from GitHub by using the following command.
 
-`pip install git+https://github.com/wacl-york/QUANTscraper.git@master`
+`pip install git+https://github.com/wacl-york/QUANTscraper.git@main`
 
 ## Running the scraper 
 
