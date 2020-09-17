@@ -367,7 +367,7 @@
                                 "Action": "ecs:RunTask",
                                 "Resource": [
                                     { 
-                                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+                                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}:*"
                                     }
                                 ]
                             },
