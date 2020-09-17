@@ -5,9 +5,9 @@ name: "Build and test"
 
 on:
   push:
-    branches: [ master, feature/*, release/* ]
+    branches: [ main, feature/*, release/*, hotfix/* ]
   pull_request:
-    branches: [ master, release/* ]
+    branches: [ main, release/* ]
 jobs:
   build:
     runs-on: ubuntu-latest
