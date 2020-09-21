@@ -117,7 +117,7 @@ class TestAQMesh(unittest.TestCase):
                 self.aqmesh.connect()
                 post_mock.assert_called_once_with(
                     "foo.com",
-                    files={"username": (None, "foo"), "password": (None, "bar")},
+                    files={"emailaddress": (None, "foo"), "password": (None, "bar")},
                     headers={"referer": "ref.com"},
                 )
             except:
