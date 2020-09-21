@@ -221,7 +221,7 @@ class Manufacturer(ABC):
         # Remove duplicate rows. Set obtains unique values but only runs on
         # hashable datatypes, such as tuples, rather than lists
         header = data[0]
-        data_vals = [list(t) for t in set(tuple(element) for element in data[0:])]
+        data_vals = [list(t) for t in set(tuple(element) for element in data[1:])]
         data_vals.insert(0, header)
         data = data_vals
 

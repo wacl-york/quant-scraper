@@ -87,7 +87,6 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to.",
-        required=True,
     )
 
     args = parser.parse_args()
@@ -490,9 +489,9 @@ def generate_ascii_summary(tables, column_width=13, max_screen_width=100):
     max_cols = math.floor(max_screen_width / column_width)
 
     output = []
-    output.append("+" * 80)
+    output.append("+" * max_screen_width)
     output.append("Summary")
-    output.append("-" * 80)
+    output.append("-" * max_screen_width)
 
     for manufacturer, manu_table in tables.items():
         output.append(manufacturer)

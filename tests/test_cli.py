@@ -11,6 +11,8 @@ from collections import defaultdict
 import os
 from unittest.mock import patch, MagicMock, Mock, call
 
+import pandas as pd
+
 from utils import build_mock_today
 import quantscraper.cli as cli
 import quantscraper.utils as utils
@@ -90,12 +92,44 @@ class TestParseArgs(unittest.TestCase):
                     metavar="EMAIL@DOMAIN",
                     nargs="+",
                     help="The recipients to send the email to.",
-                    required=True,
                 ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
 
             mock_parseargs.assert_called_once_with()
+
+
+class TestGenerateASCIISummary(unittest.TestCase):
+    def test_success(self):
+        input = {
+            "Foo": [["A", "B", "C"], [1, 2, 3], [4, 5, 6]],
+            "Bar": [["D", "F", "G"], [8, 9, 10], [12, 24, 36]],
+        }
+        res = cli.generate_ascii_summary(input, column_width=13, max_screen_width=100)
+        exp = [
+            "+" * 100,
+            "Summary",
+            "-" * 100,
+            "Foo",
+            "~~~",
+            f"{'-'*45}",
+            f"||{' '*12}A||{' '*12}B|{' '*12}C|",
+            f"{'-'*45}",
+            f"||{' '*12}1||{' '*12}2|{' '*12}3|",
+            f"||{' '*12}4||{' '*12}5|{' '*12}6|",
+            f"{'-'*45}",
+            "Bar",
+            "~~~",
+            f"{'-'*45}",
+            f"||{' '*12}D||{' '*12}F|{' '*12}G|",
+            f"{'-'*45}",
+            f"||{' '*12}8||{' '*12}9|{' '*11}10|",
+            f"||{' '*11}12||{' '*11}24|{' '*11}36|",
+            f"{'-'*45}",
+            "+" * 80,
+        ]
+
+        self.assertEqual(res, exp)
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
@@ -984,7 +1018,7 @@ class TestSummariseRun(unittest.TestCase):
 
     def test_no_timestamp(self):
         # Likewise no timestamp available should make the associated column
-        # empty and remove the %s from other measurands
+        # empty
         summaries = [
             {
                 "manufacturer": "foo",
@@ -1316,3 +1350,166 @@ class TestSaveRawData(unittest.TestCase):
                 self.assertEqual(calls, exp_calls)
                 # Should only have first filename returned
                 self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.json"])
+
+
+class TestSaveAvailability(unittest.TestCase):
+    def df_to_list(self, df):
+        return [
+            df.reset_index().columns.values.tolist()
+        ] + df.reset_index().values.tolist()
+
+    def test_success(self):
+        mock_service = Mock()
+        folder_id = "123#456"
+        tables = {
+            "Foo": [
+                ["Device ID", "Timestamps", "B", "C"],
+                ["Foo01", "1 (50%)", "2 (32%)", "3 (32%)"],
+                ["Foo02", "4 (58%)", "5 (40%)", "6 (41%)"],
+            ],
+            "Bar": [
+                ["Device ID", "Timestamps", "F", "G"],
+                ["BarA", "8 (32%)", "9 (76%)", "10 (81%)"],
+                ["BarB", "12 (91%)", "24 (100%)", "36 (2%)"],
+            ],
+        }
+        local_folder = "mydata/dir2/foo"
+        date = "2030-04-16"
+
+        # patch save_data
+        with patch("quantscraper.cli.utils.save_dataframe") as mock_save_dataframe:
+
+            # patch upload_file_google_drive
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+
+                cli.save_availability(
+                    mock_service, tables, folder_id, local_folder, date
+                )
+
+                # Test save local file
+                # Can't directly compare the call arguments to actual as
+                # hard to compare pandas dataframes as it will compare on full
+                # metadata (labels, headers, indices etc...) rather than just
+                # values. Instead, convert to list and compare on values
+                exp_df_1 = [
+                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                ]
+                exp_df_2 = [
+                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                ]
+                actual_save_calls = mock_save_dataframe.mock_calls
+
+                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
+                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
+                self.assertEqual(
+                    actual_save_calls[0][1][1],
+                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                )
+                self.assertEqual(
+                    actual_save_calls[1][1][1],
+                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                )
+
+                # Test GoogleDrive upload
+                exp_upload_calls = [
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    ),
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    ),
+                ]
+
+                actual_upload_calls = mock_upload.mock_calls
+                self.assertEqual(actual_upload_calls, exp_upload_calls)
+
+    # TODO
+    def test_data_saving_error(self):
+        mock_service = Mock()
+        folder_id = "123#456"
+        tables = {
+            "Foo": [
+                ["Device ID", "Timestamps", "B", "C"],
+                ["Foo01", "1 (50%)", "2 (32%)", "3 (32%)"],
+                ["Foo02", "4 (58%)", "5 (40%)", "6 (41%)"],
+            ],
+            "Bar": [
+                ["Device ID", "Timestamps", "F", "G"],
+                ["BarA", "8 (32%)", "9 (76%)", "10 (81%)"],
+                ["BarB", "12 (91%)", "24 (100%)", "36 (2%)"],
+            ],
+        }
+        local_folder = "mydata/dir2/foo"
+        date = "2030-04-16"
+
+        # patch save_data
+        with patch(
+            "quantscraper.cli.utils.save_dataframe",
+            side_effect=[utils.DataSavingError(""), ""],
+        ) as mock_save_dataframe:
+
+            # patch upload_file_google_drive
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+
+                # Check that upload file isn't called for first file as had
+                # error when saving
+                cli.save_availability(
+                    mock_service, tables, folder_id, local_folder, date
+                )
+
+                # Test save local file
+                # Can't directly compare the call arguments to actual as
+                # hard to compare pandas dataframes as it will compare on full
+                # metadata (labels, headers, indices etc...) rather than just
+                # values. Instead, convert to list and compare on values
+                exp_df_1 = [
+                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                ]
+                exp_df_2 = [
+                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                ]
+                actual_save_calls = mock_save_dataframe.mock_calls
+
+                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
+                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
+                self.assertEqual(
+                    actual_save_calls[0][1][1],
+                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                )
+                self.assertEqual(
+                    actual_save_calls[1][1][1],
+                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                )
+
+                # Test GoogleDrive upload
+                # NB: only one file is uploaded due to error being raised on
+                # first file
+                exp_upload_calls = [
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    )
+                ]
+
+                actual_upload_calls = mock_upload.mock_calls
+                self.assertEqual(actual_upload_calls, exp_upload_calls)

@@ -123,6 +123,7 @@ def get_available_clean_dates(dir):
     """
     fns = glob.glob("{}/PurpleAir*".format(dir))
     clean_dates = list(set([get_date_from_clean_fn(file) for file in fns]))
+    clean_dates = [x for x in clean_dates if x is not None]
     return clean_dates
 
 
@@ -142,6 +143,7 @@ def get_uploaded_analysis_dates(service, drive_id, analysis_id):
     q = f"mimeType='text/csv' and '{analysis_id}' in parents and name contains 'PurpleAir'"
     files = utils.list_files_googledrive(service, drive_id, query=q)
     dates = [get_date_from_analysis_fn(file["name"]) for file in files]
+    dates = [x for x in dates if x is not None]
     return dates
 
 
@@ -157,10 +159,14 @@ def get_date_from_clean_fn(fn):
         The date in YYYY-mm-dd format as a string.
     """
     # Remove folder and file extension fn = os.path.basename(fn)
-    fn = os.path.basename(fn)
-    fn = os.path.splitext(fn)[0]
-    date = fn.split("_")[2]
-    return date
+    try:
+        fn = os.path.basename(fn)
+        fn = os.path.splitext(fn)[0]
+        date = fn.split("_")[2]
+    except IndexError:
+        return None
+    else:
+        return date
 
 
 def get_date_from_analysis_fn(fn):
@@ -175,10 +181,14 @@ def get_date_from_analysis_fn(fn):
         The date in YYYY-mm-dd format as a string.
     """
     # Remove folder and file extension
-    fn = os.path.basename(fn)
-    fn = os.path.splitext(fn)[0]
-    date = fn.split("_")[1]
-    return date
+    try:
+        fn = os.path.basename(fn)
+        fn = os.path.splitext(fn)[0]
+        date = fn.split("_")[1]
+    except IndexError:
+        return None
+    else:
+        return date
 
 
 def get_pa_device_ids(device_config):

@@ -9,10 +9,11 @@ import logging
 import unittest
 import string
 import os
+from utils import build_mock_response
 from unittest.mock import patch, Mock, mock_open, MagicMock
 import pandas as pd
 from googleapiclient.errors import HttpError
-from utils import build_mock_response
+from botocore.exceptions import ClientError
 
 import quantscraper.utils as utils
 
@@ -573,6 +574,140 @@ class TestLoadDeviceConfiguration(unittest.TestCase):
 
                     with self.assertRaises(utils.SetupError):
                         utils.load_device_configuration()
+
+
+class TestListFilesGoogleDrive(unittest.TestCase):
+    def test_success(self):
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", "foo=bar")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_no_files(self):
+        # Empty files
+        files = []
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", "foo=bar")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+
+class TestSendEmailSes(unittest.TestCase):
+
+    # Can't patch botocore.exceptions.ClientError so can't test it
+    def test_success(self):
+
+        with patch("quantscraper.utils.boto3") as mock_boto:
+
+            mock_send_email = Mock()
+            mock_client = Mock(send_email=mock_send_email)
+            mock_client_func = Mock(return_value=mock_client)
+            mock_boto.client = mock_client_func
+
+            utils.send_email_ses(
+                "Hello - email",
+                "<b>Body text</b>",
+                "Email with text",
+                "sender@domain.org",
+                ["foo@domain1.com", "bar@domain2.com"],
+                identity_arn="arn:foo:bar",
+                charset="utf-8",
+            )
+
+            mock_client_func.assert_called_once_with("ses")
+
+            mock_send_email.assert_called_once_with(
+                Destination={"ToAddresses": ["foo@domain1.com", "bar@domain2.com"]},
+                Message={
+                    "Body": {
+                        "Html": {"Charset": "utf-8", "Data": "<b>Body text</b>",},
+                        "Text": {"Charset": "utf-8", "Data": "Email with text"},
+                    },
+                    "Subject": {"Charset": "utf-8", "Data": "Hello - email"},
+                },
+                Source="sender@domain.org",
+                SourceArn="arn:foo:bar",
+                ReturnPath="sender@domain.org",
+                ReturnPathArn="arn:foo:bar",
+            )
+
+
+class TestParseEnvVars(unittest.TestCase):
+    # Can't test the file loading functionality of dotenv::load_dotenv()
+    # So instead will patch it and just load env vars
+
+    def test_success(self):
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            # Set JSON env var
+            os.environ["QUANT_CREDS"] = '{"foo": "1", "bar": "adsa"}'
+
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, True)
+            self.assertEqual(os.environ["foo"], "1")
+            self.assertEqual(os.environ["bar"], "adsa")
+
+    def test_missing_env_var(self):
+        # If QUANT_CREDS isn't set then the function should still run but will
+        # not set the keyword-value pairs
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, False)
+
+    def test_non_json_envvar(self):
+        # If QUANT_CREDS isn't parseable as JSON then it should also return
+        # False
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            # Set incorrectly formatted JSON env var
+            os.environ["QUANT_CREDS"] = '{"foo"= "1", "bar"= "adsa"}'
+
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, False)
 
 
 if __name__ == "__main__":

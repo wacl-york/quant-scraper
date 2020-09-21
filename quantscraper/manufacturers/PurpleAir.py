@@ -103,6 +103,9 @@ class PurpleAir(Manufacturer):
         reader = csv.reader(raw_lines, delimiter=",")
         data = [row for row in reader]
 
+        if len(data[0]) == 0:
+            raise DataParseError("Have no rows of data available.")
+
         # Remove 'gas' from the header as this field isn't used
         if data[0][-1] == "gas":
             data[0] = data[0][:-1]
@@ -118,4 +121,5 @@ class PurpleAir(Manufacturer):
             )
         if ncols[0] == 1:
             raise DataParseError("Rows only have 1 column.")
+
         return data

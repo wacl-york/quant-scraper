@@ -6,12 +6,55 @@
 """
 
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, call
 import datetime
 import pandas as pd
 import numpy as np
 import quantscraper.utils as utils
 import quantscraper.daily_preprocessing as daily_preprocessing
+
+
+class TestParseArgs(unittest.TestCase):
+    def test_success(self):
+        # Just confirm that expected calls are made
+        with patch(
+            "quantscraper.daily_preprocessing.argparse.ArgumentParser"
+        ) as mock_ArgumentParser:
+            mock_addargument = Mock()
+            mock_args = Mock
+            mock_parseargs = Mock(return_value=mock_args)
+            mock_parser = Mock(add_argument=mock_addargument, parse_args=mock_parseargs)
+            mock_ArgumentParser.return_value = mock_parser
+
+            res = daily_preprocessing.parse_args()
+
+            self.assertEqual(res, mock_args)
+            mock_ArgumentParser.assert_called_once_with(
+                description="QUANT preprocessing"
+            )
+
+            actual_addargument_calls = mock_addargument.mock_calls
+            exp_addargument_calls = [
+                call(
+                    "--devices",
+                    metavar="DEVICE1 DEVICE2 ... DEVICEN",
+                    nargs="+",
+                    help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+                ),
+                call(
+                    "--date",
+                    metavar="DATE",
+                    help="The date to collate data from, in the format YYY-mm-dd. Defaults to yesterday.",
+                ),
+                call(
+                    "--upload",
+                    action="store_true",
+                    help="Uploads the pre-processed data to Google Drive.",
+                ),
+            ]
+            self.assertEqual(actual_addargument_calls, exp_addargument_calls)
+
+            mock_parseargs.assert_called_once_with()
 
 
 class TestLoadData(unittest.TestCase):

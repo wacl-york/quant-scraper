@@ -18,7 +18,7 @@ import logging
 from datetime import datetime
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 from google.oauth2 import service_account
 import googleapiclient.discovery
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
@@ -436,6 +436,10 @@ def list_files_googledrive(service, drive_id, query=None):
             default it will return all files in the given drive id. See the
             Google documentation for details of the syntax:
                 https://developers.google.com/drive/api/v3/search-files
+    Returns:
+        A list of dicts representing files. Each dict has 2 keys:
+            - 'id': The Google Drive ID relating to this file
+            - 'name': The filename
     """
     page_token = None
     files = []
@@ -497,6 +501,8 @@ def send_email_ses(
         )
     except ClientError as e:
         raise EmailSendingError
+    except NoCredentialsError as e:
+        raise EmailSendingError
 
 
 def setup_loggers(logfn=None):
@@ -540,8 +546,8 @@ def parse_env_vars():
     The dotenv package handles reading the environment variables in from either
     source.
 
-    The env vars are stored in JSON format, so this function splits them up into
-    each keyword-value pair.
+    The QUANT_CREDS environment variable is stored in JSON format and this function
+    also splits it up into keyword-value pair env vars.
 
     Args:
         None

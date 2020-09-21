@@ -110,14 +110,19 @@ def main():
         )
 
         # Obtain list of files to download
-        files_to_download = [
-            x
-            for x in raw_fns
-            if convert_to_clean_fn(
+        files_to_download = []
+        for x in raw_fns:
+            clean_fn = convert_to_clean_fn(
                 x[0], device.device_id, cfg.get("Main", "filename_date_format")
             )
-            not in clean_fns
-        ]
+            if clean_fn not in clean_fns:
+                if clean_fn is None:
+                    logging.error(f"Unable to parse date from {x[0]}")
+                    continue
+                files_to_download.append(x)
+
+        # Remove Nones (indicating unparseable date)
+        files_to_download = [fn for fn in files_to_download if fn is not None]
 
         # Download these files
         for file in files_to_download:
@@ -153,6 +158,8 @@ def main():
             date = get_date_from_purpleair_fn(
                 file[0], cfg.get("Main", "filename_date_format")
             )
+            if date is None:
+                continue  # Shouldn't be reached. already checked can be parsed
             if date not in summaries:
                 summaries[date] = {device.device_id: summary}
             else:
@@ -246,7 +253,9 @@ def parse_args():
     Returns:
         An argparse.Namespace object.
     """
-    parser = argparse.ArgumentParser(description="QUANT scraper")
+    parser = argparse.ArgumentParser(
+        description="Convert raw PurpleAir data to QUANT format"
+    )
     parser.add_argument(
         "--recipients",
         metavar="EMAIL@DOMAIN",
@@ -351,17 +360,17 @@ def tabular_summary(summaries, hourly_rate):
     Generates a tabular summary of the run showing the number and % of available
     valid recordings for each measurand.
 
-    NB: This is very similar to a function in cli.py and should probably be
+    NB: This is very similar to tabular_summary() in cli.py and should probably be
     refactored.
+    The main differences are that this function assumes the total period is 24
+    hours rather than allowing for a full day, and that only 1 manufacturer is
+    represented (PurpleAir).
 
     Args:
-        - summaries (list): A list of dictionaries, with each entry storing
-            information about a different manufacturer.
-            Each dictionary summarises how many recordings are available for each
-            device. Has the keys:
-              - 'manufacturer': Provides manufacturer name as a string
-              - 'devices': A further dict mapping {device_id : num_available_timepoints}
-                If a device has no available recordings then the value is None.
+        - summaries (dict): Availability data indexed by date in the form
+            YYYY-mm-dd. Each entry is a further dictionary indexed by 
+            device id, giving the summary statistics for that device for 
+            that recording date.
         - hourly_rate (int): Number of expected recordings in an hour.
 
     Returns:
@@ -446,11 +455,17 @@ def get_date_from_purpleair_fn(fn, quant_date_format, pa_date_format="%Y%m%d"):
     Returns:
         The date in YYYY-mm-dd format as a string.
     """
-    # Remove file extension
+    # Remove file extension and path in case present
+    fn = os.path.basename(fn)
     fn = os.path.splitext(fn)[0]
 
     # Parse into datetime and format in ISO
-    return datetime.strptime(fn, pa_date_format).strftime(quant_date_format)
+    try:
+        date = datetime.strptime(fn, pa_date_format).strftime(quant_date_format)
+    except ValueError:
+        return None
+    else:
+        return date
 
 
 def convert_to_clean_fn(raw_fn, device_id, quant_date_format):
@@ -470,8 +485,11 @@ def convert_to_clean_fn(raw_fn, device_id, quant_date_format):
         A string containing the new filename.
     """
     date = get_date_from_purpleair_fn(raw_fn, quant_date_format)
-    fn = utils.CLEAN_DATA_FN.substitute(man="PurpleAir", device=device_id, day=date)
-    return fn
+    if not date:
+        return None
+    else:
+        fn = utils.CLEAN_DATA_FN.substitute(man="PurpleAir", device=device_id, day=date)
+        return fn
 
 
 def get_processed_filenames(service, drive_id, clean_id, device_id):
