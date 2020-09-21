@@ -46,7 +46,7 @@ class AQMesh(Manufacturer):
 
         # Authentication
         self.auth_params = {
-            "username": (None, os.environ["AQMESH_USER"]),
+            "emailaddress": (None, os.environ["AQMESH_USER"]),
             "password": (None, os.environ["AQMESH_PW"]),
         }
         self.auth_headers = {"referer": cfg["auth_referer"]}
