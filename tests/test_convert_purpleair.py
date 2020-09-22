@@ -179,7 +179,6 @@ class TestParseArgs(unittest.TestCase):
                     metavar="EMAIL@DOMAIN",
                     nargs="+",
                     help="The recipients to send the email to.",
-                    required=True,
                 )
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)

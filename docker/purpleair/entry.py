@@ -39,7 +39,7 @@ def parse_args():
     Returns:
         An argparse.Namespace object.
     """
-    parser = argparse.ArgumentParser(description="Daily scraping container")
+    parser = argparse.ArgumentParser(description="PurpleAir data conversion script.")
 
     parser.add_argument(
         "--recipients",

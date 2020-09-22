@@ -98,6 +98,7 @@ def main():
         sys.exit()
 
     summaries = {}
+
     for device in PA_manufacturer.devices:
         # Get list of filenames in Google Drive
         raw_fns = get_raw_filenames(
@@ -178,10 +179,11 @@ def main():
             date,
         )
 
-    # Email HTML availability summary
-    email_html = generate_html_summary(tables, cfg)
+    # Email HTML availability summary if requested
+    if args.recipients is not None:
 
-    if email_html is not None:
+        email_html = generate_html_summary(tables, cfg)
+
         try:
             sender = os.environ["EMAIL_SENDER_ADDRESS"]
         except KeyError:
@@ -261,7 +263,6 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to.",
-        required=True,
     )
 
     args = parser.parse_args()

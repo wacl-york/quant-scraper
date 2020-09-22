@@ -32,10 +32,24 @@ jobs:
     - name: Login to Amazon ECR
       id: loginecr
       uses: aws-actions/amazon-ecr-login@v1
-    - name: Build, tag, and push image to Amazon ECR
+    - name: Build, tag, and push scraping image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.loginecr.outputs.registry }}
         ECR_REPOSITORY: wacl/quantscraper
+      run: |
+        VERSION=$(sh ./version.sh)
+        docker build -t $ECR_REPOSITORY -f docker/scraper/Dockerfile .
+        # Tag with latest version number
+        docker tag $ECR_REPOSITORY $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        # Tag with latest
+        docker tag $ECR_REPOSITORY $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
+    # Could refactor this into its own action
+    - name: Build, tag, and push PurpleAir conversion image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.loginecr.outputs.registry }}
+        ECR_REPOSITORY: wacl/purpleair-conversion
       run: |
         VERSION=$(sh ./version.sh)
         docker build -t $ECR_REPOSITORY -f docker/scraper/Dockerfile .
