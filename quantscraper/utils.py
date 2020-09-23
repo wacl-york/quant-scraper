@@ -424,7 +424,6 @@ def download_file(service, file_id):
     return fh
 
 
-# TODO Make tests
 def list_files_googledrive(service, drive_id, query=None):
     """
     Lists files that meet a certain criteria stored in a specific Google Drive.
@@ -535,6 +534,10 @@ def setup_loggers(logfn=None):
         file_logger = logging.FileHandler(logfn)
         file_logger.setFormatter(log_fmt)
         root_logger.addHandler(file_logger)
+
+    # Silence the Google Drive logger, which by default logs every request,
+    # polluting the log
+    logging.getLogger("googleapiclient.discovery").setLevel(logging.WARNING)
 
 
 def parse_env_vars():
