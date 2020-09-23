@@ -4,7 +4,7 @@
 # Debian ~1.1GB
 FROM python:3.7-buster
 WORKDIR /quantscraper
-ADD ./ ./
+COPY ./ ./
 RUN mkdir -p data/raw
 RUN mkdir -p data/clean
 RUN mkdir -p data/analysis
