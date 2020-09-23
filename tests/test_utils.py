@@ -597,7 +597,149 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             driveId="fooId",
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
-            q="foo=bar",
+            q="foo=bar and trashed=false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_explicit(self):
+        # In previous test deleted files weren't included as a result of default
+        # behaviour. This test explicitly asks to remove them
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(
+            mock_service, "fooId", "foo=bar", include_deleted=False
+        )
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_keep_deleted(self):
+        # Include deleted files if set the flag
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(
+            mock_service, "fooId", "foo=bar", include_deleted=True
+        )
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=true",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_no_query_default(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=false",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_no_query_explicit(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", include_deleted=False)
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=false",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_keep_deleted_no_query(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", include_deleted=True)
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=true",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
         )
@@ -624,7 +766,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             driveId="fooId",
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
-            q="foo=bar",
+            q="foo=bar and trashed=false",
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
         )

@@ -424,7 +424,7 @@ def download_file(service, file_id):
     return fh
 
 
-def list_files_googledrive(service, drive_id, query=None):
+def list_files_googledrive(service, drive_id, query=None, include_deleted=False):
     """
     Lists files that meet a certain criteria stored in a specific Google Drive.
 
@@ -435,11 +435,21 @@ def list_files_googledrive(service, drive_id, query=None):
             default it will return all files in the given drive id. See the
             Google documentation for details of the syntax:
                 https://developers.google.com/drive/api/v3/search-files
+        - include_deleted (boolean): Whether to include deleted files in the
+            search. Defaults to False.
     Returns:
         A list of dicts representing files. Each dict has 2 keys:
             - 'id': The Google Drive ID relating to this file
             - 'name': The filename
     """
+
+    # Specify whether to include deleted files or not
+    deleted_query = f"trashed={str(include_deleted).lower()}"
+    if query is None:
+        query = deleted_query
+    else:
+        query = query + f" and {deleted_query}"
+
     page_token = None
     files = []
     while True:
