@@ -272,7 +272,7 @@ def save_json_file(data, filename):
         None. Saves data to disk as JSON files as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
@@ -295,14 +295,14 @@ def save_csv_file(data, filename):
         None. Saves data to disk as CSV files as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
             writer = csv.writer(outfile, delimiter=",")
             writer.writerows(data)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def save_dataframe(data, filename):
@@ -317,12 +317,12 @@ def save_dataframe(data, filename):
         None, saves to disk as a side effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         data.to_csv(filename)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def save_plaintext(text, filename):
@@ -337,13 +337,13 @@ def save_plaintext(text, filename):
         None. Saves text to disk as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
             outfile.write(text)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def load_html_template(filename):

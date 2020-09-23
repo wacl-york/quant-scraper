@@ -100,6 +100,11 @@ def main():
     summaries = {}
 
     for device in PA_manufacturer.devices:
+
+        logging.info(
+            f"Device {device.device_id}: searching for recordings that haven't been uploaded to the main QUANT repository."
+        )
+
         # Get list of filenames in Google Drive
         raw_fns = get_raw_filenames(
             service, toplevel_drive_id, pa_drive_id, device.device_id
@@ -125,8 +130,13 @@ def main():
         # Remove Nones (indicating unparseable date)
         files_to_download = [fn for fn in files_to_download if fn is not None]
 
+        logging.info(
+            f"Found {len(files_to_download)} recordings that aren't in the Clean repository"
+        )
+
         # Download these files
         for file in files_to_download:
+            logging.info(f"Processing file {file[0]}...")
             fh = utils.download_file(service, file[1])
             raw_data = fh.getvalue().decode("utf-8")
 
@@ -143,6 +153,8 @@ def main():
                 )
             except utils.ValidateDataError as ex:
                 logging.error("Data validation error for {}: {}".format(file[0], ex))
+
+            logging.info("Successfully cleaned. Uploading to Google Drive.")
 
             # Save data and upload to Google Drive
             out_fn = os.path.join(
@@ -507,7 +519,7 @@ def get_processed_filenames(service, drive_id, clean_id, device_id):
     Returns:
         A list of filenames in the standard QUANT naming convention.
     """
-    q = f"mimeType='text/csv' and '{clean_id}' in parents and name contains 'PurpleAir_{device_id}'"
+    q = f"mimeType='text/csv' and '{clean_id}' in parents and name contains 'PurpleAir_{device_id}_'"
     files = utils.list_files_googledrive(service, drive_id, query=q)
     return [f["name"] for f in files]
 

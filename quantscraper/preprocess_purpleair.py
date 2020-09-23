@@ -85,12 +85,19 @@ def main():
         sys.exit()
 
     # Identify dates that have clean data for locally and are not in the Analysis GDrive dir
+    logging.info(
+        "Looking for dates with locally available Clean data but no uploaded Analysis data..."
+    )
     uploaded_dates = get_uploaded_analysis_dates(
         service, toplevel_drive_id, analysis_drive_id
     )
     clean_dates = get_available_clean_dates(cfg.get("Main", "local_folder_clean_data"))
     dates_to_upload = sorted(
         [date for date in clean_dates if date not in uploaded_dates]
+    )
+
+    logging.info(
+        f"Found {len(dates_to_upload)} dates with Clean data that will be pre-processed into Analysis files"
     )
 
     # Main OS call to run preprocessing. Will ask for just the PurpleAir devices
@@ -103,6 +110,7 @@ def main():
         *pa_device_ids,
     ]
     for date in dates_to_upload:
+        logging.info(f"Calling quant_preprocess with date {date}")
         call = preprocess_call + (["--date", date])
         subprocess.run(call)
 
