@@ -325,7 +325,7 @@ def generate_html_summary(tables, cfg):
 
     # Fill in email template
     try:
-        email_html = email_template.substitute(summary=day_html, start="")
+        email_html = email_template.substitute(summary=day_html)
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
         email_html = email_template.template
