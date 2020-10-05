@@ -6,12 +6,55 @@
 """
 
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, call
 import datetime
 import pandas as pd
 import numpy as np
 import quantscraper.utils as utils
 import quantscraper.daily_preprocessing as daily_preprocessing
+
+
+class TestParseArgs(unittest.TestCase):
+    def test_success(self):
+        # Just confirm that expected calls are made
+        with patch(
+            "quantscraper.daily_preprocessing.argparse.ArgumentParser"
+        ) as mock_ArgumentParser:
+            mock_addargument = Mock()
+            mock_args = Mock
+            mock_parseargs = Mock(return_value=mock_args)
+            mock_parser = Mock(add_argument=mock_addargument, parse_args=mock_parseargs)
+            mock_ArgumentParser.return_value = mock_parser
+
+            res = daily_preprocessing.parse_args()
+
+            self.assertEqual(res, mock_args)
+            mock_ArgumentParser.assert_called_once_with(
+                description="QUANT preprocessing"
+            )
+
+            actual_addargument_calls = mock_addargument.mock_calls
+            exp_addargument_calls = [
+                call(
+                    "--devices",
+                    metavar="DEVICE1 DEVICE2 ... DEVICEN",
+                    nargs="+",
+                    help="Specify the device IDs to include in the scraping. If not provided then all the devices specified in the configuration file are scraped.",
+                ),
+                call(
+                    "--date",
+                    metavar="DATE",
+                    help="The date to collate data from, in the format YYY-mm-dd. Defaults to yesterday.",
+                ),
+                call(
+                    "--upload",
+                    action="store_true",
+                    help="Uploads the pre-processed data to Google Drive.",
+                ),
+            ]
+            self.assertEqual(actual_addargument_calls, exp_addargument_calls)
+
+            mock_parseargs.assert_called_once_with()
 
 
 class TestLoadData(unittest.TestCase):
@@ -589,6 +632,8 @@ class TestResample(unittest.TestCase):
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
+    clean_fmt = "%Y-%m-%d"
+
     def test_no_date(self):
         # Don't pass in date, so output should have yesterday's date
 
@@ -597,23 +642,33 @@ class TestSetupScrapingTimeframe(unittest.TestCase):
             mock_today = Mock(return_value=datetime.date(2012, 3, 17))
             mock_date.today = mock_today
 
-            res = daily_preprocessing.setup_scraping_timeframe()
+            res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt)
             self.assertEqual(res, "2012-03-16")
+
+    def test_date_format_1(self):
+        # Test the date format option is correctly used
+        res = daily_preprocessing.setup_scraping_timeframe("%Y-%d", "2019-23")
+        self.assertEqual(res, "2019-23")
+
+    def test_date_format_2(self):
+        # Test the date format option is correctly used
+        res = daily_preprocessing.setup_scraping_timeframe("%d %b %Y", "30 Aug 2020")
+        self.assertEqual(res, "30 Aug 2020")
 
     def test_date_provided(self):
         # Providing config with valid date attribute shouldn't modify it
-        res = daily_preprocessing.setup_scraping_timeframe("2019-05-23")
+        res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2019-05-23")
         self.assertEqual(res, "2019-05-23")
 
     def test_invalid_date(self):
         # Date is provided, but isn't in YYYY-mm-dd format so should raise error
         with self.assertRaises(utils.TimeError):
-            daily_preprocessing.setup_scraping_timeframe("2020/03/04")
+            daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2020/03/04")
 
     def test_zeropadding_added(self):
         # Valid date is provided but doesn't have zero padding, which is always
         # present in the clean data filenames
-        res = daily_preprocessing.setup_scraping_timeframe("2020-3-4")
+        res = daily_preprocessing.setup_scraping_timeframe(self.clean_fmt, "2020-3-4")
         self.assertEqual(res, "2020-03-04")
 
 

@@ -5,15 +5,56 @@
     Unit tests for utility functions found in quantscraper.utils
 """
 
+import logging
 import unittest
 import string
 import os
-from unittest.mock import patch, Mock, mock_open
+from utils import build_mock_response
+from unittest.mock import patch, Mock, mock_open, MagicMock
 import pandas as pd
 from googleapiclient.errors import HttpError
-from utils import build_mock_response
+from botocore.exceptions import ClientError
 
 import quantscraper.utils as utils
+
+
+class TestSetupLoggers(unittest.TestCase):
+    # Capturing the log output is relatively tricky without a 3rd party library.
+    # This would be ideal to check that the log format is as expected, but not
+    # worth the additional dependency and test complexity for now.
+    # Instead will just ensure the setup is as expected.
+
+    def test_logger(self):
+        # By default, logger is set to warn (30) and has no handlers
+        logger = logging.getLogger()
+        self.assertEqual(logger.getEffectiveLevel(), 30)
+
+        # After running utils.seutp_loggers, the CLI logger should be set to
+        # record at INFO (20) and has handlers
+        utils.setup_loggers(None)
+        logger = logging.getLogger("cli")
+        self.assertEqual(logger.getEffectiveLevel(), 20)
+        self.assertTrue(logger.hasHandlers())
+
+    def test_formatter(self):
+        # Can't easily capture log output so instead will ensure that the
+        # formatter is setup as expected
+        with patch("quantscraper.utils.logging") as mock_logging:
+            # Mock the Formatter function that builds a format object
+            mock_fmt = Mock()
+            mock_formatter = MagicMock(return_value=mock_fmt)
+            mock_logging.Formatter = mock_formatter
+
+            # Mock the setFormatter setter to ensure that it is called with the
+            # returned format object
+            mock_setformatter = Mock()
+            mock_logging.StreamHandler.return_value.setFormatter = mock_setformatter
+
+            utils.setup_loggers(None)
+            mock_formatter.assert_called_once_with(
+                "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+            )
+            mock_setformatter.assert_called_once_with(mock_fmt)
 
 
 class TestSetupConfig(unittest.TestCase):
@@ -28,10 +69,10 @@ class TestSetupConfig(unittest.TestCase):
             mock_ConfigParser = Mock(return_value=mock_cfginstance)
             mock_cp.ConfigParser = mock_ConfigParser
 
-            res = utils.setup_config("foo.ini")
+            res = utils.setup_config()
 
             self.assertEqual(res, mock_cfginstance)
-            mock_read.assert_called_once_with("foo.ini")
+            mock_read.assert_called_once_with("config.ini")
 
     def test_errorraised_no_sections(self):
         with patch("quantscraper.utils.configparser") as mock_cp:
@@ -43,7 +84,7 @@ class TestSetupConfig(unittest.TestCase):
             mock_cp.ConfigParser = mock_ConfigParser
 
             with self.assertRaises(utils.SetupError):
-                utils.setup_config("foo.ini")
+                utils.setup_config()
 
 
 class TestIsFloat(unittest.TestCase):
@@ -533,6 +574,282 @@ class TestLoadDeviceConfiguration(unittest.TestCase):
 
                     with self.assertRaises(utils.SetupError):
                         utils.load_device_configuration()
+
+
+class TestListFilesGoogleDrive(unittest.TestCase):
+    def test_success(self):
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", "foo=bar")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_explicit(self):
+        # In previous test deleted files weren't included as a result of default
+        # behaviour. This test explicitly asks to remove them
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(
+            mock_service, "fooId", "foo=bar", include_deleted=False
+        )
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_keep_deleted(self):
+        # Include deleted files if set the flag
+
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(
+            mock_service, "fooId", "foo=bar", include_deleted=True
+        )
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=true",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_no_query_default(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=false",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_remove_deleted_no_query_explicit(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", include_deleted=False)
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=false",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_keep_deleted_no_query(self):
+        # Include trashed files even if don't pass in a query
+        files = [{"id": 1, "name": "foo.csv"}, {"id": 2, "name": "bar.csv"}]
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", include_deleted=True)
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            q="trashed=true",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+    def test_no_files(self):
+        # Empty files
+        files = []
+
+        # Setup the services.files().list().execute() mock pipeline
+        # This returns an object with a get method used for obtaining both
+        # tokens and files, although nextPageToken here returns None
+        mock_get = lambda method, bar: files if method == "files" else None
+        mock_return = Mock(get=mock_get)
+        mock_execute = Mock(return_value=mock_return)
+        mock_list = Mock(return_value=Mock(execute=mock_execute))
+        mock_files = Mock(return_value=Mock(list=mock_list))
+        mock_service = Mock(files=mock_files)
+
+        res = utils.list_files_googledrive(mock_service, "fooId", "foo=bar")
+        mock_list.assert_called_once_with(
+            corpora="drive",
+            driveId="fooId",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            q="foo=bar and trashed=false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, name)",
+        )
+
+        self.assertEqual(res, files)
+
+
+class TestSendEmailSes(unittest.TestCase):
+
+    # Can't patch botocore.exceptions.ClientError so can't test it
+    def test_success(self):
+
+        with patch("quantscraper.utils.boto3") as mock_boto:
+
+            mock_send_email = Mock()
+            mock_client = Mock(send_email=mock_send_email)
+            mock_client_func = Mock(return_value=mock_client)
+            mock_boto.client = mock_client_func
+
+            utils.send_email_ses(
+                "Hello - email",
+                "<b>Body text</b>",
+                "Email with text",
+                "sender@domain.org",
+                ["foo@domain1.com", "bar@domain2.com"],
+                identity_arn="arn:foo:bar",
+                charset="utf-8",
+            )
+
+            mock_client_func.assert_called_once_with("ses")
+
+            mock_send_email.assert_called_once_with(
+                Destination={"ToAddresses": ["foo@domain1.com", "bar@domain2.com"]},
+                Message={
+                    "Body": {
+                        "Html": {"Charset": "utf-8", "Data": "<b>Body text</b>",},
+                        "Text": {"Charset": "utf-8", "Data": "Email with text"},
+                    },
+                    "Subject": {"Charset": "utf-8", "Data": "Hello - email"},
+                },
+                Source="sender@domain.org",
+                SourceArn="arn:foo:bar",
+                ReturnPath="sender@domain.org",
+                ReturnPathArn="arn:foo:bar",
+            )
+
+
+class TestParseEnvVars(unittest.TestCase):
+    # Can't test the file loading functionality of dotenv::load_dotenv()
+    # So instead will patch it and just load env vars
+
+    def test_success(self):
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            # Set JSON env var
+            os.environ["QUANT_CREDS"] = '{"foo": "1", "bar": "adsa"}'
+
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, True)
+            self.assertEqual(os.environ["foo"], "1")
+            self.assertEqual(os.environ["bar"], "adsa")
+
+    def test_missing_env_var(self):
+        # If QUANT_CREDS isn't set then the function should still run but will
+        # not set the keyword-value pairs
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, False)
+
+    def test_non_json_envvar(self):
+        # If QUANT_CREDS isn't parseable as JSON then it should also return
+        # False
+        with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
+            # Set incorrectly formatted JSON env var
+            os.environ["QUANT_CREDS"] = '{"foo"= "1", "bar"= "adsa"}'
+
+            res = utils.parse_env_vars()
+
+            mock_dotenv.assert_called_once()
+            self.assertEqual(res, False)
 
 
 if __name__ == "__main__":

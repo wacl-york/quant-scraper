@@ -2,23 +2,36 @@
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "QUANT Scraping Stack",
   "Parameters": {
-    "EmailRecipient": {
+    "ScheduledScrapeArgs": {
+        "Type": "CommaDelimitedList",
+        "Default": "",
+        "Description": "Container overrides to specify the default scheduled scraping parameters."
+    },
+    "ScheduledScrapeCron": {
         "Type": "String",
-        "Default": "quant-group@york.ac.uk",
-        "AllowedPattern" : ".+",
-        "ConstraintDescription": "EmailRecipient must be completed.",
-        "Description": "Email address to send the automated daily emails to."
+        "Default": "cron(0 9 * * ? *)",
+        "Description": "Cron schedule for scraping routine."
+    },
+    "ScheduledScrapeStatus": {
+        "Type": "String",
+        "Default": "ENABLED",
+        "Description": "Whether the daily scheduled scrape should be run."
+    },
+    "PurpleAirArgs": {
+        "Type": "CommaDelimitedList",
+        "Default": "",
+        "Description": "Arguments to add to the PurpleAir entry point script."
     },
     "TaskFamily": {
         "Type": "String",
         "Default": "QUANTTasks",
-        "Description": "Task family name. Doesn't need to be supplied. Setup as parameter so can reference it as a variable."
+        "Description": "Scraping task family name. Doesn't need to be supplied - setup as parameter so can reference it in other resources."
     },
-    "StackName": {
+    "PATaskFamily": {
         "Type": "String",
-        "Default": "QUANTScrapingStack",
-        "Description": "Stack family name. Setup as parameter so can reference it as a variable so can restrict IAM CloudFormation permissions to the stack resulting from this template."
-    }
+        "Default": "PurpleAirTasks",
+        "Description": "PurpleAir conversion task family name. Doesn't need to be supplied - setup as parameter so can reference it in other resources."
+    },
   },
   "Resources": {
     "QUANTRepository": {
@@ -28,11 +41,27 @@
         "Tags": [
           {
             "Key": "description",
-            "Value": "Repository for Docker images."
+            "Value": "Repository for Docker images that scrape QUANT data."
           },
           {
             "Key": "name",
-            "Value": "Docker image repository"
+            "Value": "wacl/quantscraper"
+          }
+        ]
+      }
+    },
+    "PARepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "RepositoryName": "wacl/purpleair-conversion",
+        "Tags": [
+          {
+            "Key": "description",
+            "Value": "Repository for Docker images that convert PurpleAir data."
+          },
+          {
+            "Key": "name",
+            "Value": "wacl/purpleair-conversion"
           }
         ]
       }
@@ -89,10 +118,10 @@
             }
         ],
         "Memory": "512",
-        "TaskRoleArn": { 
-            "Fn::GetAtt": ["QUANTRoleScraping", "Arn"] 
+        "TaskRoleArn": {
+            "Fn::GetAtt": ["QUANTRoleScraping", "Arn"]
         },
-        "Family": { 
+        "Family": {
             "Ref": "TaskFamily"
         },
         "RequiresCompatibilities": [
@@ -111,10 +140,10 @@
     "QUANTScheduledTask": {
       "Type": "AWS::Events::Rule",
       "Properties": {
-        "Description": "Run QUANTscraper every day at 10:00",
+        "Description": "Scheduled scraping run.",
         "Name": "DailyQUANTScrape",
-        "ScheduleExpression": "cron(0 9 * * ? *)",
-        "State": "ENABLED",
+        "ScheduleExpression": { "Ref": "ScheduledScrapeCron" },
+        "State": { "Ref": "ScheduledScrapeStatus" },
         "Targets": [
           {
             "Arn": {
@@ -124,67 +153,16 @@
                 "Fn::GetAtt" : [ "QUANTRoleScheduledScrape", "Arn" ] 
             },
             "Id": "quant_scheduled_daily_scrape",
-            "Input": {"Fn::Sub": '{
-                "containerOverrides": [
+            "Input": {"Fn::Sub": ["{
+                \"containerOverrides\": [
                     {
-                        "name": "quant",
-                        "command": [
-                            "--upload-raw",
-                            "--upload-clean",
-                            "--upload-preprocess",
-                            "--upload-availability",
-                            "--scrape-devices",
-                            "AQY872",
-                            "AQY873A",
-                            "AQY874",
-                            "AQY875",
-                            "AQY878",
-                            "AQY436A",
-                            "AQM388",
-                            "AQM389",
-                            "AQM390",
-                            "AQM391",
-                            "Zep188",
-                            "Zep309",
-                            "Zep344",
-                            "Zep311",
-                            "Ari063",
-                            "Ari078",
-                            "Ari086",
-                            "Ari093",
-                            "Ari038",
-                            "Ari076",
-                            "Ari080",
-                            "Ari096",
-                            "AURNYorkFishergate",
-                            "--preprocess-devices",
-                            "AQY872",
-                            "AQY873A",
-                            "AQY874",
-                            "AQY875",
-                            "AQY878",
-                            "AQY436A",
-                            "AQM388",
-                            "AQM389",
-                            "AQM390",
-                            "AQM391",
-                            "AQM173",
-                            "AQM801",
-                            "Zep188",
-                            "Zep309",
-                            "Zep344",
-                            "Zep311",
-                            "Ari063",
-                            "Ari078",
-                            "Ari086",
-                            "Ari093",
-                            "Ari038",
-                            "--recipients",
-                            "${EmailRecipient}"
-                        ]
+                        \"name\": \"quant\",
+                        \"command\": [ ${Args} ]
                     }
                 ]
-            }'},
+             }",
+            { "Args": { "Fn::Join": [ "\",\"", { "Ref": "ScheduledScrapeArgs" } ] } }
+             ]},
             "EcsParameters": {
               "TaskDefinitionArn": {
                   "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
@@ -204,6 +182,63 @@
                 }
               }
             }
+          }
+        ]
+      }
+    },
+    "PurpleAirTask": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ExecutionRoleArn": { "Fn::GetAtt": ["QUANTRoleScraping", "Arn"] },
+        "ContainerDefinitions": [
+            {
+              "Command": { "Ref": "PurpleAirArgs" },
+                "LogConfiguration": {
+                    "LogDriver": "awslogs",
+                    "Options": {
+                        "awslogs-group": { "Ref": "PurpleAirLogGroup" },
+                        "awslogs-region": { "Ref": "AWS::Region" },
+                        "awslogs-stream-prefix": "purpleair"
+                    }
+                },
+                "Cpu": 256,
+                "WorkingDirectory": "/quantscraper",
+                "Secrets": [
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretQUANTCredentials" },
+                        "Name": "QUANT_CREDS"
+                    },
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretGoogleCredentials" },
+                        "Name": "GOOGLE_CREDS"
+                    },
+                    {
+                        "ValueFrom": { "Ref": "QUANTSecretEmailAccount" },
+                        "Name": "EMAIL_CREDS"
+                    }
+                ],
+                "MemoryReservation": 128,
+                "Image": { "Fn::Sub" :  "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${PARepository}"},
+                "Essential": true,
+                "Name": "PA"
+            }
+        ],
+        "Memory": "512",
+        "TaskRoleArn": { 
+            "Fn::GetAtt": ["QUANTRoleScraping", "Arn"] 
+        },
+        "Family": { 
+            "Ref": "PATaskFamily"
+        },
+        "RequiresCompatibilities": [
+            "FARGATE"
+        ],
+        "NetworkMode": "awsvpc",
+        "Cpu": "256",
+        "Tags": [
+          {
+            "Key": "name",
+            "Value": "PurpleAir conversion task"
           }
         ]
       }
@@ -257,8 +292,11 @@
                             "Effect": "Allow",
                             "Action": "ecs:RunTask",
                             "Resource": [
-                                { 
+                                {
                                   "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+                                },
+                                { 
+                                  "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${PATaskFamily}"
                                 }
                             ]
                         }
@@ -388,7 +426,8 @@
               ],
               "Description" : "Credentials for web portal",
               "Name" : "QUANTCredentials",
-              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_USER": "foo","AQMESH_PW": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo","GDRIVE_RAW_ID": "foo","GDRIVE_CLEAN_ID": "foo","GDRIVE_ANALYSIS_ID": "foo", "GDRIVE_AVAILABILITY_ID": "foo"}'
+              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_API_ID": "foo","AQMESH_API_TOKEN": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo","GDRIVE_RAW_ID": "foo","GDRIVE_CLEAN_ID": "foo","GDRIVE_ANALYSIS_ID": "foo", "GDRIVE_AVAILABILITY_ID": "foo","GDRIVE_QUANT_SHARED_ID": "foo","GDRIVE_PURPLEAIR_ID": "foo"}'
+                
             }
     },
     "QUANTSecretGoogleCredentials": {
@@ -423,6 +462,13 @@
       "Type" : "AWS::Logs::LogGroup",
       "Properties" : {
           "LogGroupName" : "/ecs/QUANT-scraping-logs",
+          "RetentionInDays" : 1827
+        }
+    },
+    "PurpleAirLogGroup": {
+      "Type" : "AWS::Logs::LogGroup",
+      "Properties" : {
+          "LogGroupName" : "/ecs/QUANT-PurpleAir-logs",
           "RetentionInDays" : 1827
         }
     },

@@ -15,47 +15,13 @@ import os
 import sys
 import math
 import re
-import pandas as pd
 from datetime import date, timedelta, time, datetime
 import traceback
+import pandas as pd
 from dotenv import load_dotenv
 
 import quantscraper.utils as utils
 from quantscraper.factories import setup_manufacturers
-
-CONFIG_FN = "config.ini"
-
-
-def setup_loggers(logfn=None):
-    """
-    Configures loggers.
-
-    By default, the error log is printed to standard out,
-    although it can be saved to file in addition.
-
-    Args:
-        - logfn (str, optional): File to save log to. If None then doesn't write log to file.
-
-    Returns:
-        None. the logger is accessed by the global module `logging`.
-    """
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    log_fmt = logging.Formatter(
-        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-    )
-    cli_logger = logging.StreamHandler()
-    cli_logger.setFormatter(log_fmt)
-    root_logger.addHandler(cli_logger)
-
-    if not logfn is None:
-        if os.path.isfile(logfn):
-            raise utils.SetupError(
-                ("Log file {} already exists. " "Halting execution.").format(logfn)
-            )
-        file_logger = logging.FileHandler(logfn)
-        file_logger.setFormatter(log_fmt)
-        root_logger.addHandler(file_logger)
 
 
 def parse_args():
@@ -117,9 +83,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--html",
-        metavar="FN",
-        help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+        "--recipients",
+        metavar="EMAIL@DOMAIN",
+        nargs="+",
+        help="The recipients to send the email to.",
     )
 
     args = parser.parse_args()
@@ -222,7 +189,7 @@ def scrape(manufacturer, start, end):
             device.raw_data = None
 
 
-def process(manufacturer):
+def process(manufacturer, timestamp_format):
     """
     For each device belonging to a manufacturer, the raw JSON data is parsed
     into CSV format, before running a data cleaning proecedure to store only
@@ -233,6 +200,8 @@ def process(manufacturer):
 
     Args:
         - manufacturer (Manufacturer): Instance of a sub-class of Manufacturer.
+        - timestamp_format (str): Datetime format to use for the timestamp column 
+            in the cleaned data.
 
     Returns:
         A dictionary summarising how many recordings are available for each
@@ -287,7 +256,9 @@ def process(manufacturer):
             continue
 
         try:
-            clean_data, measurand_summary = manufacturer.validate_data(csv_data)
+            clean_data, measurand_summary = manufacturer.validate_data(
+                csv_data, timestamp_format
+            )
 
             if len(clean_data) <= 1:
                 logging.error(
@@ -518,9 +489,9 @@ def generate_ascii_summary(tables, column_width=13, max_screen_width=100):
     max_cols = math.floor(max_screen_width / column_width)
 
     output = []
-    output.append("+" * 80)
+    output.append("+" * max_screen_width)
     output.append("Summary")
-    output.append("-" * 80)
+    output.append("-" * max_screen_width)
 
     for manufacturer, manu_table in tables.items():
         output.append(manufacturer)
@@ -648,7 +619,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
     body_tags = "\n".join(row_tags)
     try:
         output = template.substitute(
-            manufacturer=manufacturer, header=head_tags, body=body_tags
+            title=manufacturer, header=head_tags, body=body_tags
         )
     except ValueError:
         logging.error("Cannot fill manufacturer template placeholders.")
@@ -656,9 +627,7 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
     return output
 
 
-def generate_html_summary(
-    tables, email_template, manufacturer_template, manufacturer_styles, start_date
-):
+def generate_html_summary(tables, cfg, start_date):
     """
     Generates an HTML document summarising the device availability from the
     scraping run.
@@ -674,25 +643,34 @@ def generate_html_summary(
             manufacturer name. The 2D list represents tabular data for the
             corresponding manufacturer, where the outer-most dimension is a row
             and the inner-most is a column.
-        - email_template (str): The HTML template of the whole document.
-          Formatted as Python string.Template(), with $placeholder tags.
-          Expect 1 placeholder:
-              - summary: Whatever HTML markup is going to consitute the body of
-              this document. This placeholder is located inside a <div>, which
-              is directly inside the <body> tags.
-        - manufacturer_template (str): The HTML template of the manufacturer section.
-        - manufacturer styles (dict): Various CSS settings to pass to
-            generate_manufacturer_summary().
+        - cfg (dict): Configuration object from the ini file.
         - start_date (date): The scraping window starting date.
 
     Returns:
         A string containing a fully completed HTML document.
     """
+    # Load both templates
+    email_template_fn = cfg.get("DailyScrape", "email_template")
+    table_template_fn = cfg.get("HTMLSummary", "summary_table_template")
+
+    try:
+        email_template = utils.load_html_template(email_template_fn)
+    except utils.DataReadingError as ex:
+        logging.error("Cannot load email HTML template: {}".format(ex))
+        return None
+
+    try:
+        summary_template = utils.load_html_template(table_template_fn)
+    except utils.DataReadingError as ex:
+        logging.error("Cannot load manufacturer HTML template: {}".format(ex))
+        return None
+
+    # Load style options for manufacturer summary
+    styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
+
     # Build HTML for each manufacturer section
     manufacturer_sections = [
-        generate_manufacturer_html(
-            manufacturer_template, manu, tab, **manufacturer_styles
-        )
+        generate_manufacturer_html(summary_template, manu, tab, **styles)
         for manu, tab in tables.items()
     ]
     manufacturer_html = "\n".join(manufacturer_sections)
@@ -700,13 +678,58 @@ def generate_html_summary(
     # Fill in email template
     try:
         email_html = email_template.substitute(
-            summary=manufacturer_html, start=start_date.strftime("%Y-%m-%d")
+            summary=manufacturer_html, start=start_date
         )
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
         email_html = email_template.template
 
     return email_html
+
+
+def save_availability(service, tables, folder_id, local_folder, date):
+    """
+    Saves availability data to CSV file.
+
+    Args:
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - tables (dict): Each entry corresponds to a 2D list indexed by
+            manufacturer name. The 2D list represents tabular data for the
+            corresponding manufacturer, where the outer-most dimension is a row
+            and the inner-most is a column.
+        - folder_id (str): Google Drive ID of folder to upload to.
+        - date (str): The data corresponding to the availability data, used in
+            the filename.
+    """
+    for manufacturer, csv_data in tables.items():
+        fn = utils.AVAILABILITY_DATA_FN.substitute(man=manufacturer, date=date)
+        filepath = os.path.join(local_folder, fn)
+
+        # Create separate column for percentages
+        df = pd.DataFrame(data=csv_data[1:], columns=csv_data[0])
+        for col in df.columns[2:]:
+            new_col = "{}_pct".format(col)
+            # Split "<val> (<pct>%) into 2 separate columns
+            df[[col, new_col]] = df[col].str.split(" \(", n=1, expand=True)
+            # Remove the %)
+            df[new_col] = df[new_col].str.replace("%\)", "")
+        df = df.set_index("Device ID")
+
+        try:
+            utils.save_dataframe(df, filepath)
+        except utils.DataSavingError as ex:
+            logging.error(
+                "Cannot save data availability for {}: {}".format(manufacturer, ex)
+            )
+            continue
+
+        try:
+            logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
+            utils.upload_file_google_drive(service, filepath, folder_id, "text/csv")
+            logging.info("Upload successful.")
+        except utils.DataUploadError:
+            logging.error("Error in upload")
+            logging.error(traceback.format_exc())
 
 
 def main():
@@ -720,7 +743,7 @@ def main():
     """
     # Setup logging, which for now just logs to stderr
     try:
-        setup_loggers()
+        utils.setup_loggers()
     except utils.SetupError:
         logging.error("Error in setting up loggers.")
         logging.error(traceback.format_exc())
@@ -730,25 +753,18 @@ def main():
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
-    load_dotenv()
-    # Parse JSON environment variable into separate env vars
-    try:
-        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
-    except utils.SetupError:
+    if not utils.parse_env_vars():
         logging.error(
             "Error when initiating environment variables, terminating execution."
         )
         logging.error(traceback.format_exc())
         sys.exit()
 
-    for k, v in vars.items():
-        os.environ[k] = v
-
     # Parse args and config file
     args = parse_args()
 
     try:
-        cfg = utils.setup_config(CONFIG_FN)
+        cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
@@ -798,7 +814,7 @@ def main():
         logging.info("Downloading data from all devices:")
         scrape(manufacturer, start_time, end_time)
         logging.info("Processing raw data for all devices:")
-        man_summary = process(manufacturer)
+        man_summary = process(manufacturer, cfg.get("Main", "timestamp_format"))
 
         # Add device location and recording rate so can be displayed in summary
         # table
@@ -809,7 +825,7 @@ def main():
         summaries.append(man_summary)
 
         # Get start time date for naming output files
-        start_fmt = start_time.strftime("%Y-%m-%d")
+        start_fmt = start_time.strftime(cfg.get("Main", "filename_date_format"))
 
         if args.save_raw:
             logging.info("Saving raw data from all devices:")
@@ -874,73 +890,54 @@ def main():
 
     # Upload availability CSV
     if args.upload_availability:
-        filename_template = "availability_{manufacturer}_{date}.csv"
-        folder_id = os.environ["GDRIVE_AVAILABILITY_ID"]
-
-        for manufacturer, csv_data in summary_tables.items():
-            fn = filename_template.format(manufacturer=manufacturer, date=start_time)
-            filepath = os.path.join(cfg.get("Main", "local_folder_availability"), fn)
-
-            # Create separate column for percentages
-            df = pd.DataFrame(data=csv_data[1:], columns=csv_data[0])
-            for col in df.columns[2:]:
-                new_col = "{}_pct".format(col)
-                # Split "<val> (<pct>%) into 2 separate columns
-                df[[col, new_col]] = df[col].str.split(" \(", n=1, expand=True)
-                # Remove the %)
-                df[new_col] = df[new_col].str.replace("%\)", "")
-            df = df.set_index("Device ID")
-
-            try:
-                utils.save_dataframe(df, filepath)
-            except utils.DataSavingError as ex:
-                logging.error(
-                    "Cannot save data availability for {}: {}".format(manufacturer, ex)
-                )
-                continue
-
-            try:
-                logging.info("Uploading file {} to folder {}...".format(fn, folder_id))
-                utils.upload_file_google_drive(service, filepath, folder_id, "text/csv")
-                logging.info("Upload successful.")
-            except utils.DataUploadError:
-                logging.error("Error in upload")
-                logging.error(traceback.format_exc())
-
-    # Add HTML summary if requested
-    if args.html is not None:
-
-        # Load both templates
-        email_template_fn = cfg.get("HTMLSummary", "email_template")
-        manufacturer_template_fn = cfg.get("HTMLSummary", "manufacturer_template")
-
         try:
-            email_template = utils.load_html_template(email_template_fn)
-        except utils.DataReadingError as ex:
-            logging.error("Cannot load email HTML template: {}".format(ex))
-            email_template = None
-        try:
-            manufacturer_template = utils.load_html_template(manufacturer_template_fn)
-        except utils.DataReadingError as ex:
-            logging.error("Cannot load manufacturer HTML template: {}".format(ex))
-            manufacturer_template = None
+            folder_id = os.environ["GDRIVE_AVAILABILITY_ID"]
+        except KeyError:
+            logging.error(
+                "GDRIVE_AVAILABILITY_ID env var not found. Please set it with the ID of the Google Drive folder to upload the availability data to."
+            )
+            folder_id = None
 
-        # Load style options for manufacturer summary
-        styles = {k: cfg["HTMLSummary"][k] for k in cfg["HTMLSummary"]}
-
-        if email_template is not None and manufacturer_template is not None:
-            email_html = generate_html_summary(
+        if folder_id is not None:
+            save_availability(
+                service,
                 summary_tables,
-                email_template,
-                manufacturer_template,
-                styles,
-                start_time,
+                folder_id,
+                cfg.get("Main", "local_folder_availability"),
+                start_fmt,
             )
 
-        try:
-            utils.save_plaintext(email_html, args.html)
-        except utils.DataSavingError as ex:
-            logging.error("Unable to save HTML email: {}".format(ex))
+    # Email HTML summary if requested
+    if args.recipients is not None:
+        email_html = generate_html_summary(summary_tables, cfg, start_fmt,)
+        if email_html is not None:
+            try:
+                sender = os.environ["EMAIL_SENDER_ADDRESS"]
+            except KeyError:
+                logging.error(
+                    "Error: no EMAIL_SENDER_ADDRESS environment variable. Set this to the email address that is sending the email."
+                )
+            try:
+                identity_arn = os.environ["IDENTITY_ARN"]
+            except KeyError:
+                logging.error(
+                    "Error: no IDENTITY_ARN environment variable. Set this to ARN of the identity that is authorised to send emails from the EMAIL_SENDER_ADDRESS"
+                )
+
+            try:
+                logging.info("Attemping to send email...")
+                utils.send_email_ses(
+                    f"QUANT scraping summary - {start_fmt}",
+                    email_html,
+                    f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
+                    sender,
+                    args.recipients,
+                    identity_arn,
+                )
+            except utils.EmailSendingError as ex:
+                logging.error("Email sending failed: {}".format(ex))
+            else:
+                logging.info("Email sent.")
 
 
 if __name__ == "__main__":

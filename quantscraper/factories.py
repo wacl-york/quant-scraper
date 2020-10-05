@@ -10,6 +10,7 @@ from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.PurpleAir import PurpleAir
 from quantscraper.manufacturers.AURN import AURN
 from quantscraper.manufacturers.Manufacturer import Device
 
@@ -31,6 +32,7 @@ def manufacturer_factory(config):
         "AQMesh": AQMesh,
         "Zephyr": Zephyr,
         "QuantAQ": MyQuantAQ,
+        "PurpleAir": PurpleAir,
         "AURN": AURN,
     }
     try:

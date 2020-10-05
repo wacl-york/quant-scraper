@@ -4,10 +4,8 @@
 name: "Build and test"
 
 on:
-  push:
-    branches: [ main, feature/*, release/*, hotfix/* ]
-  pull_request:
-    branches: [ main, release/* ]
+ pull_request:
+    types: [ opened, edited, reopened ]
 jobs:
   build:
     runs-on: ubuntu-latest

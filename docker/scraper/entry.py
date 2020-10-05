@@ -17,7 +17,6 @@ from datetime import date, timedelta
 
 
 def main():
-    email_fn = "email.html"
     args = parse_args()
 
     # Default date to yesterday
@@ -27,14 +26,12 @@ def main():
         parse_date = args.date
 
     # Base calls
-    scrape_call = ["quant_scrape", "--save-raw", "--save-clean", "--html", email_fn]
+    scrape_call = ["quant_scrape", "--save-raw", "--save-clean"]
     preprocess_call = ["quant_preprocess"]
-    email_call = ["quant_email", "--file", email_fn]
 
     # Always pass in date
     scrape_call.extend(["--start", parse_date, "--end", parse_date])
     preprocess_call.extend(["--date", parse_date])
-    email_call.extend(["--date", parse_date])
 
     # Add arguments if passed in
     if args.scrape_devices is not None:
@@ -49,6 +46,9 @@ def main():
     if args.upload_availability:
         scrape_call.append("--upload-availability")
 
+    if args.recipients is not None:
+        scrape_call.extend(["--recipients", *args.recipients])
+
     if args.preprocess_devices is not None:
         preprocess_call.extend(["--devices", *args.preprocess_devices])
 
@@ -59,12 +59,6 @@ def main():
     subprocess.run(scrape_call)
     print("Calling quant_preprocess with call: {}".format(preprocess_call))
     subprocess.run(preprocess_call)
-
-    # Only send email if have provided recipients
-    if args.recipients is not None:
-        email_call.extend(["--recipients", *args.recipients])
-        print("Calling quant_email with call: {}".format(email_call))
-        subprocess.run(email_call)
 
 
 def parse_args():

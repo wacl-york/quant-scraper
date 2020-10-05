@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="quantscraper",
-    version="0.5.2",
+    version="0.6.0",
     description="Scrapes data for the QUANT project.",
     long_description=readme(),  # NB: Only used if upload to PyPi
     url="https://github.com/wacl-york/QUANTscraper",
@@ -18,7 +18,8 @@ setup(
         "console_scripts": [
             "quant_scrape = quantscraper.cli:main",
             "quant_preprocess = quantscraper.daily_preprocessing:main",
-            "quant_email = quantscraper.send_email:main",
+            "purpleair_convert = quantscraper.convert_purpleair:main",
+            "purpleair_preprocess = quantscraper.preprocess_purpleair:main",
         ],
     },
     install_requires=[

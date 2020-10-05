@@ -13,6 +13,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 import quantscraper.manufacturers.AURN as AURN
+import quantscraper.manufacturers.PurpleAir as PurpleAir
 from quantscraper.utils import DataParseError
 import numpy as np
 
@@ -114,62 +115,225 @@ class TestAQMesh(unittest.TestCase):
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
-        raw_headers = [
-            {"Header": "NO2", "Unit": "ug/m3"},
-            {"Header": "CO2", "Unit": "ug/m3"},
-            {"Header": "O3", "Unit": "ug/m3"},
+        raw_data = [
+            {
+                "TBTimestamp": "2020-03-04 12:32",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 2},
+                    {"SensorLabel": "NO2", "Scaled": 1},
+                    {"SensorLabel": "O3", "Scaled": 3},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"SensorLabel": "NO2", "Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 8},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
         ]
-        raw_data = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
-        exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = self.aqmesh.parse_to_csv(raw_combined)
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:32", 2, 1, 3],
+            ["2020-03-04 12:33", 5, 4, 6],
+            ["2020-03-04 12:34", 8, 7, 9],
+        ]
+
+        res = self.aqmesh.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
-    def test_empty_string(self):
-        # If have empty strings but commas still present then should be
-        # parsable.
-        # Have removed 2, 4, and 9
-        raw_headers = [
-            {"Header": "NO2", "Unit": "ug/m3"},
-            {"Header": "CO2", "Unit": "ug/m3"},
-            {"Header": "O3", "Unit": "ug/m3"},
+    def test_missing_timestamp(self):
+        # The first timestamp object isn't present.
+        # Should still retrieve data from the others entries.
+        raw_data = [
+            {
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 2},
+                    {"SensorLabel": "NO2", "Scaled": 1},
+                    {"SensorLabel": "O3", "Scaled": 3},
+                ]
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"SensorLabel": "NO2", "Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 8},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
         ]
-        raw_data = [["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
-        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        res = self.aqmesh.parse_to_csv(raw_combined)
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:33", 5, 4, 6],
+            ["2020-03-04 12:34", 8, 7, 9],
+        ]
+        res = self.aqmesh.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
 
-    def test_unbalanced_headers_and_rows(self):
-        # What happens if there are a different number of headers to rows
-        # Have 2 headers but 3 columns
-        raw_headers = [
-            {"Header": "NO2", "Unit": "ug/m3"},
-            {"Header": "O3", "Unit": "ug/m3"},
+    def test_missing_channels(self):
+        # If don't have Channels attribute then shouldn't get data from that
+        # timepoint. Have removed Channels from first object.
+        raw_data = [
+            {"TBTimestamp": "2020-03-04 12:32",},
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"SensorLabel": "NO2", "Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 8},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
         ]
-        raw_data = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
-        with self.assertRaises(DataParseError):
-            self.aqmesh.parse_to_csv(raw_combined)
-
-    def test_missing_data(self):
-        # What happens if there are a different number of columns?
-        # Second row only has 2 columns
-        # This should throw an error as have no way of knowing which value is
-        # missing. Is it NO2, or CO2 or O3? Cannot tell so need to alert user
-        raw_headers = [
-            {"Header": "NO2", "Unit": "ug/m3"},
-            {"Header": "CO2", "Unit": "ug/m3"},
-            {"Header": "O3", "Unit": "ug/m3"},
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:33", 5, 4, 6],
+            ["2020-03-04 12:34", 8, 7, 9],
         ]
-        raw_data = [["1", "2", "3"], ["4", "6"], ["7", "8", "9"]]
-        raw_combined = dict(Headers=raw_headers, Rows=raw_data)
 
-        with self.assertRaises(DataParseError):
-            self.aqmesh.parse_to_csv(raw_combined)
+        res = self.aqmesh.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_empty_channels(self):
+        # If have Channels object but it's empty then should also not return
+        # data from that timepoint. Have removed first time-point's Channels
+        # entries.
+        raw_data = [
+            {"TBTimestamp": "2020-03-04 12:32", "Channels": []},
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"SensorLabel": "NO2", "Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 8},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
+        ]
+
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:33", 5, 4, 6],
+            ["2020-03-04 12:34", 8, 7, 9],
+        ]
+
+        res = self.aqmesh.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_missing_sensor_label(self):
+        # If missing a sensor label attribute, then should simply not have data
+        # for that observation. Have removed NO2's second sensor label
+        raw_data = [
+            {
+                "TBTimestamp": "2020-03-04 12:32",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 2},
+                    {"SensorLabel": "NO2", "Scaled": 1},
+                    {"SensorLabel": "O3", "Scaled": 3},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 8},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
+        ]
+
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:32", 2, 1, 3],
+            ["2020-03-04 12:33", 5, "", 6],
+            ["2020-03-04 12:34", 8, 7, 9],
+        ]
+
+        res = self.aqmesh.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_missing_scaled(self):
+        # Likewise, if missing the Scaled attribute then should simply have
+        # empty value for this observation.
+        # Have removed it from CO2's third observation
+        raw_data = [
+            {
+                "TBTimestamp": "2020-03-04 12:32",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 2},
+                    {"SensorLabel": "NO2", "Scaled": 1},
+                    {"SensorLabel": "O3", "Scaled": 3},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:33",
+                "Channels": [
+                    {"SensorLabel": "CO2", "Scaled": 5},
+                    {"SensorLabel": "NO2", "Scaled": 4},
+                    {"SensorLabel": "O3", "Scaled": 6},
+                ],
+            },
+            {
+                "TBTimestamp": "2020-03-04 12:34",
+                "Channels": [
+                    {"SensorLabel": "CO2",},
+                    {"SensorLabel": "NO2", "Scaled": 7},
+                    {"SensorLabel": "O3", "Scaled": 9},
+                ],
+            },
+        ]
+
+        exp = [
+            ["Timestamp", "CO2", "NO2", "O3"],
+            ["2020-03-04 12:32", 2, 1, 3],
+            ["2020-03-04 12:33", 5, 4, 6],
+            ["2020-03-04 12:34", "", 7, 9],
+        ]
+
+        res = self.aqmesh.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
 
 
 class TestZephyr(unittest.TestCase):
@@ -618,6 +782,61 @@ class TestAURN(unittest.TestCase):
         exp_str = [[str(x) for x in row] for row in exp]
         res_str = [[str(x) for x in row] for row in res]
         self.assertEqual(res_str, exp_str)
+
+
+class TestPurpleAir(unittest.TestCase):
+    # PurpleAir's data should already arrive in a CSV format encoded as a
+    # string with \r\n delimiting rows and commas columns
+
+    cfg = defaultdict(str)
+    fields = []
+    pa = PurpleAir.PurpleAir(cfg, fields)
+
+    def test_success(self):
+        raw_data = "NO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+        exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
+        res = self.pa.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_empty_string(self):
+        # If have empty value (2 consecutive commas) then should get empty
+        # string in output CSV data.
+        # Have removed 2, 4, and 9
+        raw_data = "NO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
+        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+        res = self.pa.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_only_header(self):
+        # If have header but no data then should return just the header
+        raw_data = "NO2,CO2,O3"
+        exp = [["NO2", "CO2", "O3"]]
+        res = self.pa.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
+
+    def test_empty(self):
+        # If have no data then should raise error
+        raw_data = ""
+        with self.assertRaises(DataParseError):
+            self.pa.parse_to_csv(raw_data)
+
+    def test_missing_data(self):
+        # Expect error to be thrown if have unbalanced columns
+        # Have set third row to only have 2 values (7 & 8)
+        # This is an error as have no way of knowing if this missing value is
+        # from NO2, CO2, or O3
+        raw_data = "NO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
+        with self.assertRaises(DataParseError):
+            self.pa.parse_to_csv(raw_data)
+
+    def test_one_column(self):
+        # Will want code to throw error if have just 1 column of data, as
+        # could indicate the delimiter is wrong. It is also unlikely we'd ever
+        # be in a situation with a single column of data being returned.
+        # Better to warn user of this behaviour than to silently pass
+        raw_data = "NO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
+        with self.assertRaises(DataParseError):
+            self.pa.parse_to_csv(raw_data)
 
 
 if __name__ == "__main__":

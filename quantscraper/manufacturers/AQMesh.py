@@ -6,12 +6,11 @@
     quality instrumentation device manufacturer.
 """
 
-from string import Template
-from datetime import datetime, timedelta, time
+from datetime import datetime, time
 import json
 import os
 import requests as re
-from bs4 import BeautifulSoup
+import pandas as pd
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
@@ -41,55 +40,22 @@ class AQMesh(Manufacturer):
             None
         """
         self.session = None
-        self.auth_url = cfg["auth_url"]
-        self.data_url = cfg["data_url"]
 
         # Authentication
-        self.auth_params = {
-            "emailaddress": (None, os.environ["AQMESH_USER"]),
-            "password": (None, os.environ["AQMESH_PW"]),
-        }
-        self.auth_headers = {"referer": cfg["auth_referer"]}
+        self.base_url = "https://api.airmonitors.net/3.5/GET/{account}/{licence}".format(
+            account=os.environ["AQMESH_API_ID"], licence=os.environ["AQMESH_API_TOKEN"]
+        )
 
-        # Download data
-        self.data_headers = {
-            "content-type": "application/json; charset=UTF-8",
-            "referer": cfg["data_referer"],
-        }
-
-        self.timezone = cfg["timezone"]
-
-        self.data_params = {
-            "CRUD": "READ",
-            "Call": "telemetrytable",
-            "UniqueId": Template("${device}"),
-            "Channels": Template(
-                "${device}-AIRPRES-0+${device}-CO2-0+${device}-HUM-0+${device}-NO-0+${device}-NO2-0+${device}-O3-0+${device}-PARTICLE_COUNT-0+${device}-PM1-0+${device}-PM10-0+${device}-PM2.5-0+${device}-PM4-0+${device}-TEMP-0+${device}-TSP-0+${device}-VOLTAGE-0"
-            ),
-            "Start": Template("${start}"),
-            "End": Template("${end}"),
-            "TimeZone": self.timezone,
-            "Average": cfg["averaging_window"],
-            "TimeConvention": "timebeginning",
-            "Units": cfg["units"],
-            "DataType": cfg["data_type"],
-            "ReadingMinValue": "",
-            "ReadingMaxValue": "",
-            "Assignment": "current",
-            "ShowFlags": "true",
-            "ShowScaling": "true",
-            "AdditionalParameters": "",
-        }
+        # Set general API settings
+        self.data_url = "{base}/stationdata/{time}/AVG{avg}".format(
+            base=self.base_url, time=cfg["time_convention"], avg=cfg["averaging_window"]
+        )
 
         super().__init__(cfg, fields)
 
     def connect(self):
         """
-        Establishes an HTTP connection to the AQMesh website.
-
-        Logs in with username and password, then checks for success by parsing
-        the resultant HTML page to see if the login prompt is still present,
-        indicating a login failure.
+        Verifies the API token allows for authentication.
 
         The instance attribute 'session' stores a handle to the connection,
         holding any generated cookies and the history of requests.
@@ -102,23 +68,21 @@ class AQMesh(Manufacturer):
             attribute 'session'.
         """
         self.session = re.Session()
+        url_to_call = "{base}/stations".format(base=self.base_url)
 
         try:
-            result = self.session.post(
-                self.auth_url, files=self.auth_params, headers=self.auth_headers
-            )
+            result = self.session.get(url_to_call)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
-            raise LoginError("HTTP error when logging in\n{}".format(ex)) from None
-        except re.exceptions.ConnectionError as ex:
             raise LoginError(
-                "Connection error when logging in\n{}".format(ex)
+                "Cannot test authentication.\n{}".format(str(ex))
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when testing authentication.\n{}".format(str(ex))
             ) from None
 
-        # Check for authentication
-        soup = BeautifulSoup(result.text, features="html.parser")
-        login_div = soup.find(id="loginBox")
-        if login_div is not None:
+        if result.text == "AUTHENTICATION FAILED":
             self.session.close()
             raise LoginError("Login failed")
 
@@ -126,8 +90,8 @@ class AQMesh(Manufacturer):
         """
         Scrapes information about a device's operating condition.
 
-        Abstract method that must have a concrete implementation provided by
-        sub-classes.
+        This method does nothing for AQMesh, since the devices' calibration
+        settings are already logged in the raw data.
 
         Args:
             - device_id (str): The ID used by the website to refer to the
@@ -137,61 +101,13 @@ class AQMesh(Manufacturer):
             A dict of keyword-value parameters.
         """
         params = {}
-
-        request_params = {
-            "CRUD": "read",
-            "Call": "deviceinformation",
-            "UniqueId": device_id,
-        }
-
-        try:
-            result = self.session.post(
-                self.data_url, params=request_params, headers=self.data_headers,
-            )
-            result.raise_for_status()
-        except re.exceptions.HTTPError as ex:
-            raise DataDownloadError(
-                "Cannot download device configuration.\n{}".format(str(ex))
-            ) from None
-        except re.exceptions.ConnectionError as ex:
-            raise DataDownloadError(
-                "Connection error when downloading device configuration.\n{}".format(
-                    str(ex)
-                )
-            ) from None
-
-        try:
-            configuration = result.json()
-        except (json.decoder.JSONDecodeError, TypeError):
-            raise DataDownloadError("Cannot parse request response to JSON.") from None
-
-        # If don't have Channels, SensorLabel, Unit, Slope or Offset attributes
-        # then return empty dict rather than raise error
-        if "Channels" in configuration:
-            for channel in configuration["Channels"]:
-                # Make composite key
-                try:
-                    measurand = "{}({})".format(channel["SensorLabel"], channel["Unit"])
-                except KeyError:
-                    continue
-                for param in ("Slope", "Offset"):
-                    key = "_".join((measurand, param))
-                    try:
-                        val = channel[param]
-                        params[key] = val
-                    except KeyError:
-                        continue
-        # Ensure params are ordered by measurand. This should be the case but
-        # best to make sure
-        params = {k: params[k] for k in sorted(params)}
-
         return params
 
     def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
-        This just requires a single GET request with the appropriate params.
+        This just requires a single API GET request with the appropriate params.
         The raw data is held in the 'Data' attribute of the response JSON.
 
         Args:
@@ -202,31 +118,24 @@ class AQMesh(Manufacturer):
 
         Returns:
             The data stored in a hierarchical format comprising dicts and lists.
-            At the top level, the data has 2 attributes, 'Headers' and 'Rows',
-            which hold the column labels and data respectively.
+            At the top level is a list of timepoints, represented as a dict
+            containing measurements that are stored in a list of dicts in the
+            'Channels' attribute.
         """
         # Convert start and end times into required format of
-        # YYYY-mm-ddTHH:mm:ss TZ:TZ
-        # Where TZ:TZ is in HH:MM format
-        # AQMesh uses [closed, open) intervals, so set start time as midnight of
-        # the start day, and end day as midnight of day AFTER required end day.
-        # Otherwise, if set end datetime to 23:59:59 of end day, then lose the
-        # 59th minute worth of data
+        # YYYY-mm-ddTHH:mm:ss
+        # AQMesh API uses [closed, open] intervals, so set start time as midnight of
+        # the start day, and end day as 23:59:59 of end day
         start_dt = datetime.combine(start, time.min)
-        end_dt = datetime.combine((end + timedelta(days=1)), time.min)
-        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
-        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S {}".format(self.timezone))
+        end_dt = datetime.combine(end, time.max)
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
-        this_params = self.data_params.copy()
-        this_params["UniqueId"] = this_params["UniqueId"].substitute(device=device_id)
-        this_params["Channels"] = this_params["Channels"].substitute(device=device_id)
-        this_params["Start"] = this_params["Start"].substitute(start=start_fmt)
-        this_params["End"] = this_params["End"].substitute(end=end_fmt)
-
+        url_to_call = "{url}/{start}/{end}/{device}".format(
+            url=self.data_url, start=start_fmt, end=end_fmt, device=device_id
+        )
         try:
-            result = self.session.get(
-                self.data_url, params=this_params, headers=self.data_headers,
-            )
+            result = self.session.get(url_to_call)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
@@ -238,7 +147,7 @@ class AQMesh(Manufacturer):
             ) from None
 
         try:
-            data = result.json()["Data"]
+            data = result.json()
         except (json.decoder.JSONDecodeError, TypeError):
             raise DataDownloadError("No 'Data' attribute in downloaded json.") from None
 
@@ -248,33 +157,46 @@ class AQMesh(Manufacturer):
         """
         Parses the raw data into a 2D list format.
 
+        Since the raw data is already in a hierarchical format, it is easier to
+        read it into Pandas as a long data frame and then pivot to wide, rather
+        than do this manually in base Python.
+
         Args:
-            - raw_data (dict): The data is stored in a hierarchical format
-                comprising dicts and lists. At the top level, the data has
-                2 attributes, 'Headers' and 'Rows', which hold the column
-                labels and data respectively.
+            - raw_data (dict): The data stored in a hierarchical format comprising dicts and lists.
+                At the top level is a list of timepoints, represented as a dict
+                containing measurements that are stored in a list of dicts in the
+                'Channels' attribute.
 
         Returns:
             A 2D list representing the data in a tabular format, so that each
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        # Combine header and data into 1 list
-        header = [h["Header"] for h in raw_data["Headers"]]
-        clean_data = raw_data["Rows"]
+        clean_data = []
+        for timepoint in raw_data:
+            try:
+                for channel in timepoint["Channels"]:
+                    try:
+                        clean_data.append(
+                            {
+                                "Timestamp": timepoint["TBTimestamp"],
+                                "measurand": channel["SensorLabel"],
+                                "value": channel["Scaled"],
+                            }
+                        )
+                    except KeyError:
+                        pass  # If don't have the Scaled or SensorLabel
+                        # properties then skip to next measurement
+            except KeyError:
+                pass  # If don't have Channels object skip to next timepoint
+        df = pd.DataFrame(clean_data)
+        try:
+            df_wide = df.pivot_table(
+                index="Timestamp", columns="measurand", values="value", fill_value=""
+            ).reset_index()
+        except KeyError:
+            raise DataParseError("Unable to pivot long to wide.")
 
-        # Check have consistent number of columns
-        ncols = [len(row) for row in clean_data]
-        if len(set(ncols)) > 1:
-            raise DataParseError("Have differing number of columns: {}".format(ncols))
+        df_list = [df_wide.columns.tolist()] + df_wide.values.tolist()
 
-        if ncols[0] != len(header):
-            raise DataParseError(
-                "Have differing number of columns ({}) to headers ({})".format(
-                    ncols[0], len(header)
-                )
-            )
-
-        clean_data.insert(0, header)
-
-        return clean_data
+        return df_list
