@@ -540,20 +540,11 @@ def get_raw_filenames(service, drive_id, pa_id, device_id):
     # Find device folder as sub folder of PurpleAir folder
     q = f"mimeType='application/vnd.google-apps.folder' and '{pa_id}' in parents and name='{device_id}'"
     folder = utils.list_files_googledrive(service, drive_id, query=q)
-    folder_id = folder[0]["id"]
+    device_folder_id = folder[0]["id"]
 
-    # Find all location subfolders belonging to this device
-    q = f"mimeType='application/vnd.google-apps.folder' and '{folder_id}' in parents"
-    location_folders = utils.list_files_googledrive(service, drive_id, query=q)
-    location_folder_ids = [f["id"] for f in location_folders]
-
-    fns = []
-    # Pull the filenames from all location subfolders
-    for location_id in location_folder_ids:
-        q = f"mimeType='text/csv' and '{location_id}' in parents"
-        csv_files = utils.list_files_googledrive(service, drive_id, query=q)
-        fns.extend([(fn["name"], fn["id"]) for fn in csv_files])
-    return fns
+    q = f"mimeType='text/csv' and '{device_folder_id}' in parents"
+    csv_files = utils.list_files_googledrive(service, drive_id, query=q)
+    return [(fn["name"], fn["id"]) for fn in csv_files]
 
 
 if __name__ == "__main__":
