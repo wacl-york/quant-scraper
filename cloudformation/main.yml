@@ -157,7 +157,7 @@
                 \"containerOverrides\": [
                     {
                         \"name\": \"quant\",
-                        \"command\": [ ${Args} ]
+                        \"command\": [ \"${Args}\" ]
                     }
                 ]
              }",
