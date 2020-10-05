@@ -14,6 +14,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 import quantscraper.manufacturers.AURN as AURN
+import quantscraper.manufacturers.PurpleAir as PurpleAir
 from quantscraper.utils import DataDownloadError
 from utils import build_mock_response
 
@@ -253,6 +254,18 @@ class TestAURN(unittest.TestCase):
 
     def test_success(self):
         res = self.myaurn.log_device_status("foo")
+        self.assertEqual(res, {})
+
+
+class TestPurpleAir(unittest.TestCase):
+    # This method isn't currently implemented for PurpleAir, so test it returns
+    # an empty dict
+    cfg = defaultdict(str)
+    fields = []
+    mypa = PurpleAir.PurpleAir(cfg, fields)
+
+    def test_success(self):
+        res = self.mypa.log_device_status("foo")
         self.assertEqual(res, {})
 
 

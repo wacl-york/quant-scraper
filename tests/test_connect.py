@@ -16,6 +16,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 import quantscraper.manufacturers.AURN as AURN
+import quantscraper.manufacturers.PurpleAir as PurpleAir
 from quantscraper.utils import LoginError
 from test_utils import build_mock_response
 
@@ -297,6 +298,17 @@ class TestAURN(unittest.TestCase):
             self.myaurn.connect()
             mock_sesh.assert_called_once()
             self.assertEqual(self.myaurn.session, "5")
+
+
+class TestPurpleAir(unittest.TestCase):
+    # PurpleAir hasn't implemented a connect method yet
+    cfg = defaultdict(str)
+    fields = []
+    mypa = PurpleAir.PurpleAir(cfg, fields)
+
+    def test_success(self):
+        res = self.mypa.connect()
+        self.assertEqual(res, None)
 
 
 if __name__ == "__main__":

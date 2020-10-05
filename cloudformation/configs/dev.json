@@ -1,4 +1,5 @@
 {
-    "StackName": "QUANTScrapingStackDev",
-    "TaskFamily": "QUANTTasks"
+    "ScheduledScrapeStatus": "DISABLED",
+    "ScheduledScrapeArgs": "",
+    "PurpleAirEmailRecipient": ""
 }

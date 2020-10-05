@@ -18,7 +18,8 @@ setup(
         "console_scripts": [
             "quant_scrape = quantscraper.cli:main",
             "quant_preprocess = quantscraper.daily_preprocessing:main",
-            "quant_email = quantscraper.send_email:main",
+            "purpleair_convert = quantscraper.convert_purpleair:main",
+            "purpleair_preprocess = quantscraper.preprocess_purpleair:main",
         ],
     },
     install_requires=[

@@ -30,13 +30,9 @@ import json
 from datetime import date, timedelta, datetime
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv
 
 import quantscraper.utils as utils
-import quantscraper.cli as cli
 from quantscraper.factories import setup_manufacturers
-
-CONFIG_FN = "preprocessing.ini"
 
 
 def parse_args():
@@ -73,34 +69,37 @@ def parse_args():
     return args
 
 
-def setup_scraping_timeframe(day=None):
+def setup_scraping_timeframe(date_format, day=None):
     """
     Sets up the day to process the data for.
 
     By default, this script attempts to collate data from yesterday,
-    although if a valid YYYY-mm-dd date is provided to the --date program
-    argument then that date is used instead.
+    although if a valid date is passed in to the `day` argument then that value
+    is used after checking that it is parseable.
 
     Args:
-        - day (str, optional): The day to run the pre-processing routine for,
-        in YYYY-mm-dd format. If not provided then defaults to yesterday's date.
+        - date_format (str): The time format in which dates are encoded in
+            filenames by QUANT.
+        - day (str, optional): The day to run the pre-processing routine for.
+            Must be formatted as date_format.
+            If not provided then defaults to yesterday's date.
 
     Returns:
-        The date to process for as a string in YYYY-mm-dd format.
+        The date to process for as a string encoded as date_format.
     """
     if day is None:
         yesterday = date.today() - timedelta(days=1)
-        day = yesterday.strftime("%Y-%m-%d")
+        day = yesterday.strftime(date_format)
 
     # Ensure that the day is a valid date
     try:
-        date_dt = datetime.strptime(day, "%Y-%m-%d")
+        date_dt = datetime.strptime(day, date_format)
     except ValueError:
         raise utils.TimeError(
-            "'{}' isn't a valid YYYY-mm-dd formatted date.".format(day)
+            "'{}' cannot be parsed by format {}.".format(day, date_format)
         )
 
-    date_str = date_dt.strftime("%Y-%m-%d")
+    date_str = date_dt.strftime(date_format)
     return date_str
 
 
@@ -309,47 +308,41 @@ def main():
 
     # Setup logging, which for now just logs to stdout
     try:
-        cli.setup_loggers()
+        utils.setup_loggers()
     except utils.SetupError:
-        logging.error("Error in setting up loggers.")
-        logging.error(traceback.format_exc())
-        logging.error("Terminating program")
+        print("Error in setting up loggers.")
+        print(traceback.format_exc())
+        print("Terminating program")
         sys.exit()
 
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
-    load_dotenv()
-    # Parse JSON environment variable into separate env vars
-    try:
-        vars = utils.parse_JSON_environment_variable("QUANT_CREDS")
-    except utils.SetupError:
+    if not utils.parse_env_vars():
         logging.error(
             "Error when initiating environment variables, terminating execution."
         )
         logging.error(traceback.format_exc())
         sys.exit()
 
-    for k, v in vars.items():
-        os.environ[k] = v
-
     # Parse args and config file
     args = parse_args()
     try:
-        cfg = utils.setup_config(CONFIG_FN)
+        cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
         logging.error(traceback.format_exc())
         logging.error("Terminating program")
         sys.exit()
 
-    # Default to yesterday's data if no parseable date provided in config
-    recording_date = setup_scraping_timeframe(args.date)
-
     # Load config params
-    local_clean_folder = cfg.get("Analysis", "local_folder_clean_data")
+    local_clean_folder = cfg.get("Main", "local_folder_clean_data")
     local_analysis_folder = cfg.get("Analysis", "local_folder_analysis_data")
     time_res = cfg.get("Analysis", "time_resolution")
+    date_format = cfg.get("Main", "filename_date_format")
+
+    # Default to yesterday's data if no parseable date provided in config
+    recording_date = setup_scraping_timeframe(date_format, args.date)
 
     try:
         device_config = utils.load_device_configuration()

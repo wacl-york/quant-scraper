@@ -5,6 +5,7 @@
     Contains utility functions.
 """
 
+import io
 import math
 import os
 import pickle
@@ -13,22 +14,35 @@ import csv
 import socket
 from string import Template
 import configparser
+import logging
+from datetime import datetime
 
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
 from google.oauth2 import service_account
 import googleapiclient.discovery
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
+from dotenv import load_dotenv
 
 RAW_DATA_FN = Template("${man}_${device}_${day}.json")
 CLEAN_DATA_FN = Template("${man}_${device}_${day}.csv")
 ANALYSIS_DATA_FN = Template("${man}_${day}.csv")
+AVAILABILITY_DATA_FN = Template("availability_${man}_${date}.csv")
 
 DEVICES_FN = "devices.json"
+CONFIG_FN = "config.ini"
 
 
 class LoginError(Exception):
     """
     Custom exception class for situations where a login attempt has failed.
+    """
+
+
+class EmailSendingError(Exception):
+    """
+    Custom exception class for situations where an email didn't send.
     """
 
 
@@ -175,7 +189,8 @@ def parse_JSON_environment_variable(name):
     return params
 
 
-def auth_google_api():
+def auth_google_api(scopes=["https://www.googleapis.com/auth/drive.file"]):
+
     """
     Authorizes connection to GoogleDrive API.
 
@@ -186,12 +201,13 @@ def auth_google_api():
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        None. Loads credentials from environment variable.
+        - scope (list): The permissions scope of this connection. Defaults to
+        view and manage files created by the service. See full docs at
+        https://developers.google.com/identity/protocols/oauth2/scopes#drive
 
     Returns:
         A googleapiclient.discovery.Resource object.
     """
-    scopes = ["https://www.googleapis.com/auth/drive.file"]
     try:
         params = parse_JSON_environment_variable("GOOGLE_CREDS")
     except SetupError as ex:
@@ -256,7 +272,7 @@ def save_json_file(data, filename):
         None. Saves data to disk as JSON files as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
@@ -279,14 +295,14 @@ def save_csv_file(data, filename):
         None. Saves data to disk as CSV files as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
             writer = csv.writer(outfile, delimiter=",")
             writer.writerows(data)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def save_dataframe(data, filename):
@@ -301,12 +317,12 @@ def save_dataframe(data, filename):
         None, saves to disk as a side effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         data.to_csv(filename)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def save_plaintext(text, filename):
@@ -321,13 +337,13 @@ def save_plaintext(text, filename):
         None. Saves text to disk as a side-effect.
     """
     if os.path.isfile(filename):
-        raise DataSavingError("File {} already exists.".format(filename))
+        raise DataSavingError("File {} already exists".format(filename))
 
     try:
         with open(filename, "w") as outfile:
             outfile.write(text)
     except FileNotFoundError as ex:
-        raise DataSavingError("Cannot save to file {}.".format(filename)) from None
+        raise DataSavingError("Cannot save to file {}".format(filename)) from None
 
 
 def load_html_template(filename):
@@ -354,21 +370,21 @@ def load_html_template(filename):
     return Template(template_raw)
 
 
-def setup_config(cfg_fn):
+def setup_config():
     """
     Loads configuration parameters from a file into memory.
 
     Args:
-        - cfg_fn (str): Filepath of the .ini file.
+        None. The configuration filename is available as a global variable.
 
     Returns:
         A configparser.Namespace instance.
     """
     cfg = configparser.ConfigParser()
-    cfg.read(cfg_fn)
+    cfg.read(CONFIG_FN)
 
     if len(cfg.sections()) == 0:
-        raise SetupError("No sections found in '{}'".format(cfg_fn))
+        raise SetupError("No sections found in '{}'".format(CONFIG_FN))
 
     return cfg
 
@@ -385,3 +401,181 @@ def load_device_configuration():
         raise SetupError("Cannot parse file {} into JSON".format(DEVICES_FN)) from None
 
     return device_config
+
+
+# TODO Make tests for this function
+def download_file(service, file_id):
+    """
+    Downloads a given file from Google Drive.
+
+    Args:
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - file_id (str): ID of the file to download.
+
+    Returns:
+        The file contents as a bytestream.
+    """
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    return fh
+
+
+def list_files_googledrive(service, drive_id, query=None, include_deleted=False):
+    """
+    Lists files that meet a certain criteria stored in a specific Google Drive.
+
+    Args:
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - drive_id (str): ID of the top-level Drive directory where to search.
+        - query (str, optional): Optional query to subset the results, as by
+            default it will return all files in the given drive id. See the
+            Google documentation for details of the syntax:
+                https://developers.google.com/drive/api/v3/search-files
+        - include_deleted (boolean): Whether to include deleted files in the
+            search. Defaults to False.
+    Returns:
+        A list of dicts representing files. Each dict has 2 keys:
+            - 'id': The Google Drive ID relating to this file
+            - 'name': The filename
+    """
+
+    # Specify whether to include deleted files or not
+    deleted_query = f"trashed={str(include_deleted).lower()}"
+    if query is None:
+        query = deleted_query
+    else:
+        query = query + f" and {deleted_query}"
+
+    page_token = None
+    files = []
+    while True:
+        results = (
+            service.files()
+            .list(
+                corpora="drive",
+                driveId=drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                q=query,
+                pageSize=1000,
+                fields="nextPageToken, files(id, name)",
+            )
+            .execute()
+        )
+        files.extend(results.get("files", []))
+        page_token = results.get("nextPageToken", None)
+        if page_token is None:
+            break
+    return files
+
+
+def send_email_ses(
+    subject, body_html, body_text, sender, recipients, identity_arn, charset="UTF-8"
+):
+    """
+    Sends an email through AWS SES.
+
+    Args:
+        - subject (str): Email subject.
+        - body_html (str): Email body with embedded HTML.
+        - body_text (str): Fallback body to use when HTML can't be rendered.
+        - sender (str): Email address of sender.
+        - recipients (list): List of email recipients.
+        - identity_arn (str): University of York identity ARN to authenticate
+            through.
+        - charset (str): Charset, defaults to UTF-8.
+
+    Returns:
+        None, sends email as a side-effect.
+    """
+    client = boto3.client("ses")
+    try:
+        client.send_email(
+            Destination={"ToAddresses": recipients,},
+            Message={
+                "Body": {
+                    "Html": {"Charset": charset, "Data": body_html,},
+                    "Text": {"Charset": charset, "Data": body_text,},
+                },
+                "Subject": {"Charset": charset, "Data": subject,},
+            },
+            Source=sender,
+            SourceArn=identity_arn,
+            ReturnPath=sender,
+            ReturnPathArn=identity_arn,
+        )
+    except ClientError as e:
+        raise EmailSendingError
+    except NoCredentialsError as e:
+        raise EmailSendingError
+
+
+def setup_loggers(logfn=None):
+    """
+    Configures loggers.
+
+    By default, the error log is printed to standard out,
+    although it can be saved to file in addition.
+
+    Args:
+        - logfn (str, optional): File to save log to. If None then doesn't write log to file.
+
+    Returns:
+        None. the logger is accessed by the global module `logging`.
+    """
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    log_fmt = logging.Formatter(
+        "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+    )
+    cli_logger = logging.StreamHandler()
+    cli_logger.setFormatter(log_fmt)
+    root_logger.addHandler(cli_logger)
+
+    if not logfn is None:
+        if os.path.isfile(logfn):
+            raise SetupError(
+                ("Log file {} already exists. " "Halting execution.").format(logfn)
+            )
+        file_logger = logging.FileHandler(logfn)
+        file_logger.setFormatter(log_fmt)
+        root_logger.addHandler(file_logger)
+
+    # Silence the Google Drive logger, which by default logs every request,
+    # polluting the log
+    logging.getLogger("googleapiclient.discovery").setLevel(logging.WARNING)
+
+
+def parse_env_vars():
+    """
+    Parses environment variables.
+
+    Variables are either passed in as environment variables (when run in
+    production) or read in from a local file (when developing).
+    The dotenv package handles reading the environment variables in from either
+    source.
+
+    The QUANT_CREDS environment variable is stored in JSON format and this function
+    also splits it up into keyword-value pair env vars.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+
+    load_dotenv()
+    try:
+        env_vars = parse_JSON_environment_variable("QUANT_CREDS")
+    except SetupError:
+        return False
+
+    for k, v in env_vars.items():
+        os.environ[k] = v
+
+    return True

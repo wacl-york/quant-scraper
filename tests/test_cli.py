@@ -8,13 +8,14 @@
 from datetime import date
 import unittest
 from collections import defaultdict
-import logging
 import os
 from unittest.mock import patch, MagicMock, Mock, call
 
+import pandas as pd
+
+from utils import build_mock_today
 import quantscraper.cli as cli
 import quantscraper.utils as utils
-from utils import build_mock_today
 from quantscraper.manufacturers.Manufacturer import Device
 import quantscraper.manufacturers.Aeroqual as Aeroqual
 
@@ -26,45 +27,6 @@ os.environ["AQMESH_PW"] = "foo"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
-
-
-class TestSetupLoggers(unittest.TestCase):
-    # Capturing the log output is relatively tricky without a 3rd party library.
-    # This would be ideal to check that the log format is as expected, but not
-    # worth the additional dependency and test complexity for now.
-    # Instead will just ensure the setup is as expected.
-
-    def test_logger(self):
-        # By default, logger is set to warn (30) and has no handlers
-        logger = logging.getLogger()
-        self.assertEqual(logger.getEffectiveLevel(), 30)
-
-        # After running cli.seutp_loggers, the CLI logger should be set to
-        # record at INFO (20) and has handlers
-        cli.setup_loggers(None)
-        logger = logging.getLogger("cli")
-        self.assertEqual(logger.getEffectiveLevel(), 20)
-        self.assertTrue(logger.hasHandlers())
-
-    def test_formatter(self):
-        # Can't easily capture log output so instead will ensure that the
-        # formatter is setup as expected
-        with patch("quantscraper.cli.logging") as mock_logging:
-            # Mock the Formatter function that builds a format object
-            mock_fmt = Mock()
-            mock_formatter = MagicMock(return_value=mock_fmt)
-            mock_logging.Formatter = mock_formatter
-
-            # Mock the setFormatter setter to ensure that it is called with the
-            # returned format object
-            mock_setformatter = Mock()
-            mock_logging.StreamHandler.return_value.setFormatter = mock_setformatter
-
-            cli.setup_loggers(None)
-            mock_formatter.assert_called_once_with(
-                "%(asctime)-8s:%(levelname)s: %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
-            )
-            mock_setformatter.assert_called_once_with(mock_fmt)
 
 
 class TestParseArgs(unittest.TestCase):
@@ -126,14 +88,48 @@ class TestParseArgs(unittest.TestCase):
                     help="Uploads availability CSV data to Google Drive.",
                 ),
                 call(
-                    "--html",
-                    metavar="FN",
-                    help="A filename to save an HTML summary to. If not provided then no HTML summary is produced.",
+                    "--recipients",
+                    metavar="EMAIL@DOMAIN",
+                    nargs="+",
+                    help="The recipients to send the email to.",
                 ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
 
             mock_parseargs.assert_called_once_with()
+
+
+class TestGenerateASCIISummary(unittest.TestCase):
+    def test_success(self):
+        input = {
+            "Foo": [["A", "B", "C"], [1, 2, 3], [4, 5, 6]],
+            "Bar": [["D", "F", "G"], [8, 9, 10], [12, 24, 36]],
+        }
+        res = cli.generate_ascii_summary(input, column_width=13, max_screen_width=100)
+        exp = [
+            "+" * 100,
+            "Summary",
+            "-" * 100,
+            "Foo",
+            "~~~",
+            f"{'-'*45}",
+            f"||{' '*12}A||{' '*12}B|{' '*12}C|",
+            f"{'-'*45}",
+            f"||{' '*12}1||{' '*12}2|{' '*12}3|",
+            f"||{' '*12}4||{' '*12}5|{' '*12}6|",
+            f"{'-'*45}",
+            "Bar",
+            "~~~",
+            f"{'-'*45}",
+            f"||{' '*12}D||{' '*12}F|{' '*12}G|",
+            f"{'-'*45}",
+            f"||{' '*12}8||{' '*12}9|{' '*11}10|",
+            f"||{' '*11}12||{' '*11}24|{' '*11}36|",
+            f"{'-'*45}",
+            "+" * 80,
+        ]
+
+        self.assertEqual(res, exp)
 
 
 class TestSetupScrapingTimeframe(unittest.TestCase):
@@ -511,8 +507,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "dt"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected messages
         self.assertEqual(
@@ -532,9 +532,9 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -571,8 +571,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = None
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "footimezonedatetime"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert parse_to_csv calls are as expected
         parse_calls = mock_parse.mock_calls
@@ -582,8 +586,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -621,8 +625,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%SZ"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -639,8 +647,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -678,8 +686,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%SZSAD"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -697,8 +709,8 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -736,8 +748,12 @@ class TestProcess(unittest.TestCase):
         dev3.raw_data = ["foo", "bar"]
         man.devices = [dev1, dev2, dev3]
 
+        # Deliberately not using the actual datetime format used in the program
+        # to ensure that the format is correctly being passed through
+        out_fmt = "%Y-%M-%dT%H:%M:%S"
+
         with self.assertLogs(level="INFO") as cm:
-            cli.process(man)
+            cli.process(man, out_fmt)
 
         # Assert log is called with expected error messages
         # Not going to try and assert equality on the full log as it contains a
@@ -752,9 +768,9 @@ class TestProcess(unittest.TestCase):
         # Assert validate_data calls are as expected
         validate_calls = mock_validate.mock_calls
         exp_calls = [
-            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]]),
-            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]]),
-            call([["no2", "co2", "co"], [12, 14, 16]]),
+            call([["a", "b", "c"], [1, 2, 3], [4, 5, 6], [7, 8, 9]], out_fmt),
+            call([["foo", "bar", "car"], [4, 2, 3], [4, 1, 2]], out_fmt),
+            call([["no2", "co2", "co"], [12, 14, 16]], out_fmt),
         ]
         self.assertEqual(validate_calls, exp_calls)
 
@@ -1002,7 +1018,7 @@ class TestSummariseRun(unittest.TestCase):
 
     def test_no_timestamp(self):
         # Likewise no timestamp available should make the associated column
-        # empty and remove the %s from other measurands
+        # empty
         summaries = [
             {
                 "manufacturer": "foo",
@@ -1334,3 +1350,166 @@ class TestSaveRawData(unittest.TestCase):
                 self.assertEqual(calls, exp_calls)
                 # Should only have first filename returned
                 self.assertEqual(res, ["dummyFolder/Aeroqual_1_foobar.json"])
+
+
+class TestSaveAvailability(unittest.TestCase):
+    def df_to_list(self, df):
+        return [
+            df.reset_index().columns.values.tolist()
+        ] + df.reset_index().values.tolist()
+
+    def test_success(self):
+        mock_service = Mock()
+        folder_id = "123#456"
+        tables = {
+            "Foo": [
+                ["Device ID", "Timestamps", "B", "C"],
+                ["Foo01", "1 (50%)", "2 (32%)", "3 (32%)"],
+                ["Foo02", "4 (58%)", "5 (40%)", "6 (41%)"],
+            ],
+            "Bar": [
+                ["Device ID", "Timestamps", "F", "G"],
+                ["BarA", "8 (32%)", "9 (76%)", "10 (81%)"],
+                ["BarB", "12 (91%)", "24 (100%)", "36 (2%)"],
+            ],
+        }
+        local_folder = "mydata/dir2/foo"
+        date = "2030-04-16"
+
+        # patch save_data
+        with patch("quantscraper.cli.utils.save_dataframe") as mock_save_dataframe:
+
+            # patch upload_file_google_drive
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+
+                cli.save_availability(
+                    mock_service, tables, folder_id, local_folder, date
+                )
+
+                # Test save local file
+                # Can't directly compare the call arguments to actual as
+                # hard to compare pandas dataframes as it will compare on full
+                # metadata (labels, headers, indices etc...) rather than just
+                # values. Instead, convert to list and compare on values
+                exp_df_1 = [
+                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                ]
+                exp_df_2 = [
+                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                ]
+                actual_save_calls = mock_save_dataframe.mock_calls
+
+                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
+                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
+                self.assertEqual(
+                    actual_save_calls[0][1][1],
+                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                )
+                self.assertEqual(
+                    actual_save_calls[1][1][1],
+                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                )
+
+                # Test GoogleDrive upload
+                exp_upload_calls = [
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    ),
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    ),
+                ]
+
+                actual_upload_calls = mock_upload.mock_calls
+                self.assertEqual(actual_upload_calls, exp_upload_calls)
+
+    # TODO
+    def test_data_saving_error(self):
+        mock_service = Mock()
+        folder_id = "123#456"
+        tables = {
+            "Foo": [
+                ["Device ID", "Timestamps", "B", "C"],
+                ["Foo01", "1 (50%)", "2 (32%)", "3 (32%)"],
+                ["Foo02", "4 (58%)", "5 (40%)", "6 (41%)"],
+            ],
+            "Bar": [
+                ["Device ID", "Timestamps", "F", "G"],
+                ["BarA", "8 (32%)", "9 (76%)", "10 (81%)"],
+                ["BarB", "12 (91%)", "24 (100%)", "36 (2%)"],
+            ],
+        }
+        local_folder = "mydata/dir2/foo"
+        date = "2030-04-16"
+
+        # patch save_data
+        with patch(
+            "quantscraper.cli.utils.save_dataframe",
+            side_effect=[utils.DataSavingError(""), ""],
+        ) as mock_save_dataframe:
+
+            # patch upload_file_google_drive
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+
+                # Check that upload file isn't called for first file as had
+                # error when saving
+                cli.save_availability(
+                    mock_service, tables, folder_id, local_folder, date
+                )
+
+                # Test save local file
+                # Can't directly compare the call arguments to actual as
+                # hard to compare pandas dataframes as it will compare on full
+                # metadata (labels, headers, indices etc...) rather than just
+                # values. Instead, convert to list and compare on values
+                exp_df_1 = [
+                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                ]
+                exp_df_2 = [
+                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                ]
+                actual_save_calls = mock_save_dataframe.mock_calls
+
+                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
+                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
+                self.assertEqual(
+                    actual_save_calls[0][1][1],
+                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                )
+                self.assertEqual(
+                    actual_save_calls[1][1][1],
+                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                )
+
+                # Test GoogleDrive upload
+                # NB: only one file is uploaded due to error being raised on
+                # first file
+                exp_upload_calls = [
+                    call(
+                        mock_service,
+                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                        "123#456",
+                        "text/csv",
+                    )
+                ]
+
+                actual_upload_calls = mock_upload.mock_calls
+                self.assertEqual(actual_upload_calls, exp_upload_calls)

@@ -17,6 +17,7 @@ import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
 import quantscraper.manufacturers.AURN as AURN
+import quantscraper.manufacturers.PurpleAir as PurpleAir
 from quantscraper.utils import DataDownloadError
 from utils import build_mock_response
 
@@ -491,6 +492,17 @@ class TestAURN(unittest.TestCase):
 
         with self.assertRaises(DataDownloadError):
             self.aurn.scrape_device("123", mock_start, mock_end)
+
+
+class TestPurpleAir(unittest.TestCase):
+    # PurpleAir hasn't implemented a scrape_device method yet
+    cfg = defaultdict(str)
+    fields = []
+    mypa = PurpleAir.PurpleAir(cfg, fields)
+
+    def test_success(self):
+        res = self.mypa.scrape_device("foo", "2020-05-02", "2020-05-03")
+        self.assertEqual(res, None)
 
 
 if __name__ == "__main__":

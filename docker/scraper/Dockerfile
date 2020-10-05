@@ -4,7 +4,7 @@
 # Debian ~1.1GB
 FROM python:3.7-buster
 WORKDIR /quantscraper
-ADD . ./
+COPY ./ ./
 RUN mkdir -p data/raw
 RUN mkdir -p data/clean
 RUN mkdir -p data/analysis
@@ -12,4 +12,4 @@ RUN mkdir -p data/availability
 RUN python -m pip install --upgrade pip
 RUN pip install .
 
-ENTRYPOINT ["python", "entry.py"]
+ENTRYPOINT ["python", "docker/scraper/entry.py"]
