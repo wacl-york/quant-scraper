@@ -234,7 +234,7 @@ def instantiate_PA_manufacturer():
     factory method to load the instance.
 
     Args:
-        None
+        - None.
 
     Returns:
         An instance of PurpleAir.
@@ -262,7 +262,7 @@ def parse_args():
     Parses CLI arguments to the script.
 
     Args:
-        None
+        - None.
 
     Returns:
         An argparse.Namespace object.
@@ -325,7 +325,7 @@ def generate_html_summary(tables, cfg):
 
     # Fill in email template
     try:
-        email_html = email_template.substitute(summary=day_html, start="")
+        email_html = email_template.substitute(summary=day_html)
     except ValueError:
         logging.error("Cannot fill email template placeholders.")
         email_html = email_template.template
@@ -511,7 +511,7 @@ def get_processed_filenames(service, drive_id, clean_id, device_id):
     repository for a given device.
 
     Args:
-        service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
         - drive_id (str): The ID of the top-level QUANT shared drive.
         - clean_id (str): The ID of the QUANT/Data/Clean repository.
         - device_id (str): Device ID.
@@ -529,7 +529,7 @@ def get_raw_filenames(service, drive_id, pa_id, device_id):
     Finds all filenames in the raw PurpleAir source folder for a given device.
 
     Args:
-        service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
         - drive_id (str): The ID of the top-level QUANT shared drive.
         - pa_id (str): The ID of the raw PurpleAir Google Drive folder.
         - device_id (str): Device ID.

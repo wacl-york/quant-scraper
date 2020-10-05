@@ -201,7 +201,7 @@ def auth_google_api(scopes=["https://www.googleapis.com/auth/drive.file"]):
     https://developers.google.com/drive/api/v3/quickstart/python
 
     Args:
-        - scope (list): The permissions scope of this connection. Defaults to
+        - scopes (list): The permissions scope of this connection. Defaults to
         view and manage files created by the service. See full docs at
         https://developers.google.com/identity/protocols/oauth2/scopes#drive
 
@@ -265,7 +265,7 @@ def save_json_file(data, filename):
     Encodes data as JSON and saves it to disk.
 
     Args:
-        - data (misc): Data in JSON-parseable format.
+        - data (object): Data in JSON-parseable format.
         - filename (str): Location to save data to
 
     Returns:
@@ -330,7 +330,7 @@ def save_plaintext(text, filename):
     Saves string directly to disk.
 
     Args:
-        - data (str): Text to be saved.
+        - text (str): Text to be saved.
         - filename (str): Location to save data to
 
     Returns:
@@ -354,7 +354,7 @@ def load_html_template(filename):
     string.Template.
 
     Args:
-        filename (str): Location of the HTML file.
+        - filename (str): Location of the HTML file.
 
     Returns:
         A string.Template object.
@@ -375,7 +375,7 @@ def setup_config():
     Loads configuration parameters from a file into memory.
 
     Args:
-        None. The configuration filename is available as a global variable.
+        - None. The configuration filename is available as a global variable.
 
     Returns:
         A configparser.Namespace instance.
@@ -391,6 +391,16 @@ def setup_config():
 
 def load_device_configuration():
     """
+    Loads the devices.json database into memory.
+
+    The devices.json file describes the relationships between the manufacturers
+    and the devices they own, along with manufacturer-specific properties.
+
+    Args:
+        - None.
+
+    Returns:
+        A dictionary containing the parsed JSON contents.
     """
     try:
         with open(DEVICES_FN, "r") as infile:
@@ -562,7 +572,7 @@ def parse_env_vars(*args):
     can split these up into keyword-value pair env vars.
 
     Args:
-        - *args: Strings with the name of JSON environment variables.
+        - args: Strings with the name of JSON environment variables.
 
     Returns:
         None

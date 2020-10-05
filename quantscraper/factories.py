@@ -20,7 +20,7 @@ def manufacturer_factory(config):
     Returns an instance of the specified Manufacturer sub-class.
 
     Args:
-        - cfg (dict): Attributes of the manufacturer, given by the corresponding
+        - config (dict): Attributes of the manufacturer, given by the corresponding
             object containing the 'name', 'fields', 'devices' etc... attributes
             in the devices JSON file.
 
@@ -62,7 +62,7 @@ def device_factory(config):
     Returns an instance of the specified Manufacturer sub-class.
 
     Args:
-        - config (configparser.Namespace): Configuration options used to
+        - config (dict): Configuration options used to
             instantiate the Device. These are the properties inside a 'devices'
             list in the JSON.
             Must contain at least:

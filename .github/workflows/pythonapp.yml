@@ -3,9 +3,7 @@
 
 name: "Build and test"
 
-on:
- pull_request:
-    types: [ opened, edited, reopened ]
+on: [ pull_request ]
 jobs:
   build:
     runs-on: ubuntu-latest

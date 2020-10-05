@@ -339,10 +339,10 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
     Uploads a number of files of the same type to a single GoogleDrive folder.
 
     Args:
-        service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
-        fns (list): A list of full filepaths to the files to be uploaded.
-        folder_id (str): The GoogleDrive ID of the target folder.
-        mime_type (str): The MIME type of the files.
+        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
+        - fns (list): A list of full filepaths to the files to be uploaded.
+        - folder_id (str): The GoogleDrive ID of the target folder.
+        - mime_type (str): The MIME type of the files.
 
     Returns:
         None, uploads files as a side-effect.
@@ -543,17 +543,17 @@ def generate_manufacturer_html(template, manufacturer, table, **kwargs):
     Builds HTML summarising a manufacturer's device status.
 
     Args:
-        template (str): The HTML template of the manufacturer section.
-          Formatted as Python string.Template(), with $placeholder tags.
-          Expects 3 placeholders:
-              - manufacturer: Manufacturer name
-              - header: Table header inside <tr> tags, so needs list of <th>.
-              - body: Table body inside <tbody> tags, so needs <tr> and <td>
-                tags.
-        manufacturer (str): Manufacturer name.
-        table (list): Python 2D list containing table contents. First entry is
-            the headers, and all subsequent entries are rows.
-        kwargs:
+        - template (str): The HTML template of the manufacturer section.
+           Formatted as Python string.Template(), with $placeholder tags.
+           Expects 3 placeholders:
+               - manufacturer: Manufacturer name
+               - header: Table header inside <tr> tags, so needs list of <th>.
+               - body: Table body inside <tbody> tags, so needs <tr> and <td>
+                 tags.
+        - manufacturer (str): Manufacturer name.
+        - table (list): Python 2D list containing table contents. First entry is
+             the headers, and all subsequent entries are rows.
+        - kwargs:
             CSS styling parameters.
             'th_style': Default style to apply to th tags.
             'td_style': Default style to apply to td tags.
@@ -689,7 +689,7 @@ def generate_html_summary(tables, cfg, start_date):
 
 def save_availability(service, tables, folder_id, local_folder, date):
     """
-    Saves availability data to CSV file.
+    Saves availability data to CSV file and uploads it to GoogleDrive.
 
     Args:
         - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
@@ -700,6 +700,10 @@ def save_availability(service, tables, folder_id, local_folder, date):
         - folder_id (str): Google Drive ID of folder to upload to.
         - date (str): The data corresponding to the availability data, used in
             the filename.
+
+    Returns:
+        None, saves the data to disk and uploads it to GoogleDrive as
+        side-effect.
     """
     for manufacturer, csv_data in tables.items():
         fn = utils.AVAILABILITY_DATA_FN.substitute(man=manufacturer, date=date)
@@ -739,7 +743,8 @@ def main():
     Args:
         - None
 
-    Returns: None.
+    Returns:
+        None.
     """
     # Setup logging, which for now just logs to stderr
     try:
