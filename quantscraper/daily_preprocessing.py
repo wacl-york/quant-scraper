@@ -243,8 +243,8 @@ def resample(dataframe, resolution):
     In this usage, the aggregation function is the mean.
 
     Args:
-        dataframe (pandas.DataFrame): Input data.
-        resolution (str): Desired output resolution, see following link for
+        - dataframe (pandas.DataFrame): Input data.
+        - resolution (str): Desired output resolution, see following link for
             syntax:
             https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects
     Returns:
@@ -265,7 +265,9 @@ def resample(dataframe, resolution):
 def upload_files_google_drive(files):
     """
     Provides boiler plate code and error handling for all aspects of uploading a
-    list of files to Google Drive, including:
+    list of files to Google Drive.
+
+    These potential sources of error include:
         - Initiating connection to GoogleDrive API
         - Obtaining the folder ID from an environment variable
         - Calling the function that handles the file upload.
@@ -301,6 +303,15 @@ def upload_files_google_drive(files):
 
 
 def main():
+    """
+    Entry point into the script.
+
+    Args:
+        - None
+
+    Returns:
+        None.
+    """
     # Just using same setup functions as cli.py here.
     # Don't think would be appropriate to refactor these functions into the
     # utils.py module, as these are script functions, rather than library

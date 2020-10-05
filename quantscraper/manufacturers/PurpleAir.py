@@ -48,7 +48,7 @@ class PurpleAir(Manufacturer):
         network connection to our devices.
 
         Args:
-            None
+            - None.
 
         Returns:
             None
@@ -59,8 +59,10 @@ class PurpleAir(Manufacturer):
         """
         This function is not implemented for PurpleAir as we do not have a
         network connection to our devices.
+
         Args:
-            None
+            - device_id (str): The ID used by the website to refer to the
+                device.
 
         Returns:
             None
@@ -74,7 +76,10 @@ class PurpleAir(Manufacturer):
         network connection to our devices.
 
         Args:
-            None
+            - device_id (str): The ID used by the website to refer to the
+                device.
+            - start (date): The start of the scraping window.
+            - end (date): The end of the scraping window.
 
         Returns:
             None

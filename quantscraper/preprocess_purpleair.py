@@ -146,7 +146,6 @@ def get_uploaded_analysis_dates(service, drive_id, analysis_id):
 
     Returns:
         A list of dates as YYYY-mm-dd strings.
-
     """
     q = f"mimeType='text/csv' and '{analysis_id}' in parents and name contains 'PurpleAir'"
     files = utils.list_files_googledrive(service, drive_id, query=q)
@@ -158,7 +157,7 @@ def get_uploaded_analysis_dates(service, drive_id, analysis_id):
 def get_date_from_clean_fn(fn):
     """
     Obtains the recording date from the QUANT Clean filename convention:
-    manufacturer_deviceid_date.csv
+        manufacturer_deviceid_date.csv
 
     Args:
         - fn (str): The filename.
@@ -206,7 +205,7 @@ def get_pa_device_ids(device_config):
     Args:
         - device_config (dict): The manufacturer and device JSON representation.
 
-    Returns: 
+    Returns:
         A list of strings containing the device IDs.
     """
     pa_config = [m for m in device_config["manufacturers"] if m["name"] == "PurpleAir"][
