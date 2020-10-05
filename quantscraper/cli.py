@@ -753,7 +753,7 @@ def main():
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
-    if not utils.parse_env_vars():
+    if not utils.parse_env_vars("QUANT_CREDS", "EMAIL_CREDS"):
         logging.error(
             "Error when initiating environment variables, terminating execution."
         )

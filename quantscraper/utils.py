@@ -403,7 +403,6 @@ def load_device_configuration():
     return device_config
 
 
-# TODO Make tests for this function
 def download_file(service, file_id):
     """
     Downloads a given file from Google Drive.
@@ -550,7 +549,7 @@ def setup_loggers(logfn=None):
     logging.getLogger("googleapiclient.discovery").setLevel(logging.WARNING)
 
 
-def parse_env_vars():
+def parse_env_vars(*args):
     """
     Parses environment variables.
 
@@ -559,23 +558,25 @@ def parse_env_vars():
     The dotenv package handles reading the environment variables in from either
     source.
 
-    The QUANT_CREDS environment variable is stored in JSON format and this function
-    also splits it up into keyword-value pair env vars.
+    Several environment variables are stored in JSON format - this function
+    can split these up into keyword-value pair env vars.
 
     Args:
-        None
+        - *args: Strings with the name of JSON environment variables.
 
     Returns:
         None
     """
 
     load_dotenv()
-    try:
-        env_vars = parse_JSON_environment_variable("QUANT_CREDS")
-    except SetupError:
-        return False
 
-    for k, v in env_vars.items():
-        os.environ[k] = v
+    for var in args:
+        try:
+            env_vars = parse_JSON_environment_variable(var)
+        except SetupError:
+            return False
+
+        for k, v in env_vars.items():
+            os.environ[k] = v
 
     return True

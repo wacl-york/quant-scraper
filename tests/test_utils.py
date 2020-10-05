@@ -821,9 +821,9 @@ class TestParseEnvVars(unittest.TestCase):
     def test_success(self):
         with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
             # Set JSON env var
-            os.environ["QUANT_CREDS"] = '{"foo": "1", "bar": "adsa"}'
+            os.environ["DUMMY_CREDS"] = '{"foo": "1", "bar": "adsa"}'
 
-            res = utils.parse_env_vars()
+            res = utils.parse_env_vars("DUMMY_CREDS")
 
             mock_dotenv.assert_called_once()
             self.assertEqual(res, True)
@@ -837,16 +837,16 @@ class TestParseEnvVars(unittest.TestCase):
             res = utils.parse_env_vars()
 
             mock_dotenv.assert_called_once()
-            self.assertEqual(res, False)
+            self.assertEqual(res, True)
 
     def test_non_json_envvar(self):
         # If QUANT_CREDS isn't parseable as JSON then it should also return
         # False
         with patch("quantscraper.utils.load_dotenv") as mock_dotenv:
             # Set incorrectly formatted JSON env var
-            os.environ["QUANT_CREDS"] = '{"foo"= "1", "bar"= "adsa"}'
+            os.environ["FOO_BAR"] = '{"foo"= "1", "bar"= "adsa"}'
 
-            res = utils.parse_env_vars()
+            res = utils.parse_env_vars("FOO_BAR")
 
             mock_dotenv.assert_called_once()
             self.assertEqual(res, False)
