@@ -310,7 +310,7 @@
                 },
                 {
                     "id": "Zep309",
-                    "webid": "309",
+                    "webid": "584",
                     "location": "York"
                 },
                 {
@@ -525,19 +525,19 @@
             },
             "fields": [
                 {
-                    "id": "current_temp_f",
+                    "id": "Temperature_F",
                     "webid": "current_temp_f",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "current_humidity",
+                    "id": "RelHumidity",
                     "webid": "current_humidity",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "current_dewpoint_f",
+                    "id": "Dewpoint_F",
                     "webid": "current_dewpoint_f",
                     "scale": 1,
                     "include_analysis": true
@@ -549,37 +549,37 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "pm1_0_atm",
+                    "id": "PM1",
                     "webid": "pm1_0_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "pm2_5_atm",
+                    "id": "PM2.5",
                     "webid": "pm2_5_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "pm10_0_atm",
+                    "id": "PM10",
                     "webid": "pm10_0_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "pm1_0_atm_b",
+                    "id": "PM1_b",
                     "webid": "pm1_0_atm_b",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "pm2_5_atm_b",
+                    "id": "PM2.5_b",
                     "webid": "pm2_5_atm_b",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "pm10_0_atm_b",
+                    "id": "PM10_b",
                     "webid": "pm10_0_atm_b",
                     "scale": 1,
                     "include_analysis": true
