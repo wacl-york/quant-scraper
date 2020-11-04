@@ -12,7 +12,7 @@
                 "data_url": "https://cloud.aeroqual.com/ManageData/GenerateExportData",
                 "dl_url": "https://cloud.aeroqual.com/ManageData/DownloadExportData",
                 "include_journal": "true",
-                "averaging_window": "0",
+                "averaging_window": "1",
                 "lines_skip": 6
             },
             "fields": [
