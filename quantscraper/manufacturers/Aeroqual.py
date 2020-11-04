@@ -305,7 +305,7 @@ class Aeroqual(Manufacturer):
         raw_data = raw_data.rstrip()
 
         # Split into rows and run basic validation
-        raw_lines = raw_data.split("\r\n")
+        raw_lines = raw_data.splitlines()
 
         if len(raw_lines) < self.lines_skip:
             raise DataParseError(
