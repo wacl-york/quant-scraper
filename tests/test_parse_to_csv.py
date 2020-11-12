@@ -23,83 +23,81 @@ import numpy as np
 
 
 class TestAeroqual(unittest.TestCase):
-    # Aeroqual's raw data is organised as a CSV in a raw string, i.e.
-    # \r\n delimiting lines and , delimiting columns
-    # However, it has 6 empty header lines containing metadata
-
+    # TODO Implement
+    # Aeroqual's raw data is organised as a JSON with [{Time: val, O3: val}, ]
     cfg = defaultdict(str)
     cfg["lines_skip"] = 6
     fields = []
     aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
-    def test_success(self):
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
-        exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
-        res = self.aeroqual.parse_to_csv(raw_data)
-        self.assertEqual(res, exp)
+    # def test_success(self):
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+    #    exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]
+    #    res = self.aeroqual.parse_to_csv(raw_data)
+    #    self.assertEqual(res, exp)
 
-    def test_lines_skip_low(self):
-        # Ensure that lines_skip is appropiately used. Here it is reduced,
-        # meaning will throw error as have mismatched column sizes
-        cfg_copy = self.cfg.copy()
-        cfg_copy["lines_skip"] = 4
-        aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
+    # def test_lines_skip_low(self):
+    #    # Ensure that lines_skip is appropiately used. Here it is reduced,
+    #    # meaning will throw error as have mismatched column sizes
+    #    cfg_copy = self.cfg.copy()
+    #    cfg_copy["lines_skip"] = 4
+    #    aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
 
-        with self.assertRaises(DataParseError):
-            aeroqual2.parse_to_csv(raw_data)
+    #    with self.assertRaises(DataParseError):
+    #        aeroqual2.parse_to_csv(raw_data)
 
-    def test_lines_skip_high(self):
-        # Ensure that lines_skip is appropiately used. Here it is increased,
-        # meaning will lose actual data rows
-        cfg_copy = self.cfg.copy()
-        cfg_copy["lines_skip"] = 8
-        aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
+    # def test_lines_skip_high(self):
+    #    # Ensure that lines_skip is appropiately used. Here it is increased,
+    #    # meaning will lose actual data rows
+    #    cfg_copy = self.cfg.copy()
+    #    cfg_copy["lines_skip"] = 8
+    #    aeroqual2 = Aeroqual.Aeroqual(cfg_copy, self.fields)
 
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
-        exp = [["4", "5", "6"], ["7", "8", "9"]]
-        res = aeroqual2.parse_to_csv(raw_data)
-        self.assertEqual(res, exp)
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
+    #    exp = [["4", "5", "6"], ["7", "8", "9"]]
+    #    res = aeroqual2.parse_to_csv(raw_data)
+    #    self.assertEqual(res, exp)
 
-    def test_empty_string(self):
-        # If have empty value (2 consecutive commas) then should get empty
-        # string in output CSV data.
-        # Have removed 2, 4, and 9
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
-        exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
-        res = self.aeroqual.parse_to_csv(raw_data)
-        self.assertEqual(res, exp)
+    # def test_empty_string(self):
+    #    # If have empty value (2 consecutive commas) then should get empty
+    #    # string in output CSV data.
+    #    # Have removed 2, 4, and 9
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2,CO2,O3\r\n1,,3\r\n,5,6\r\n7,8,"
+    #    exp = [["NO2", "CO2", "O3"], ["1", "", "3"], ["", "5", "6"], ["7", "8", ""]]
+    #    res = self.aeroqual.parse_to_csv(raw_data)
+    #    self.assertEqual(res, exp)
 
-    def test_fewer_lines_headers(self):
-        # What happens if have fewer lines available than headers to skip?
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4"
-        with self.assertRaises(DataParseError):
-            self.aeroqual.parse_to_csv(raw_data)
+    # def test_fewer_lines_headers(self):
+    #    # What happens if have fewer lines available than headers to skip?
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4"
+    #    with self.assertRaises(DataParseError):
+    #        self.aeroqual.parse_to_csv(raw_data)
 
-    def test_no_data(self):
-        # What happens if have sufficient headers, but no data?
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6"
-        with self.assertRaises(DataParseError):
-            self.aeroqual.parse_to_csv(raw_data)
+    # def test_no_data(self):
+    #    # What happens if have sufficient headers, but no data?
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6"
+    #    with self.assertRaises(DataParseError):
+    #        self.aeroqual.parse_to_csv(raw_data)
 
-    def test_missing_data(self):
-        # Expect error to be thrown if have unbalanced columns
-        # Have set third row to only have 2 values (7 & 8)
-        # This is an error as have no way of knowing if this missing value is
-        # from NO2, CO2, or O3
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
-        with self.assertRaises(DataParseError):
-            self.aeroqual.parse_to_csv(raw_data)
+    # def test_missing_data(self):
+    #    # Expect error to be thrown if have unbalanced columns
+    #    # Have set third row to only have 2 values (7 & 8)
+    #    # This is an error as have no way of knowing if this missing value is
+    #    # from NO2, CO2, or O3
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
+    #    with self.assertRaises(DataParseError):
+    #        self.aeroqual.parse_to_csv(raw_data)
 
-    def test_one_column(self):
-        # Will want code to throw error if have just 1 column of data, as
-        # could indicate the delimiter is wrong. It is also unlikely we'd ever
-        # be in a situation with a single column of data being returned.
-        # Better to warn user of this behaviour than to silently pass
-        raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
-        with self.assertRaises(DataParseError):
-            self.aeroqual.parse_to_csv(raw_data)
+    # def test_one_column(self):
+    #    # Will want code to throw error if have just 1 column of data, as
+    #    # could indicate the delimiter is wrong. It is also unlikely we'd ever
+    #    # be in a situation with a single column of data being returned.
+    #    # Better to warn user of this behaviour than to silently pass
+    #    raw_data = "header1\r\nheader2\r\nheader3\r\nheader4\r\nheader5\r\nheader6\r\nNO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
+    #    with self.assertRaises(DataParseError):
+    #        self.aeroqual.parse_to_csv(raw_data)
 
 
 class TestAQMesh(unittest.TestCase):

@@ -6,11 +6,12 @@
     quality instrumentation device manufacturer.
 """
 
+from datetime import datetime, time
 from string import Template
 import csv
 import os
 import requests as re
-from bs4 import BeautifulSoup
+import pandas as pd
 from quantscraper.manufacturers.Manufacturer import Manufacturer
 from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
@@ -41,47 +42,26 @@ class Aeroqual(Manufacturer):
         """
         self.session = None
         self.auth_url = cfg["auth_url"]
-        self.select_device_url = cfg["select_device_url"]
         self.calibration_url = cfg["calibration_url"]
         self.data_url = cfg["data_url"]
-        self.dl_url = cfg["dl_url"]
         self.lines_skip = cfg["lines_skip"]
 
         # Authentication
         self.auth_params = {
-            "Username": os.environ["AEROQUAL_USER"],
+            "UserName": os.environ["AEROQUAL_USER"],
             "Password": os.environ["AEROQUAL_PW"],
-            "RememberMe": "true",
         }
         self.auth_headers = {
             "content-type": "application/x-www-form-urlencoded",
             "connnection": "keep-alive",
-            "referer": self.auth_url,
-        }
-
-        # Select device
-        self.select_device_headers = {
-            "connection": "keep-alive",
-            "content-type": "application/json",
-        }
-        self.select_device_string = Template(
-            "serialNumber=${device},o=York University,dc=root"
-        )
-
-        # Generate data
-        self.data_headers = {
-            "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-            "connection": "keep-alive",
         }
 
         self.data_params = {
-            "Period": Template("${start} to ${end}"),
-            "AvgMinutes": cfg["averaging_window"],
-            "IncludeJournal": cfg["include_journal"],
+            "from": Template("${start}"),
+            "to": Template("${end}"),
+            "averagingperiod": cfg["averaging_window"],
+            "includejournal": cfg["include_journal"],
         }
-
-        # Download data
-        self.dl_headers = {"content-type": "text/csv"}
 
         super().__init__(cfg, fields)
 
@@ -116,44 +96,6 @@ class Aeroqual(Manufacturer):
                 "Connection error when logging in\n{}".format(ex)
             ) from None
 
-        # Check for authentication
-        soup = BeautifulSoup(result.text, features="html.parser")
-        login_div = soup.find(id="loginContent")
-        if login_div is not None:
-            self.session.close()
-            raise LoginError("Login failed")
-
-    def select_device(self, device_id):
-        """
-        Selects the device we're about to query.
-
-        Rather than specifiying the device ID when running any queries (such as
-        downloading configuration information or measurement data), the Aeroqual
-        website requires that the device is specified in a prior POST call.
-        This function runs that POST call for the specified device.
-
-        Args:
-            - device_id (str): The ID used by the website to refer to the
-                device.
-
-        Returns:
-            None. Modifies the server-side environment and our session instance
-            attribute to refer to this device as side-effects.
-        """
-        try:
-            result = self.session.post(
-                self.select_device_url,
-                json=[self.select_device_string.substitute(device=device_id)],
-                headers=self.select_device_headers,
-            )
-            result.raise_for_status()
-        except re.exceptions.HTTPError as ex:
-            raise DataDownloadError("Cannot select device.\n{}".format(ex)) from None
-        except re.exceptions.ConnectionError as ex:
-            raise DataDownloadError(
-                "Connection error when selecting device.\n{}".format(ex)
-            ) from None
-
     def log_device_status(self, device_id):
         """
         Scrapes information about a device's operating condition.
@@ -166,16 +108,9 @@ class Aeroqual(Manufacturer):
             A dict of keyword-value parameters.
         """
         params = {}
-
-        # Select device
+        url = self.calibration_url + f"/{device_id}"
         try:
-            self.select_device(device_id)
-        except DataDownloadError as ex:
-            raise ex
-
-        # Download calibration page
-        try:
-            result = self.session.get(self.calibration_url)
+            result = self.session.get(url)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
@@ -186,34 +121,8 @@ class Aeroqual(Manufacturer):
                 "Connection error when opening calibration page.\n{}".format(ex)
             ) from None
 
-        # Scrape device calibration page
-        soup = BeautifulSoup(result.text, features="html.parser")
-        calibration_table = soup.find(id="modulesTable")
-
-        if calibration_table is None:
-            self.session.close()
-            raise DataDownloadError(
-                "Could not find modulesTable id in {}".format(self.calibration_url)
-            )
-
-        # Find all input tags with required attributes, indicating a calibration
-        # param
-        required_attrs = ["data-parameter", "data-sensor", "value"]
-        calibration_tags = soup.findAll("input", {k: True for k in required_attrs})
-
-        # Form into neat keyword-value pair
-        for tag in calibration_tags:
-            key = "_".join(
-                (
-                    tag["data-sensor"].replace(" ", ""),
-                    tag["data-parameter"].replace(" ", ""),
-                )
-            )
-            val = tag["value"]
-            params[key] = val
-
-        # Order by sensor, rather than by slope then intercept
-        params = {k: params[k] for k in sorted(params)}
+        raw_params = result.json()
+        params = raw_params["sensors"]
 
         return params
 
@@ -236,27 +145,23 @@ class Aeroqual(Manufacturer):
             A string containing the raw data in CSV format, i.e. rows are
             delimited by '\r\n' characters and columns by ','.
         """
-        # Select device
-        try:
-            self.select_device(device_id)
-        except DataDownloadError as ex:
-            raise ex
+
+        url = self.data_url + f"/{device_id}"
 
         # Can't specify times for scraping window, just dates.
         # Will just convert datetime to date and doesn't matter too much since
         # Aeroqual treats limits as inclusive, so will scrape too much data
         # Needs to be in US format MM/DD/YYYY
-        start_fmt = start.strftime("%m/%d/%Y")
-        end_fmt = end.strftime("%m/%d/%Y")
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine(end, time.max)
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
         this_params = self.data_params.copy()
-        this_params["Period"] = this_params["Period"].substitute(
-            start=start_fmt, end=end_fmt
-        )
+        this_params["from"] = this_params["from"].substitute(start=start_fmt)
+        this_params["to"] = this_params["to"].substitute(end=end_fmt)
 
         try:
-            result = self.session.post(
-                self.data_url, data=this_params, headers=self.data_headers
-            )
+            result = self.session.get(url, params=this_params)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             if result.status_code == re.codes["no_content"]:
@@ -270,18 +175,10 @@ class Aeroqual(Manufacturer):
                 "Connection error when generating data.\n{}".format(ex)
             ) from None
 
-        try:
-            result = self.session.get(self.dl_url, headers=self.dl_headers)
-            result.raise_for_status()
-        except re.exceptions.HTTPError as ex:
-            raise DataDownloadError("Cannot download data\n{}".format(ex)) from None
-        except re.exceptions.ConnectionError as ex:
-            raise DataDownloadError(
-                "Connection error when downloading data.\n{}".format(ex)
-            ) from None
+        raw = result.json()
+        raw_data = raw["data"]
 
-        raw = result.text
-        return raw
+        return raw_data
 
     def parse_to_csv(self, raw_data):
         """
@@ -299,39 +196,6 @@ class Aeroqual(Manufacturer):
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        # Expect to get an empty row at the end due to suplerfuous carriage
-        # return. Remove any trailing white-space (including CR).
-        # rstrip() won't raise error if no trailing white-space
-        raw_data = raw_data.rstrip()
-
-        # Split into rows and run basic validation
-        raw_lines = raw_data.splitlines()
-
-        if len(raw_lines) < self.lines_skip:
-            raise DataParseError(
-                "Fewer lines ({}) available than expected number of headers ({})".format(
-                    len(raw_lines), self.lines_skip
-                )
-            )
-
-        header_removed = raw_lines[self.lines_skip :]
-        if len(header_removed) == 0:
-            raise DataParseError("Have no rows of data available.")
-
-        # Parse into CSV. reader returns generator so turn into list
-        data = csv.reader(header_removed, delimiter=",")
-        data = [row for row in data]
-
-        # Check have consistent number of columns.
-        # Only test have > 1 column as unsure what would be expected number, but
-        # can be fairly sure that just 1 column is a sign something's gone wrong
-        ncols = [len(row) for row in data]
-        unique_ncols = set(ncols)
-        if len(unique_ncols) > 1:
-            raise DataParseError(
-                "Rows have differing number of columns: {}.".format(unique_ncols)
-            )
-        if ncols[0] == 1:
-            raise DataParseError("Rows only have 1 column.")
-
-        return data
+        df = pd.DataFrame(raw_data)
+        df_list = [df.columns.values.tolist()] + df.values.tolist()
+        return df_list
