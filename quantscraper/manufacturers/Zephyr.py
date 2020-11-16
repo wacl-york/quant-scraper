@@ -221,7 +221,7 @@ class Zephyr(Manufacturer):
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        # TODO is it fair to log from this method? Have removed it from all
+        # Is it fair to log from this method? Have removed it from all
         # other Manufacturer methods, but useful here to log any irregularities
         # with the data, since we don't understand exactly what the difference
         # between 'slotA' and 'slotB' is.
