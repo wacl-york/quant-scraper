@@ -40,55 +40,54 @@ class TestAeroqual(unittest.TestCase):
     #   - get to download data
     cfg = defaultdict(str)
     fields = []
+    aeroqual = Aeroqual.Aeroqual(cfg, fields)
 
     def test_retrieves_content(self):
         # Now test that actually download the content we expected
-        aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
         mock_get = Mock(
             return_value=build_mock_response(
                 status=200, json_data={"foo": "bar", "data": [1, 2, 3]}
             )
         )
-
         mock_start = date(2020, 4, 3)
         mock_end = date(2020, 5, 3)
 
-        exp_params = aeroqual.data_params.copy()
+        exp_params = self.aeroqual.data_params.copy()
         exp_params["from"] = exp_params["from"].substitute(start="2020-04-03T00:00:00")
         exp_params["to"] = exp_params["to"].substitute(end="2020-05-03T23:59:59")
 
         session_return = Mock(get=mock_get)
-        aeroqual.session = session_return
-        resp = aeroqual.scrape_device("devfoo", mock_start, mock_end)
+        self.aeroqual.session = session_return
+
+        resp = self.aeroqual.scrape_device("devfoo", mock_start, mock_end)
         self.assertEqual(resp, [1, 2, 3])
         mock_get.assert_called_once_with(
-            aeroqual.data_url + f"/devfoo", params=exp_params
+            self.aeroqual.data_url + f"/devfoo", params=exp_params
         )
 
-    # TODO Get this working
-    # def test_download_data_failure_400(self):
-    #    aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-    #    mock_get = build_mock_response(status=400, raise_for_status=HTTPError(""))
+    def test_download_data_failure_400(self):
+        mock_get_resp = build_mock_response(status=400, raise_for_status=HTTPError())
+        mock_get = Mock(return_value=mock_get_resp)
 
-    #    mock_start = date(2020, 4, 3)
-    #    mock_end = date(2020, 5, 3)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
-    #    session_return = Mock(get=mock_get)
-    #    aeroqual.session = session_return
-    #    with self.assertRaises(DataDownloadError):
-    #        resp = aeroqual.scrape_device("devfoo", mock_start, mock_end)
+        session_return = Mock(get=mock_get)
+        self.aeroqual.session = session_return
+        with self.assertRaises(DataDownloadError):
+            resp = self.aeroqual.scrape_device("devfoo", mock_start, mock_end)
 
-    # def test_download_data_failure_404(self):
-    #    aeroqual = Aeroqual.Aeroqual(self.cfg, self.fields)
-    #    mock_get = build_mock_response(status=404, raise_for_status=HTTPError(""))
+    def test_download_data_failure_404(self):
+        mock_get_resp = build_mock_response(status=404, raise_for_status=HTTPError())
+        mock_get = Mock(return_value=mock_get_resp)
 
-    #    mock_start = date(2020, 4, 3)
-    #    mock_end = date(2020, 5, 3)
+        mock_start = date(2020, 4, 3)
+        mock_end = date(2020, 5, 3)
 
-    #    session_return = Mock(get=mock_get)
-    #    aeroqual.session = session_return
-    #    with self.assertRaises(DataDownloadError):
-    #        resp = aeroqual.scrape_device("devfoo", mock_start, mock_end)
+        session_return = Mock(get=mock_get)
+        self.aeroqual.session = session_return
+        with self.assertRaises(DataDownloadError):
+            resp = self.aeroqual.scrape_device("devfoo", mock_start, mock_end)
 
 
 class TestAQMesh(unittest.TestCase):

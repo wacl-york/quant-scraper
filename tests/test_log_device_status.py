@@ -20,7 +20,7 @@ from utils import build_mock_response
 
 
 class TestAeroqual(unittest.TestCase):
-    # TODO Will add tests back in once can reimplement this method
+    # Will add tests back in once can reimplement this method
     cfg = defaultdict(str)
     fields = []
     aeroqual = Aeroqual.Aeroqual(cfg, fields)
