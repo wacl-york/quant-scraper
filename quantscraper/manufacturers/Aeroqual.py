@@ -8,12 +8,12 @@
 
 from datetime import datetime, time
 from string import Template
-import csv
 import os
 import requests as re
 import pandas as pd
+from bs4 import BeautifulSoup
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError, DataParseError
+from quantscraper.utils import LoginError, DataDownloadError
 
 
 class Aeroqual(Manufacturer):
@@ -42,6 +42,7 @@ class Aeroqual(Manufacturer):
         """
         self.session = None
         self.auth_url = cfg["auth_url"]
+        self.select_device_url = cfg["select_device_url"]
         self.calibration_url = cfg["calibration_url"]
         self.data_url = cfg["data_url"]
         self.lines_skip = cfg["lines_skip"]
@@ -62,6 +63,15 @@ class Aeroqual(Manufacturer):
             "averagingperiod": cfg["averaging_window"],
             "includejournal": cfg["include_journal"],
         }
+
+        # Select device
+        self.select_device_headers = {
+            "connection": "keep-alive",
+            "content-type": "application/json",
+        }
+        self.select_device_string = Template(
+            "serialNumber=${device},o=York University,dc=root"
+        )
 
         super().__init__(cfg, fields)
 
@@ -96,6 +106,34 @@ class Aeroqual(Manufacturer):
                 "Connection error when logging in\n{}".format(ex)
             ) from None
 
+    def select_device(self, device_id):
+        """
+        Selects the device we're about to query.
+        Rather than specifiying the device ID when running any queries (such as
+        downloading configuration information or measurement data), the Aeroqual
+        website requires that the device is specified in a prior POST call.
+        This function runs that POST call for the specified device.
+        Args:
+            - device_id (str): The ID used by the website to refer to the
+                device.
+        Returns:
+            None. Modifies the server-side environment and our session instance
+            attribute to refer to this device as side-effects.
+        """
+        try:
+            result = self.session.post(
+                self.select_device_url,
+                json=[self.select_device_string.substitute(device=device_id)],
+                headers=self.select_device_headers,
+            )
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError("Cannot select device.\n{}".format(ex)) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when selecting device.\n{}".format(ex)
+            ) from None
+
     def log_device_status(self, device_id):
         """
         Scrapes information about a device's operating condition.
@@ -108,9 +146,16 @@ class Aeroqual(Manufacturer):
             A dict of keyword-value parameters.
         """
         params = {}
-        url = self.calibration_url + f"/{device_id}"
+
+        # Select device
         try:
-            result = self.session.get(url)
+            self.select_device(device_id)
+        except DataDownloadError as ex:
+            raise ex
+
+        # Download calibration page
+        try:
+            result = self.session.get(self.calibration_url)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
@@ -121,8 +166,34 @@ class Aeroqual(Manufacturer):
                 "Connection error when opening calibration page.\n{}".format(ex)
             ) from None
 
-        raw_params = result.json()
-        params = raw_params["sensors"]
+        # Scrape device calibration page
+        soup = BeautifulSoup(result.text, features="html.parser")
+        calibration_table = soup.find(id="modulesTable")
+
+        if calibration_table is None:
+            self.session.close()
+            raise DataDownloadError(
+                "Could not find modulesTable id in {}".format(self.calibration_url)
+            )
+
+        # Find all input tags with required attributes, indicating a calibration
+        # param
+        required_attrs = ["data-parameter", "data-sensor", "value"]
+        calibration_tags = soup.findAll("input", {k: True for k in required_attrs})
+
+        # Form into neat keyword-value pair
+        for tag in calibration_tags:
+            key = "_".join(
+                (
+                    tag["data-sensor"].replace(" ", ""),
+                    tag["data-parameter"].replace(" ", ""),
+                )
+            )
+            val = tag["value"]
+            params[key] = val
+
+        # Order by sensor, rather than by slope then intercept
+        params = {k: params[k] for k in sorted(params)}
 
         return params
 
