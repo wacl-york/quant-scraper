@@ -4,13 +4,12 @@
             "name": "Aeroqual",
             "properties": {
                 "timestamp_column": "Time",
-                "timestamp_format": "%Y/%m/%d %H:%M:%S",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S",
                 "recording_frequency_per_hour": 60,
-                "auth_url": "https://cloud.aeroqual.com/Account/Login",
-                "select_device_url": "https://cloud.aeroqual.com/Home/Instrument",
+                "auth_url": "https://cloud.aeroqual.com/api/account/login",
                 "calibration_url": "https://cloud.aeroqual.com/Calibration/ManualEntry",
-                "data_url": "https://cloud.aeroqual.com/ManageData/GenerateExportData",
-                "dl_url": "https://cloud.aeroqual.com/ManageData/DownloadExportData",
+                "select_device_url": "https://cloud.aeroqual.com/Home/Instrument",
+                "data_url": "https://cloud.aeroqual.com/api/data",
                 "include_journal": "true",
                 "averaging_window": "1",
                 "lines_skip": 6
@@ -18,43 +17,43 @@
             "fields": [
                 {
                     "id": "NO2",
-                    "webid": "NO2 (ppb)",
+                    "webid": "NO2",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "O3",
-                    "webid": "O3 (ppb)",
+                    "webid": "O3",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "PM2.5",
-                    "webid": "PM2.5 (µg/m³)",
+                    "webid": "PM2.5",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "PM10",
-                    "webid": "PM10 (µg/m³)",
+                    "webid": "PM10",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "Temperature",
-                    "webid": "TEMP (°C)",
+                    "webid": "TEMP",
                     "scale": 1,
                     "include_analysis": false
                 },
                 {
                     "id": "RelHumidity",
-                    "webid": "RH (%)",
+                    "webid": "RH",
                     "scale": 1,
                     "include_analysis": false
                 },
                 {
                     "id": "DewPoint",
-                    "webid": "DP (°C)",
+                    "webid": "DP",
                     "scale": 1,
                     "include_analysis": false
                 }

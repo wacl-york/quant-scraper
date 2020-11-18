@@ -1435,7 +1435,6 @@ class TestSaveAvailability(unittest.TestCase):
                 actual_upload_calls = mock_upload.mock_calls
                 self.assertEqual(actual_upload_calls, exp_upload_calls)
 
-    # TODO
     def test_data_saving_error(self):
         mock_service = Mock()
         folder_id = "123#456"
