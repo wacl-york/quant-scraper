@@ -263,6 +263,8 @@ class Manufacturer(ABC):
                 continue
             except IndexError:
                 continue
+            except TypeError:
+                continue
             n_clean_vals["timestamp"] += 1
             timestamp_clean = timestamp_dt.strftime(output_timestamp_format)
 

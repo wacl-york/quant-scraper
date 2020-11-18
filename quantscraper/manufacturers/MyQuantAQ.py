@@ -201,7 +201,6 @@ class MyQuantAQ(Manufacturer):
         if "sn" in measurands:
             measurands.remove("sn")
 
-        # I.e. see if any dicts exist in data, and if so then expand them
         clean_data = []
         for i in range(nrows):
             row = []
