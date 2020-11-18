@@ -115,16 +115,7 @@ class PurpleAir(Manufacturer):
         if data[0][-1] == "gas":
             data[0] = data[0][:-1]
 
-        # Check have consistent number of columns.
-        # Only test have > 1 column as unsure what would be expected number, but
-        # can be fairly sure that just 1 column is a sign something's gone wrong
-        ncols = [len(row) for row in data]
-        unique_ncols = set(ncols)
-        if len(unique_ncols) > 1:
-            raise DataParseError(
-                "Rows have differing number of columns: {}.".format(unique_ncols)
-            )
-        if ncols[0] == 1:
-            raise DataParseError("Rows only have 1 column.")
+        # Ditch rows that have different number of fields to those in header
+        data = [row for row in data if len(row) == len(data[0])]
 
         return data

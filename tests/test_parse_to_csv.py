@@ -851,22 +851,11 @@ class TestPurpleAir(unittest.TestCase):
             self.pa.parse_to_csv(raw_data)
 
     def test_missing_data(self):
-        # Expect error to be thrown if have unbalanced columns
-        # Have set third row to only have 2 values (7 & 8)
-        # This is an error as have no way of knowing if this missing value is
-        # from NO2, CO2, or O3
-        raw_data = "NO2 CO2 O3\r\n1,2,3\r\n4,5,6\r\n7,8"
-        with self.assertRaises(DataParseError):
-            self.pa.parse_to_csv(raw_data)
-
-    def test_one_column(self):
-        # Will want code to throw error if have just 1 column of data, as
-        # could indicate the delimiter is wrong. It is also unlikely we'd ever
-        # be in a situation with a single column of data being returned.
-        # Better to warn user of this behaviour than to silently pass
-        raw_data = "NO2 CO2 O3\r\n1 2 3\r\n4 5 6\r\n7 8 9"
-        with self.assertRaises(DataParseError):
-            self.pa.parse_to_csv(raw_data)
+        # Any rows with missing data aren't included in the returned cleaned CSV
+        raw_data = "NO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8"
+        exp = [["NO2", "CO2", "O3"], ["1", "2", "3"], ["4", "5", "6"]]
+        res = self.pa.parse_to_csv(raw_data)
+        self.assertEqual(res, exp)
 
 
 if __name__ == "__main__":
