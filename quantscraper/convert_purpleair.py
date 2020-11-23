@@ -24,6 +24,7 @@ import sys
 import os
 import traceback
 import argparse
+from collections import defaultdict
 import logging
 from datetime import datetime
 import quantscraper.utils as utils
@@ -97,7 +98,9 @@ def main():
         logging.error(traceback.format_exc())
         sys.exit()
 
-    summaries = {}
+    summaries = defaultdict(dict)
+    default_summary = {m["id"]: 0 for m in PA_manufacturer.measurands}
+    default_summary["timestamp"] = 0
 
     for device in PA_manufacturer.devices:
 
@@ -137,6 +140,15 @@ def main():
         # Download these files
         for file in files_to_download:
             logging.info(f"Processing file {file[0]}...")
+            date = get_date_from_purpleair_fn(
+                file[0], cfg.get("Main", "filename_date_format")
+            )
+            if date is None:
+                continue  # Shouldn't be reached. already checked can be parsed
+
+            # Set default summary in case of failure
+            summaries[date][device.device_id] = default_summary
+
             fh = utils.download_file(service, file[1])
             raw_data = fh.getvalue().decode("utf-8")
 
@@ -167,16 +179,7 @@ def main():
             if not success:
                 continue
 
-            # Store summary indexed by device ID
-            date = get_date_from_purpleair_fn(
-                file[0], cfg.get("Main", "filename_date_format")
-            )
-            if date is None:
-                continue  # Shouldn't be reached. already checked can be parsed
-            if date not in summaries:
-                summaries[date] = {device.device_id: summary}
-            else:
-                summaries[date][device.device_id] = summary
+            summaries[date][device.device_id] = summary
 
     # Combine summaries into 2D list
     tables = tabular_summary(summaries, PA_manufacturer.recording_frequency)
