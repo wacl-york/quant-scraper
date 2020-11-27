@@ -258,6 +258,8 @@ def upload_file_google_drive(service, filepath, folder_id, mime_type):
         raise DataUploadError("HTTP error: {}.".format(ex)) from None
     except AttributeError as ex:
         raise DataUploadError("Service account not authenticated") from None
+    except ConnectionResetError as ex:
+        raise DataUploadError("Connection reset") from None
 
 
 def save_json_file(data, filename):
