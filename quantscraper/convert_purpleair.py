@@ -159,6 +159,12 @@ def main():
                 logging.error("Unable to parse {} into CSV: {}".format(file[0], ex))
                 continue
 
+            if len(csv_data) <= 1:
+                logging.error(
+                    f"Only found {len(csv_data)} clean row(s) for {file[0]}, skipping upload"
+                )
+                continue
+
             try:
                 validated_data, summary = PA_manufacturer.validate_data(
                     csv_data, cfg.get("Main", "timestamp_format")
