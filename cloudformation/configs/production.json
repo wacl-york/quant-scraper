@@ -1,5 +1,5 @@
 {
     "ScheduledScrapeStatus": "ENABLED",
-    "ScheduledScrapeArgs": "--upload-raw,--upload-clean,--upload-preprocess,--upload-availability,--scrape-devices,AQY872,AQY873A,AQY874,AQY875,AQM388,AQM389,AQM390,AQM391,Zep188,Zep309,Zep344,Zep311,Ari063,Ari078,Ari086,Ari093,AURNYorkFishergate,--preprocess-devices,AQY872,AQY873A,AQY874,AQY875,AQM388,AQM389,AQM390,AQM391,AQM173,AQM801,Zep188,Zep309,Zep344,Zep311,Ari063,Ari078,Ari086,Ari093,--recipients,quant-group@york.ac.uk",
+    "ScheduledScrapeArgs": "--upload-raw,--upload-clean,--upload-preprocess,--upload-availability,--scrape-devices,AQY872,AQY873A,AQY874,AQY875,AQM388,AQM389,AQM390,AQM391,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,AURNYorkFishergate,--preprocess-devices,AQY872,AQY873A,AQY874,AQY875,AQM388,AQM389,AQM390,AQM391,AQM173,AQM801,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,--recipients,quant-group@york.ac.uk",
     "PurpleAirArgs": "--recipients,pa@york.ac.uk"
 }
