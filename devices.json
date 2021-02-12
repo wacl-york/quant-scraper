@@ -217,7 +217,7 @@
                 "recording_frequency_per_hour": 360,
                 "auth_url": "https://api2.earthsense.co.uk/api/getToken",
                 "auth_referer": "https://portal.earthsense.co.uk/login",
-                "data_url": "https://portal-zephyr.earthsense.co.uk/dataForViewBySlotsAveraged",
+                "data_url": "https://data.earthsense.co.uk/dataForViewBySlotsAveraged",
                 "averaging_window": "Unaveraged",
                 "slot": "slotB"
             },
