@@ -1073,46 +1073,61 @@ class TestUploadDataGoogleDrive(unittest.TestCase):
     # with the same mime_type to Google Drive
 
     def test_success(self):
-        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
-            mock_service = Mock()
-            fns = ["1.txt", "2.txt", "3.txt"]
-            folder_id = "FoOBaR"
-            mime_type = "text/foobar"
-            exp_calls = [call(mock_service, fn, folder_id, mime_type) for fn in fns]
+        mock_service = Mock()
+        with patch(
+            "quantscraper.cli.utils.auth_google_api", Mock(return_value=mock_service)
+        ):
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+                fns = ["1.txt", "2.txt", "3.txt"]
+                folder_id = "FoOBaR"
+                mime_type = "text/foobar"
+                exp_calls = [call(mock_service, fn, folder_id, mime_type) for fn in fns]
 
-            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+                cli.upload_data_googledrive(fns, folder_id, mime_type)
 
-            calls = mock_upload.mock_calls
+                calls = mock_upload.mock_calls
 
-            self.assertEqual(calls, exp_calls)
+                self.assertEqual(calls, exp_calls)
 
     def test_empty_list(self):
-        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
-            mock_service = Mock()
-            fns = []
-            folder_id = "FoOBaR"
-            mime_type = "text/foobar"
-            exp_calls = []
+        mock_service = Mock()
+        with patch(
+            "quantscraper.cli.utils.auth_google_api", Mock(return_value=mock_service)
+        ):
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+                fns = []
+                folder_id = "FoOBaR"
+                mime_type = "text/foobar"
+                exp_calls = []
 
-            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+                cli.upload_data_googledrive(fns, folder_id, mime_type)
 
-            calls = mock_upload.mock_calls
+                calls = mock_upload.mock_calls
 
-            self.assertEqual(calls, exp_calls)
+                self.assertEqual(calls, exp_calls)
 
     def test_fns_None(self):
-        with patch("quantscraper.cli.utils.upload_file_google_drive") as mock_upload:
-            mock_service = Mock()
-            fns = None
-            folder_id = "FoOBaR"
-            mime_type = "text/foobar"
-            exp_calls = []
+        mock_service = Mock()
+        with patch(
+            "quantscraper.cli.utils.auth_google_api", Mock(return_value=mock_service)
+        ):
+            with patch(
+                "quantscraper.cli.utils.upload_file_google_drive"
+            ) as mock_upload:
+                fns = None
+                folder_id = "FoOBaR"
+                mime_type = "text/foobar"
+                exp_calls = []
 
-            cli.upload_data_googledrive(mock_service, fns, folder_id, mime_type)
+                cli.upload_data_googledrive(fns, folder_id, mime_type)
 
-            calls = mock_upload.mock_calls
+                calls = mock_upload.mock_calls
 
-            self.assertEqual(calls, exp_calls)
+                self.assertEqual(calls, exp_calls)
 
 
 class TestSaveCleanData(unittest.TestCase):
@@ -1379,61 +1394,69 @@ class TestSaveAvailability(unittest.TestCase):
         # patch save_data
         with patch("quantscraper.cli.utils.save_dataframe") as mock_save_dataframe:
 
-            # patch upload_file_google_drive
+            # patch authenticate google drive
             with patch(
-                "quantscraper.cli.utils.upload_file_google_drive"
-            ) as mock_upload:
+                "quantscraper.cli.utils.auth_google_api",
+                Mock(return_value=mock_service),
+            ):
 
-                cli.save_availability(
-                    mock_service, tables, folder_id, local_folder, date
-                )
+                # patch upload_file_google_drive
+                with patch(
+                    "quantscraper.cli.utils.upload_file_google_drive"
+                ) as mock_upload:
 
-                # Test save local file
-                # Can't directly compare the call arguments to actual as
-                # hard to compare pandas dataframes as it will compare on full
-                # metadata (labels, headers, indices etc...) rather than just
-                # values. Instead, convert to list and compare on values
-                exp_df_1 = [
-                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
-                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
-                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
-                ]
-                exp_df_2 = [
-                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
-                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
-                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
-                ]
-                actual_save_calls = mock_save_dataframe.mock_calls
+                    cli.save_availability(tables, folder_id, local_folder, date)
 
-                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
-                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
-                self.assertEqual(
-                    actual_save_calls[0][1][1],
-                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
-                )
-                self.assertEqual(
-                    actual_save_calls[1][1][1],
-                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
-                )
+                    # Test save local file
+                    # Can't directly compare the call arguments to actual as
+                    # hard to compare pandas dataframes as it will compare on full
+                    # metadata (labels, headers, indices etc...) rather than just
+                    # values. Instead, convert to list and compare on values
+                    exp_df_1 = [
+                        ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                        ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                        ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                    ]
+                    exp_df_2 = [
+                        ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                        ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                        ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                    ]
+                    actual_save_calls = mock_save_dataframe.mock_calls
 
-                # Test GoogleDrive upload
-                exp_upload_calls = [
-                    call(
-                        mock_service,
+                    self.assertEqual(
+                        self.df_to_list(actual_save_calls[0][1][0]), exp_df_1
+                    )
+                    self.assertEqual(
+                        self.df_to_list(actual_save_calls[1][1][0]), exp_df_2
+                    )
+                    self.assertEqual(
+                        actual_save_calls[0][1][1],
                         "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
-                        "123#456",
-                        "text/csv",
-                    ),
-                    call(
-                        mock_service,
+                    )
+                    self.assertEqual(
+                        actual_save_calls[1][1][1],
                         "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
-                        "123#456",
-                        "text/csv",
-                    ),
-                ]
+                    )
 
-                actual_upload_calls = mock_upload.mock_calls
-                self.assertEqual(actual_upload_calls, exp_upload_calls)
+                    # Test GoogleDrive upload
+                    exp_upload_calls = [
+                        call(
+                            mock_service,
+                            "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                            "123#456",
+                            "text/csv",
+                        ),
+                        call(
+                            mock_service,
+                            "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                            "123#456",
+                            "text/csv",
+                        ),
+                    ]
+
+                    actual_upload_calls = mock_upload.mock_calls
+                    self.assertEqual(actual_upload_calls, exp_upload_calls)
 
     def test_data_saving_error(self):
         mock_service = Mock()
@@ -1459,56 +1482,64 @@ class TestSaveAvailability(unittest.TestCase):
             side_effect=[utils.DataSavingError(""), ""],
         ) as mock_save_dataframe:
 
-            # patch upload_file_google_drive
+            # patch authenticate google drive
             with patch(
-                "quantscraper.cli.utils.upload_file_google_drive"
-            ) as mock_upload:
+                "quantscraper.cli.utils.auth_google_api",
+                Mock(return_value=mock_service),
+            ):
 
-                # Check that upload file isn't called for first file as had
-                # error when saving
-                cli.save_availability(
-                    mock_service, tables, folder_id, local_folder, date
-                )
+                # patch upload_file_google_drive
+                with patch(
+                    "quantscraper.cli.utils.upload_file_google_drive"
+                ) as mock_upload:
 
-                # Test save local file
-                # Can't directly compare the call arguments to actual as
-                # hard to compare pandas dataframes as it will compare on full
-                # metadata (labels, headers, indices etc...) rather than just
-                # values. Instead, convert to list and compare on values
-                exp_df_1 = [
-                    ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
-                    ["Foo01", "1 (50%)", "2", "3", "32", "32"],
-                    ["Foo02", "4 (58%)", "5", "6", "40", "41"],
-                ]
-                exp_df_2 = [
-                    ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
-                    ["BarA", "8 (32%)", "9", "10", "76", "81"],
-                    ["BarB", "12 (91%)", "24", "36", "100", "2"],
-                ]
-                actual_save_calls = mock_save_dataframe.mock_calls
+                    # Check that upload file isn't called for first file as had
+                    # error when saving
+                    cli.save_availability(tables, folder_id, local_folder, date)
 
-                self.assertEqual(self.df_to_list(actual_save_calls[0][1][0]), exp_df_1)
-                self.assertEqual(self.df_to_list(actual_save_calls[1][1][0]), exp_df_2)
-                self.assertEqual(
-                    actual_save_calls[0][1][1],
-                    "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
-                )
-                self.assertEqual(
-                    actual_save_calls[1][1][1],
-                    "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
-                )
+                    # Test save local file
+                    # Can't directly compare the call arguments to actual as
+                    # hard to compare pandas dataframes as it will compare on full
+                    # metadata (labels, headers, indices etc...) rather than just
+                    # values. Instead, convert to list and compare on values
+                    exp_df_1 = [
+                        ["Device ID", "Timestamps", "B", "C", "B_pct", "C_pct"],
+                        ["Foo01", "1 (50%)", "2", "3", "32", "32"],
+                        ["Foo02", "4 (58%)", "5", "6", "40", "41"],
+                    ]
+                    exp_df_2 = [
+                        ["Device ID", "Timestamps", "F", "G", "F_pct", "G_pct"],
+                        ["BarA", "8 (32%)", "9", "10", "76", "81"],
+                        ["BarB", "12 (91%)", "24", "36", "100", "2"],
+                    ]
+                    actual_save_calls = mock_save_dataframe.mock_calls
 
-                # Test GoogleDrive upload
-                # NB: only one file is uploaded due to error being raised on
-                # first file
-                exp_upload_calls = [
-                    call(
-                        mock_service,
-                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
-                        "123#456",
-                        "text/csv",
+                    self.assertEqual(
+                        self.df_to_list(actual_save_calls[0][1][0]), exp_df_1
                     )
-                ]
+                    self.assertEqual(
+                        self.df_to_list(actual_save_calls[1][1][0]), exp_df_2
+                    )
+                    self.assertEqual(
+                        actual_save_calls[0][1][1],
+                        "mydata/dir2/foo/availability_Foo_2030-04-16.csv",
+                    )
+                    self.assertEqual(
+                        actual_save_calls[1][1][1],
+                        "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                    )
 
-                actual_upload_calls = mock_upload.mock_calls
-                self.assertEqual(actual_upload_calls, exp_upload_calls)
+                    # Test GoogleDrive upload
+                    # NB: only one file is uploaded due to error being raised on
+                    # first file
+                    exp_upload_calls = [
+                        call(
+                            mock_service,
+                            "mydata/dir2/foo/availability_Bar_2030-04-16.csv",
+                            "123#456",
+                            "text/csv",
+                        )
+                    ]
+
+                    actual_upload_calls = mock_upload.mock_calls
+                    self.assertEqual(actual_upload_calls, exp_upload_calls)
