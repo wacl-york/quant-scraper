@@ -334,7 +334,7 @@ def save_data(manufacturer, folder, day, data_type):
     return fns
 
 
-def upload_data_googledrive(service, fns, folder_id, mime_type):
+def upload_data_googledrive(fns, folder_id, mime_type):
     """
     Uploads a number of files of the same type to a single GoogleDrive folder.
 
@@ -352,6 +352,12 @@ def upload_data_googledrive(service, fns, folder_id, mime_type):
             "No filenames found. Cannot upload files to Google Drive without saving them locally first. Ensure that option Main.save_<raw/clean>_data is 'true'."
         )
         return
+
+    try:
+        service = utils.auth_google_api()
+    except utils.GoogleAPIError:
+        logging.error("Cannot connect to Google API to upload data.")
+        raise
 
     for fn in fns:
         try:
@@ -687,7 +693,7 @@ def generate_html_summary(tables, cfg, start_date):
     return email_html
 
 
-def save_availability(service, tables, folder_id, local_folder, date):
+def save_availability(tables, folder_id, local_folder, date):
     """
     Saves availability data to CSV file and uploads it to GoogleDrive.
 
@@ -705,6 +711,12 @@ def save_availability(service, tables, folder_id, local_folder, date):
         None, saves the data to disk and uploads it to GoogleDrive as
         side-effect.
     """
+    try:
+        service = utils.auth_google_api()
+    except utils.GoogleAPIError:
+        logging.error("Cannot connect to Google API to upload availability data.")
+        raise
+
     for manufacturer, csv_data in tables.items():
         fn = utils.AVAILABILITY_DATA_FN.substitute(man=manufacturer, date=date)
         filepath = os.path.join(local_folder, fn)
@@ -782,17 +794,6 @@ def main():
         logging.error("Cannot load device configuration: {}.".format(ex))
         sys.exit()
 
-    # Get handle to google API if needed
-    if any([args.upload_raw, args.upload_clean, args.upload_availability]):
-        try:
-            service = utils.auth_google_api()
-        except utils.GoogleAPIError:
-            logging.error(
-                "Cannot connect to Google API, outputs will not be uploaded to Google Drive."
-            )
-            logging.error(traceback.format_exc())
-            service = None
-
     start_time, end_time = setup_scraping_timeframe(args.start, args.end)
 
     manufacturers = setup_manufacturers(device_config["manufacturers"], args.devices)
@@ -865,7 +866,7 @@ def main():
                 folder_id = None
 
             if folder_id is not None:
-                upload_data_googledrive(service, raw_fns, folder_id, "text/json")
+                upload_data_googledrive(raw_fns, folder_id, "text/json")
 
         if args.upload_clean:
             logging.info("Uploading clean CSV data to Google Drive:")
@@ -879,7 +880,7 @@ def main():
 
             if folder_id is not None:
                 upload_data_googledrive(
-                    service, clean_fns, folder_id, "text/csv",
+                    clean_fns, folder_id, "text/csv",
                 )
 
     # Summarise number of clean measurands into tabular format
@@ -905,7 +906,6 @@ def main():
 
         if folder_id is not None:
             save_availability(
-                service,
                 summary_tables,
                 folder_id,
                 cfg.get("Main", "local_folder_availability"),
