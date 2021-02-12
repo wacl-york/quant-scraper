@@ -192,7 +192,7 @@ class TestZephyr(unittest.TestCase):
         )
         res = self.zephyr.scrape_device("123", mock_start, mock_end)
         self.assertEqual(res, {"CO2": [1, 2, 3], "NO": [4, 5, 6]})
-        mock_get.assert_called_once_with(mock_url, headers=self.zephyr.data_headers)
+        mock_get.assert_called_once_with(mock_url)
 
     # Test that custom DataDownloadError is raised under a variety of failure
     # conditions
