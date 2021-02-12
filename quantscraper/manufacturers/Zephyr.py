@@ -53,8 +53,6 @@ class Zephyr(Manufacturer):
         self.auth_headers = {"referer": cfg["auth_referer"]}
 
         # Download data
-        self.data_headers = {"content-type": "application/json; charset=UTF-8"}
-
         raw_data_url = cfg["data_url"]
         self.data_url = Template(
             raw_data_url + "/${token}/${device}/${start}/${end}/AB/newDef/6/JSON/api"
@@ -156,7 +154,7 @@ class Zephyr(Manufacturer):
             device=device_id, token=self.api_token, start=start_fmt, end=end_fmt
         )
         try:
-            result = self.session.get(this_url, headers=self.data_headers,)
+            result = self.session.get(this_url)
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
