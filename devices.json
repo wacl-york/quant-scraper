@@ -22,8 +22,20 @@
                     "include_analysis": true
                 },
                 {
+                    "id": "NO2_cal",
+                    "webid": "NO2 cal",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "O3",
                     "webid": "O3",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3_cal",
+                    "webid": "O3 cal",
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -34,8 +46,20 @@
                     "include_analysis": true
                 },
                 {
+                    "id": "PM2.5 cal",
+                    "webid": "PM2.5 cal",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "PM10",
                     "webid": "PM10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_cal",
+                    "webid": "PM10 cal",
                     "scale": 1,
                     "include_analysis": true
                 },
