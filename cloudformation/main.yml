@@ -9,7 +9,7 @@
     },
     "ScheduledScrapeCron": {
         "Type": "String",
-        "Default": "cron(0 9 * * ? *)",
+        "Default": "cron(0 8 * * ? *)",
         "Description": "Cron schedule for scraping routine."
     },
     "ScheduledScrapeStatus": {
