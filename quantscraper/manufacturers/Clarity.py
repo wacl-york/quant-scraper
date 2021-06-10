@@ -42,16 +42,23 @@ class Clarity(Manufacturer):
         self.session = None
 
         # Authentication
-        self.base_url = "https://clarity-data-api.clarity.io/v1"
+        self.base_url = cfg["base_url"]
+        self.limit = cfg["limit"]
+        self.skip = cfg["skip"]
+        self.auth_header = {
+            "x-api-key": os.environ["CLARITY_API_KEY"],
+            "Accept-Encoding": "gzip",
+        }
 
         super().__init__(cfg, fields)
 
     def connect(self):
         """
-        Verifies the API token allows for authentication.
+        Connects to the API.
 
-        The instance attribute 'session' stores a handle to the connection,
-        holding any generated cookies and the history of requests.
+        Unused for Clarity since no explicit connection step is required,
+        instead the pre-generated API key is passed in with every request.
+        Simply creates a `session`.
 
         Args:
             - None.
@@ -60,32 +67,15 @@ class Clarity(Manufacturer):
             None, although a handle to the connection is stored in the instance
             attribute 'session'.
         """
-        # TODO Adapt for Clarity
         self.session = re.Session()
-        url_to_call = "{base}/stations".format(base=self.base_url)
-
-        try:
-            result = self.session.get(url_to_call)
-            result.raise_for_status()
-        except re.exceptions.HTTPError as ex:
-            raise LoginError(
-                "Cannot test authentication.\n{}".format(str(ex))
-            ) from None
-        except re.exceptions.ConnectionError as ex:
-            raise DataDownloadError(
-                "Connection error when testing authentication.\n{}".format(str(ex))
-            ) from None
-
-        if result.text == "AUTHENTICATION FAILED":
-            self.session.close()
-            raise LoginError("Login failed")
 
     def log_device_status(self, device_id):
         """
         Scrapes information about a device's operating condition.
 
-        This method does nothing for Clarity, since the devices' calibration
-        settings are already logged in the raw data.
+        You can't request a specific device's status with the Clarity API, so
+        this method instead requests all device statuses and filters to the
+        specific one afterwards.
 
         Args:
             - device_id (str): The ID used by the website to refer to the
@@ -94,15 +84,28 @@ class Clarity(Manufacturer):
         Returns:
             A dict of keyword-value parameters.
         """
-        params = {}
+        url_to_call = f"{self.base_url}/devices"
+        try:
+            result = self.session.get(url_to_call, headers=self.auth_header)
+            result.raise_for_status()
+        except re.exceptions.HTTPError as ex:
+            raise DataDownloadError(
+                "Cannot download data.\n{}".format(str(ex))
+            ) from None
+        except re.exceptions.ConnectionError as ex:
+            raise DataDownloadError(
+                "Connection error when downloading data.\n{}".format(str(ex))
+            ) from None
+
+        params = [x for x in result.json() if x["code"] == device_id][0]
         return params
 
     def scrape_device(self, device_id, start, end):
         """
         Downloads the data for a given device from the website.
 
-        This just requires a single API GET request with the appropriate params.
-        The raw data is held in the 'Data' attribute of the response JSON.
+        This just requires a single API GET request with the appropriate params,
+        returning a JSON object containing the data.
 
         Args:
             - device_id (str): The ID used by the website to refer to the
@@ -111,26 +114,33 @@ class Clarity(Manufacturer):
             - end (date): The end of the scraping window.
 
         Returns:
-            The data stored in a hierarchical format comprising dicts and lists.
-            At the top level is a list of timepoints, represented as a dict
-            containing measurements that are stored in a list of dicts in the
-            'Channels' attribute.
+            The raw data stored in JSON format.
+            See the documentation at
+            https://clarity-public.s3-us-west-2.amazonaws.com/documents/Clarity+Air+Monitoring+Network+REST+API+Documentation.html
+            for specifis
         """
-        # TODO Adapt for Clarity
         # Convert start and end times into required format of
         # YYYY-mm-ddTHH:mm:ss
         # Clarity API uses [closed, open] intervals, so set start time as midnight of
         # the start day, and end day as 23:59:59 of end day
         start_dt = datetime.combine(start, time.min)
         end_dt = datetime.combine(end, time.max)
-        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
-        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
+        start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        url_to_call = "{url}/{start}/{end}/{device}".format(
-            url=self.data_url, start=start_fmt, end=end_fmt, device=device_id
-        )
+        params = {
+            "code": device_id,
+            "startTime": start_fmt,
+            "endTime": end_fmt,
+            "skip": self.skip,
+            "limit": self.limit,  # Request as much data as possible
+        }
+
+        url_to_call = f"{self.base_url}/measurements"
         try:
-            result = self.session.get(url_to_call)
+            result = self.session.get(
+                url_to_call, headers=self.auth_header, params=params
+            )
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise DataDownloadError(
@@ -152,47 +162,32 @@ class Clarity(Manufacturer):
         """
         Parses the raw data into a 2D list format.
 
-        Since the raw data is already in a hierarchical format, it is easier to
-        read it into Pandas as a long data frame and then pivot to wide, rather
-        than do this manually in base Python.
+        Since the raw data is in a JSON format, it is easier to
+        read it into Pandas as a DataFrame and then convert to a 2D list.
 
         Args:
-            - raw_data (dict): The data stored in a hierarchical format comprising dicts and lists.
-                At the top level is a list of timepoints, represented as a dict
-                containing measurements that are stored in a list of dicts in the
-                'Channels' attribute.
+            - raw_data (dict): The raw data as returned by the API. See the
+            documentation for the specific structure.
+        https://clarity-public.s3-us-west-2.amazonaws.com/documents/Clarity+Air+Monitoring+Network+REST+API+Documentation.html
 
         Returns:
             A 2D list representing the data in a tabular format, so that each
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        # TODO Adapt for Clarity
         clean_data = []
-        for timepoint in raw_data:
+        for item in raw_data:
             try:
-                for channel in timepoint["Channels"]:
-                    try:
-                        clean_data.append(
-                            {
-                                "Timestamp": timepoint["TBTimestamp"],
-                                "measurand": channel["SensorLabel"],
-                                "value": channel["Scaled"],
-                            }
-                        )
-                    except KeyError:
-                        pass  # If don't have the Scaled or SensorLabel
-                        # properties then skip to next measurement
+                record = {"timestamp": item["time"]}
+                for characteristic in item["characteristics"]:
+                    record[characteristic] = item["characteristics"][characteristic][
+                        "value"
+                    ]
+                clean_data.append(record)
             except KeyError:
-                pass  # If don't have Channels object skip to next timepoint
+                # Skip to next record if any errors with this one
+                pass
         df = pd.DataFrame(clean_data)
-        try:
-            df_wide = df.pivot_table(
-                index="Timestamp", columns="measurand", values="value", fill_value=""
-            ).reset_index()
-        except KeyError:
-            raise DataParseError("Unable to pivot long to wide.")
-
-        df_list = [df_wide.columns.tolist()] + df_wide.values.tolist()
+        df_list = [df.columns.tolist()] + df.values.tolist()
 
         return df_list

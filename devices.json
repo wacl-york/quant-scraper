@@ -660,6 +660,67 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "Clarity",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 23,
+                "base_url": "https://clarity-data-api.clarity.io/v1",
+                "limit": 20000,
+                "skip": 0
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "no2Conc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2_5ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temperature",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "relHumid",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "CL-ADBJW6TG",
+                    "webid": "ADBJW6TG",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CL-A50LXXPZ",
+                    "webid": "A50LXXPZ",
+                    "location": "Manchester"
+                }
+            ]
         }
     ]
 }
