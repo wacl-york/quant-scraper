@@ -660,6 +660,60 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "Vortex",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 11,
+                "deployment_id": "31",
+                "base_url": "https://silaxair.vortexiot.com",
+                "api_url": "http://silaxair.vortexiot.com/api"
+            },
+            "fields": [
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2.5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3ug",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2ug",
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "V02",
+                    "webid": "MAN_AQM_02",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "V03",
+                    "webid": "MAN_AQM_03",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "V04",
+                    "webid": "MAN_AQM_04",
+                    "location": "Manchester"
+                }
+            ]
         }
     ]
 }
