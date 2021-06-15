@@ -505,6 +505,21 @@
                     "id": "Ari096",
                     "webid": "SN000-096",
                     "location": "Manchester"
+                },
+                {
+                    "id": "Mod81",
+                    "webid": "MOD-PM-00081",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Mod82",
+                    "webid": "MOD-PM-00082",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "Mod85",
+                    "webid": "MOD-PM-00085",
+                    "location": "Manchester"
                 }
             ]
         },
