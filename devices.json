@@ -660,6 +660,123 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "Kunak",
+            "properties": {
+                "timestamp_column": "ts",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 12
+            },
+            "fields": [
+                {
+                    "id": "CO",
+                    "webid": "CO GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "DewPoint",
+                    "webid": "Dew Point",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "Humidity ext",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2 GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NOx",
+                    "webid": "NOx GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3 GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM1",
+                    "webid": "PM1",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM1_raw",
+                    "webid": "PM1 Raw",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM2.5_raw",
+                    "webid": "PM2.5 Raw",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM10_raw",
+                    "webid": "PM10 Raw",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "Pressure",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "Temp ext",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "KA1",
+                    "webid": "0321180036",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "KA2",
+                    "webid": "0321180037",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "KA3",
+                    "webid": "0321140000",
+                    "location": "Manchester"
+                }
+            ]
         }
     ]
 }
