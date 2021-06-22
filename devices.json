@@ -660,6 +660,108 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "EnvironmentalInstruments",
+            "properties": {
+                "timestamp_column": "Timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S+00:00",
+                "recording_frequency_per_hour": 60,
+                "averaging_window": "0",
+                "time_convention": "TimeBeginning",
+                "timezone": "00:00"
+            },
+            "fields": [
+                {
+                    "id": "AirPressure",
+                    "webid": "AIRPRES",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "CO2",
+                    "webid": "CO2",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "HUM",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "PM1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM4",
+                    "webid": "PM4",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "TEMP",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Voltage",
+                    "webid": "VOLTAGE",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "EI621",
+                    "webid": "621245",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "EI622",
+                    "webid": "622245",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "EI623",
+                    "webid": "623245",
+                    "location": "Manchester"
+                }
+            ]
         }
     ]
 }

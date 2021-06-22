@@ -8,6 +8,7 @@
 import logging
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.AQMesh import AQMesh
+from quantscraper.manufacturers.EnvironmentalInstruments import EnvironmentalInstruments
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
 from quantscraper.manufacturers.PurpleAir import PurpleAir
@@ -31,6 +32,7 @@ def manufacturer_factory(config):
         "Aeroqual": Aeroqual,
         "AQMesh": AQMesh,
         "Zephyr": Zephyr,
+        "EnvironmentalInstruments": EnvironmentalInstruments,
         "QuantAQ": MyQuantAQ,
         "PurpleAir": PurpleAir,
         "AURN": AURN,
