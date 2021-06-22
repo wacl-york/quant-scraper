@@ -713,6 +713,48 @@
                     "webid": "NO_cnc",
                     "scale": 1,
                     "include_analysis": true
+                },
+                {
+                    "id": "NO2_exg",
+                    "webid": "exg_vB20_NO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_exg",
+                    "webid": "exg_rn20_pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1_exg",
+                    "webid": "exg_rn20_pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5_exg",
+                    "webid": "exg_rn20_pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
