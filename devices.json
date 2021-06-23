@@ -718,32 +718,14 @@
                     "include_analysis": false
                 },
                 {
-                    "id": "PM1_raw",
-                    "webid": "PM1 Raw",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
                     "id": "PM2.5",
                     "webid": "PM2.5",
                     "scale": 1,
                     "include_analysis": false
                 },
                 {
-                    "id": "PM2.5_raw",
-                    "webid": "PM2.5 Raw",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
                     "id": "PM10",
                     "webid": "PM10",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "PM10_raw",
-                    "webid": "PM10 Raw",
                     "scale": 1,
                     "include_analysis": false
                 },
