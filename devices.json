@@ -676,13 +676,13 @@
                 {
                     "id": "NO2",
                     "webid": "NO2_1_CORR",
-                    "scale": 1,
+                    "scale":  0.5228758,
                     "include_analysis": true
                 },
                 {
                     "id": "O3",
                     "webid": "O3_0_CORR",
-                    "scale": 1,
+                    "scale": 0.5010773,
                     "include_analysis": true
                 },
                 {
