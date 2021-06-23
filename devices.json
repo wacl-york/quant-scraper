@@ -679,6 +679,12 @@
                     "include_analysis": false
                 },
                 {
+                    "id": "CO",
+                    "webid": "CO",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "CO2",
                     "webid": "CO2",
                     "scale": 1,
@@ -735,12 +741,6 @@
                 {
                     "id": "Temperature",
                     "webid": "TEMP",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "Voltage",
-                    "webid": "VOLTAGE",
                     "scale": 1,
                     "include_analysis": false
                 }
