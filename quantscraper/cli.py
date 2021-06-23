@@ -89,6 +89,12 @@ def parse_args():
         help="The recipients to send the email to.",
     )
 
+    parser.add_argument(
+        "--subject",
+        default="QUANT scraping summary",
+        help="The subject line to use with the email. The date is always appended in the form '<subject> - <date>'",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -932,7 +938,7 @@ def main():
             try:
                 logging.info("Attemping to send email...")
                 utils.send_email_ses(
-                    f"QUANT scraping summary - {start_fmt}",
+                    f"{args.subject} - {start_fmt}",
                     email_html,
                     f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
                     sender,

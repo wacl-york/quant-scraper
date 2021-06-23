@@ -93,6 +93,11 @@ class TestParseArgs(unittest.TestCase):
                     nargs="+",
                     help="The recipients to send the email to.",
                 ),
+                call(
+                    "--subject",
+                    default="QUANT scraping summary",
+                    help="The subject line to use with the email. The date is always appended in the form '<subject> - <date>'",
+                ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
 
