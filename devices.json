@@ -711,13 +711,18 @@
             ],
             "devices": [
                 {
-                    "id": "CL-ADBJW6TG",
+                    "id": "CLADB",
                     "webid": "ADBJW6TG",
                     "location": "Manchester"
                 },
                 {
-                    "id": "CL-A50LXXPZ",
+                    "id": "CLA50",
                     "webid": "A50LXXPZ",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CLACG",
+                    "webid": "ACG0QLMP",
                     "location": "Manchester"
                 }
             ]
