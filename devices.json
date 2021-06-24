@@ -737,6 +737,74 @@
             ]
         },
         {
+            "name": "Respirer",
+            "properties": {
+                "timestamp_column": "dt_time",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 60,
+                "base_url": "http://atmos.urbansciences.in/",
+                "averaging_period": "mm",
+                "averaging_diff": "1",
+                "time_zone": "UTC+00:00"
+            },
+            "fields": [
+                {
+                    "id": "Temperature",
+                    "webid": "temp",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "rh",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pres", 
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1cnc",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2.5cnc",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10cnc",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "AQI",
+                    "webid": "aqi",
+                    "scale": 1,
+                    "include_analysis": true    
+                }
+            ],
+            "devices": [
+                {
+                    "id": "RESP1",
+                    "webid": "E098060E73E3",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "RESP2",
+                    "webid": "E098060F044A",                  
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
             "name": "Bosch",
             "properties": {
                 "timestamp_column": "UTC",
@@ -1034,7 +1102,6 @@
                     "include_analysis": true
                 },
                 {
-
                     "id": "PM10",
                     "webid": "PM10",
                     "scale": 1,
