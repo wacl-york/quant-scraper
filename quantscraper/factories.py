@@ -7,11 +7,13 @@
 
 import logging
 from quantscraper.manufacturers.Aeroqual import Aeroqual
+from quantscraper.manufacturers.SouthCoastScience import SouthCoastScience
 from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.Vortex import Vortex
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
 from quantscraper.manufacturers.PurpleAir import PurpleAir
+from quantscraper.manufacturers.Clarity import Clarity
 from quantscraper.manufacturers.AURN import AURN
 from quantscraper.manufacturers.Manufacturer import Device
 
@@ -31,10 +33,12 @@ def manufacturer_factory(config):
     factory = {
         "Aeroqual": Aeroqual,
         "AQMesh": AQMesh,
+        "Clarity": Clarity,
         "Zephyr": Zephyr,
         "QuantAQ": MyQuantAQ,
         "PurpleAir": PurpleAir,
         "Vortex": Vortex,
+        "SouthCoastScience": SouthCoastScience,
         "AURN": AURN,
     }
     try:

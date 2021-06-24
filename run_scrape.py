@@ -47,40 +47,40 @@ def main():
     args = parse_args()
 
     # Sets up arguments to use to call the container entry point script with
-    if (
-        args.date is not None
-        or args.preprocess_devices is not None
-        or args.scrape_devices is not None
-    ):
-        cmd = []
+    # There's almost certainly a neater way of passing arguments through but
+    # I'll keep this for now
+    cmd = []
 
-        if args.date is not None:
-            cmd.extend(["--date", args.date])
+    if args.date is not None:
+        cmd.extend(["--date", args.date])
 
-        if args.scrape_devices is not None:
-            cmd.extend(["--scrape-devices", *args.scrape_devices])
+    if args.scrape_devices is not None:
+        cmd.extend(["--scrape-devices", *args.scrape_devices])
 
-        if args.preprocess_devices is not None:
-            cmd.extend(["--preprocess-devices", *args.preprocess_devices])
+    if args.preprocess_devices is not None:
+        cmd.extend(["--preprocess-devices", *args.preprocess_devices])
 
-        if args.recipients is not None:
-            cmd.extend(["--recipients", *args.recipients])
+    if args.recipients is not None:
+        cmd.extend(["--recipients", *args.recipients])
 
-        if args.upload_clean:
-            cmd.append("--upload-clean")
+    if args.gdrive_raw_id is not None:
+        cmd.extend(["--gdrive-raw-id", args.gdrive_raw_id])
 
-        if args.upload_raw:
-            cmd.append("--upload-raw")
+    if args.gdrive_clean_id is not None:
+        cmd.extend(["--gdrive-clean-id", args.gdrive_clean_id])
 
-        if args.upload_availability:
-            cmd.append("--upload-availability")
+    if args.gdrive_availability_id is not None:
+        cmd.extend(["--gdrive-availability-id", args.gdrive_availability_id])
 
-        if args.upload_preprocess:
-            cmd.append("--upload-preprocess")
+    if args.gdrive_analysis_id is not None:
+        cmd.extend(["--gdrive-analysis-id", args.gdrive_analysis_id])
 
+    if args.subject is not None:
+        cmd.extend(["--subject", args.subject])
+
+    overrides = {}
+    if len(cmd) > 0:
         overrides = {"containerOverrides": [{"name": "quant", "command": cmd}]}
-    else:
-        overrides = {}
 
     session = boto3.Session(
         profile_name=os.environ["AWS_TASK_PROFILE"],
@@ -136,25 +136,23 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--upload-raw", action="store_true", help="Uploads raw data to Google Drive.",
+        "--gdrive-raw-id",
+        help="Google Drive raw data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-clean",
-        action="store_true",
-        help="Uploads clean data to Google Drive.",
+        "--gdrive-clean-id",
+        help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-availability",
-        action="store_true",
-        help="Uploads availability data to Google Drive.",
+        "--gdrive-availability-id",
+        help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-preprocess",
-        action="store_true",
-        help="Uploads pre-processed data to Google Drive.",
+        "--gdrive-analysis-id",
+        help="Google Drive analysis data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
@@ -162,6 +160,12 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to. If not provided, then no email is sent.",
+    )
+
+    parser.add_argument(
+        "--subject",
+        default="QUANT scraping summary",
+        help="The subject line to use with the email. The date is always appended in the form '<subject> - <date>'",
     )
 
     args = parser.parse_args()

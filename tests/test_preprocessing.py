@@ -47,9 +47,8 @@ class TestParseArgs(unittest.TestCase):
                     help="The date to collate data from, in the format YYY-mm-dd. Defaults to yesterday.",
                 ),
                 call(
-                    "--upload",
-                    action="store_true",
-                    help="Uploads the pre-processed data to Google Drive.",
+                    "--gdrive-analysis-id",
+                    help="Google Drive analysis data folder to upload to. If not provided then files aren't uploaded.",
                 ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)

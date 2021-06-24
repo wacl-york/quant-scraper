@@ -179,7 +179,25 @@ class TestParseArgs(unittest.TestCase):
                     metavar="EMAIL@DOMAIN",
                     nargs="+",
                     help="The recipients to send the email to.",
-                )
+                ),
+                call(
+                    "--gdrive-clean-id",
+                    help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
+                ),
+                call(
+                    "--gdrive-availability-id",
+                    help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
+                ),
+                call(
+                    "--gdrive-pa-id",
+                    help="Google Drive staging folder where PurpleAir files are manually uploaded to.",
+                    required=True,
+                ),
+                call(
+                    "--gdrive-quant-shared-id",
+                    help="Id of QUANT Shared Drive.",
+                    required=True,
+                ),
             ]
             self.assertEqual(actual_addargument_calls, exp_addargument_calls)
 
