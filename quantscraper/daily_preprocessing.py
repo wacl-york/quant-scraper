@@ -26,7 +26,6 @@ import os
 import logging
 import argparse
 import traceback
-import json
 from datetime import date, timedelta, datetime
 import numpy as np
 import pandas as pd
@@ -60,9 +59,8 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--upload",
-        action="store_true",
-        help="Uploads the pre-processed data to Google Drive.",
+        "--gdrive-analysis-id",
+        help="Google Drive analysis data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     args = parser.parse_args()
@@ -262,7 +260,7 @@ def resample(dataframe, resolution):
     return df_resampled
 
 
-def upload_files_google_drive(files):
+def upload_files_google_drive(files, folder):
     """
     Provides boiler plate code and error handling for all aspects of uploading a
     list of files to Google Drive.
@@ -274,6 +272,7 @@ def upload_files_google_drive(files):
 
     Args:
         - files (str[]): List of local file-path of files to be uploaded.
+        - folder (str): Google Drive folder ID to upload the files to.
 
     Returns:
         None. Uploads files to Google Drive as a side-effect.
@@ -285,17 +284,9 @@ def upload_files_google_drive(files):
         logging.error(traceback.format_exc())
         return
 
-    try:
-        drive_analysis_id = os.environ["GDRIVE_ANALYSIS_ID"]
-    except KeyError:
-        logging.error(
-            "GDRIVE_ANALYSIS_ID env var not found. Please set it with the ID of the Google Drive folder to upload the analysis data to."
-        )
-        return
-
     for file in files:
         try:
-            utils.upload_file_google_drive(service, file, drive_analysis_id, "text/csv")
+            utils.upload_file_google_drive(service, file, folder, "text/csv")
             logging.info("Upload successful.")
         except utils.DataUploadError:
             logging.error("Error in upload")
@@ -443,13 +434,12 @@ def main():
             logging.error("Could not save file to disk: {}.".format(ex))
             continue
 
-        if args.upload:
-            files_to_upload.append(file_path)
+        files_to_upload.append(file_path)
 
     # Upload files to Google Drive
-    if args.upload and len(files_to_upload) > 0:
+    if args.gdrive_analysis_id is not None and len(files_to_upload) > 0:
         logging.info("Initiating upload to GoogleDrive.")
-        upload_files_google_drive(files_to_upload)
+        upload_files_google_drive(files_to_upload, args.gdrive_analysis_id)
 
 
 if __name__ == "__main__":
