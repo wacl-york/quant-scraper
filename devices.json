@@ -551,18 +551,6 @@
                     "webid": "temp",
                     "scale": 1,
                     "include_analysis": false
-                },
-                {
-                    "id": "Lat",
-                    "webid": "lat",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "Lon",
-                    "webid": "lon",
-                    "scale": 1,
-                    "include_analysis": false
                 }
             ],
             "devices": [
@@ -741,7 +729,7 @@
             "properties": {
                 "timestamp_column": "Timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%S+00:00",
-                "recording_frequency_per_hour": 60,
+                "recording_frequency_per_hour": 4,
                 "averaging_window": "0",
                 "time_convention": "TimeBeginning",
                 "timezone": "00:00"
@@ -958,6 +946,7 @@
                     "id": "Pressure",
                     "webid": "ES_0_PRESS",
                     "scale": 1,
+                    "include_analysis": true
                 }
             ],
             "devices": [
@@ -1303,11 +1292,11 @@
                 {
                     "id": "CLACG",
                     "webid": "ACG0QLMP",
-                    "id": "SCS532",
-                    "webid": "1",
                     "location": "Manchester"
                 }
             ]
+        },
+        {
             "name": "SouthCoastScience",
             "properties": {
                 "timestamp_column": "timestamp",
@@ -1405,6 +1394,12 @@
                 }
             ],
             "devices": [
+                {
+
+                    "id": "SCS532",
+                    "webid": "1",
+                    "location": "Manchester"
+                },
                 {
 
                     "id": "SCS533",
