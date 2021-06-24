@@ -1,5 +1,7 @@
 {
     "ScheduledScrapeStatus": "DISABLED",
     "ScheduledScrapeArgs": "",
-    "PurpleAirEmailRecipient": ""
+    "PurpleAirEmailRecipient": "",
+    "ScheduledScrapeStatus": "DISABLED",
+    "WiderParticipationScrapeArgs": ""
 }

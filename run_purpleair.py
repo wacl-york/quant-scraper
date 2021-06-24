@@ -39,14 +39,30 @@ def main():
 
     # Load environment parameters containing AWS runtime details
     load_dotenv(dotenv_path=env_fn)
-
     args = parse_args()
+    cmd = []
 
     if args.recipients is not None:
         cmd = ["--recipients", *args.recipients]
+
+    if args.gdrive_clean_id is not None:
+        cmd.extend(["--gdrive-clean-id", args.gdrive_clean_id])
+
+    if args.gdrive_availability_id is not None:
+        cmd.extend(["--gdrive-availability-id", args.gdrive_availability_id])
+
+    if args.gdrive_pa_id is not None:
+        cmd.extend(["--gdrive-pa-id", args.gdrive_pa_id])
+
+    if args.gdrive_quant_shared_id is not None:
+        cmd.extend(["--gdrive-quant-shared-id", args.gdrive_quant_shared_id])
+
+    if args.gdrive_analysis_id is not None:
+        cmd.extend(["--gdrive-analysis-id", args.gdrive_analysis_id])
+
+    overrides = {}
+    if len(cmd) > 0:
         overrides = {"containerOverrides": [{"name": "PA", "command": cmd}]}
-    else:
-        overrides = {}
 
     session = boto3.Session(
         profile_name=os.environ["AWS_TASK_PROFILE"],
@@ -88,6 +104,31 @@ def parse_args():
         nargs="+",
         help="The recipients to send the email to. If not provided, then no email is sent.",
         required=True,
+    )
+
+    parser.add_argument(
+        "--gdrive-clean-id",
+        help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
+    )
+
+    parser.add_argument(
+        "--gdrive-availability-id",
+        help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
+    )
+
+    parser.add_argument(
+        "--gdrive-pa-id",
+        help="Google Drive staging folder where PurpleAir files are manually uploaded to.",
+        required=True,
+    )
+
+    parser.add_argument(
+        "--gdrive-quant-shared-id", help="Id of QUANT Shared Drive.", required=True
+    )
+
+    parser.add_argument(
+        "--gdrive-analysis-id",
+        help="Google Drive analysis data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     args = parser.parse_args()

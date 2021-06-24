@@ -10,6 +10,7 @@ from collections import defaultdict
 from unittest.mock import Mock
 from requests.exceptions import HTTPError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
+import quantscraper.manufacturers.SouthCoastScience as SouthCoastScience
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
@@ -83,6 +84,18 @@ class TestPurpleAir(unittest.TestCase):
 
     def test_success(self):
         res = self.mypa.log_device_status("foo")
+        self.assertEqual(res, {})
+
+
+class TestSCS(unittest.TestCase):
+    # This method isn't currently implemented for SCS, so test it returns
+    # an empty dict
+    cfg = defaultdict(str)
+    fields = []
+    scs = SouthCoastScience.SouthCoastScience(cfg, fields)
+
+    def test_success(self):
+        res = self.scs.log_device_status("123")
         self.assertEqual(res, {})
 
 

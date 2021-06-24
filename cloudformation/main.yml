@@ -12,10 +12,20 @@
         "Default": "cron(0 8 * * ? *)",
         "Description": "Cron schedule for scraping routine."
     },
+    "WiderParticipationScrapeCron": {
+        "Type": "String",
+        "Default": "cron(0 8 * * ? *)",
+        "Description": "Cron schedule for wider participation scraping routine."
+    },
     "ScheduledScrapeStatus": {
         "Type": "String",
         "Default": "ENABLED",
         "Description": "Whether the daily scheduled scrape should be run."
+    },
+    "WiderParticipationScrapeStatus": {
+        "Type": "String",
+        "Default": "ENABLED",
+        "Description": "Whether the daily wider participation study scrape should be run."
     },
     "PurpleAirArgs": {
         "Type": "CommaDelimitedList",
@@ -162,6 +172,55 @@
                 ]
              }",
             { "Args": { "Fn::Join": [ "\",\"", { "Ref": "ScheduledScrapeArgs" } ] } }
+             ]},
+            "EcsParameters": {
+              "TaskDefinitionArn": {
+                  "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskFamily}"
+              },
+              "TaskCount": 1,
+              "LaunchType": "FARGATE",
+              "NetworkConfiguration": {
+                "AwsVpcConfiguration" : {
+                    "AssignPublicIp": "ENABLED",
+                    "SecurityGroups": [
+                        { "Ref": "QUANTSecurityGroup" }
+                    ],
+                    "Subnets": [
+                        { "Ref": "QUANTSubnet1" },
+                        { "Ref": "QUANTSubnet2" }
+                    ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "QUANTWiderParticipationScrape": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "Wider participation scheduled scraping run.",
+        "Name": "DailyWiderParticipationScrape",
+        "ScheduleExpression": { "Ref": "WiderParticipationScrapeCron" },
+        "State": { "Ref": "WiderParticipationScrapeStatus" },
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": ["QUANTCluster", "Arn"]
+            },
+            "RoleArn": {
+                "Fn::GetAtt" : [ "QUANTRoleScheduledScrape", "Arn" ]
+            },
+            "Id": "quant_wider_participation_scrape",
+            "Input": {"Fn::Sub": ["{
+                \"containerOverrides\": [
+                    {
+                        \"name\": \"quant\",
+                        \"command\": [ \"${Args}\" ]
+                    }
+                ]
+             }",
+            { "Args": { "Fn::Join": [ "\",\"", { "Ref": "WiderParticipationScrapeArgs" } ] } }
              ]},
             "EcsParameters": {
               "TaskDefinitionArn": {
@@ -426,8 +485,7 @@
               ],
               "Description" : "Credentials for web portal",
               "Name" : "QUANTCredentials",
-              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_API_ID": "foo","AQMESH_API_TOKEN": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo","GDRIVE_RAW_ID": "foo","GDRIVE_CLEAN_ID": "foo","GDRIVE_ANALYSIS_ID": "foo", "GDRIVE_AVAILABILITY_ID": "foo","GDRIVE_QUANT_SHARED_ID": "foo","GDRIVE_PURPLEAIR_ID": "foo", "RESPIRER_API_KEY": "foo"}'
-                
+              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_API_ID": "foo","AQMESH_API_TOKEN": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo", "SCS_API_KEY": "foo", "CLARITY_API_KEY": "foo", "VORTEX_USER": "foo", "VORTEX_PW": "foo", "OIZOM_ID": "foo", "OIZOM_SECRET": "foo",  "BOSCH_USER": "foo", "BOSCH_PW": "foo", "RESPIRER_API_KEY": "foo"}'      
             }
     },
     "QUANTSecretGoogleCredentials": {

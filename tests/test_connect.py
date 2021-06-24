@@ -12,6 +12,7 @@ from unittest.mock import patch, Mock
 from requests.exceptions import HTTPError
 from quantaq.baseapi import DataReadError
 import quantscraper.manufacturers.Aeroqual as Aeroqual
+import quantscraper.manufacturers.SouthCoastScience as SouthCoastScience
 import quantscraper.manufacturers.AQMesh as AQMesh
 import quantscraper.manufacturers.Zephyr as Zephyr
 import quantscraper.manufacturers.MyQuantAQ as MyQuantAQ
@@ -28,6 +29,7 @@ os.environ["AQMESH_API_TOKEN"] = "mytoken"
 os.environ["ZEPHYR_USER"] = "foo"
 os.environ["ZEPHYR_PW"] = "foo"
 os.environ["QUANTAQ_API_TOKEN"] = "foo"
+os.environ["SCS_API_KEY"] = "foo"
 
 
 class TestAeroqual(unittest.TestCase):
@@ -299,6 +301,7 @@ class TestAURN(unittest.TestCase):
             mock_sesh.assert_called_once()
             self.assertEqual(self.myaurn.session, "5")
 
+
 class TestPurpleAir(unittest.TestCase):
     # PurpleAir hasn't implemented a connect method yet
     cfg = defaultdict(str)
@@ -308,6 +311,24 @@ class TestPurpleAir(unittest.TestCase):
     def test_success(self):
         res = self.mypa.connect()
         self.assertEqual(res, None)
+
+
+class TestSCS(unittest.TestCase):
+    # SouthCoastScience's connect method just creates a session instance
+    cfg = defaultdict(str)
+    fields = []
+    scs = SouthCoastScience.SouthCoastScience(cfg, fields)
+
+    # Mock a status code return of 200
+    def test_success(self):
+        with patch(
+            "quantscraper.manufacturers.SouthCoastScience.re.Session"
+        ) as mock_session_call:
+            mock_session = Mock()
+            mock_session_call.return_value = mock_session
+            self.scs.connect()
+            mock_session_call.assert_called_once()
+            self.assertEqual(self.scs.session, mock_session)
 
 
 if __name__ == "__main__":

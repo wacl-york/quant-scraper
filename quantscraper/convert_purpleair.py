@@ -63,18 +63,6 @@ def main():
         sys.exit()
 
     try:
-        clean_drive_id = os.environ["GDRIVE_CLEAN_ID"]
-        toplevel_drive_id = os.environ["GDRIVE_QUANTSHARED_ID"]
-        pa_drive_id = os.environ["GDRIVE_PURPLEAIR_ID"]
-        availability_id = os.environ["GDRIVE_AVAILABILITY_ID"]
-
-    except KeyError:
-        logging.error(
-            "Ensure the env vars 'GDRIVE_CLEAN_ID', 'GDRIVE_AVAILABILITY_ID', 'GDRIVE_QUANTSHARED_ID', and 'GDRIVE_PURPLEAIR_ID' are set prior to running this program."
-        )
-        sys.exit()
-
-    try:
         cfg = utils.setup_config()
     except utils.SetupError:
         logging.error("Error in setting up configuration properties")
@@ -110,12 +98,12 @@ def main():
 
         # Get list of filenames in Google Drive
         raw_fns = get_raw_filenames(
-            service, toplevel_drive_id, pa_drive_id, device.device_id
+            service, args.gdrive_quant_shared_id, args.gdrive_pa_id, device.device_id
         )
 
         # Get list of filenames in Clean folder
         clean_fns = get_processed_filenames(
-            service, toplevel_drive_id, clean_drive_id, device.device_id
+            service, args.gdrive_quant_shared_id, args.gdrive_clean_id, device.device_id
         )
 
         # Obtain list of files to download
@@ -181,7 +169,7 @@ def main():
                     file[0], device.device_id, cfg.get("Main", "filename_date_format")
                 ),
             )
-            success = upload_data(validated_data, out_fn, clean_drive_id, service)
+            success = upload_data(validated_data, out_fn, args.gdrive_clean_id, service)
             if not success:
                 continue
 
@@ -193,9 +181,8 @@ def main():
     # Upload availability statistics
     for date, summary in tables.items():
         cli.save_availability(
-            service,
             {"PurpleAir": summary},
-            availability_id,
+            args.gdrive_availability_id,
             cfg.get("Main", "local_folder_availability"),
             date,
         )
@@ -284,6 +271,26 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to.",
+    )
+
+    parser.add_argument(
+        "--gdrive-clean-id",
+        help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
+    )
+
+    parser.add_argument(
+        "--gdrive-availability-id",
+        help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
+    )
+
+    parser.add_argument(
+        "--gdrive-pa-id",
+        help="Google Drive staging folder where PurpleAir files are manually uploaded to.",
+        required=True,
+    )
+
+    parser.add_argument(
+        "--gdrive-quant-shared-id", help="Id of QUANT Shared Drive.", required=True
     )
 
     args = parser.parse_args()

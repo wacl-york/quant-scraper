@@ -574,8 +574,8 @@ class TestQuantAQ(unittest.TestCase):
         exp = [
             ["NO2", "CO2", "O3", "lat", "lon"],
             ["1", "2", "3", "3.5", "4.5"],
-            ["4", "NaN", "6", "5.5", "6.5"],
-            ["7", "8", "NaN", "7.5", "8.5"],
+            ["4", np.nan, "6", "5.5", "6.5"],
+            ["7", "8", np.nan, "7.5", "8.5"],
         ]
         res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
@@ -601,8 +601,8 @@ class TestQuantAQ(unittest.TestCase):
         exp = [
             ["NO2", "CO2", "O3", "lat", "lon"],
             ["1", "", "3", "", "4.5"],
-            ["4", "NaN", "6", "5.5", "6.5"],
-            ["7", "", "NaN", "7.5", ""],
+            ["4", np.nan, "6", "5.5", "6.5"],
+            ["7", "", np.nan, "7.5", ""],
         ]
         res = self.myquantaq.parse_to_csv(raw_data)
         self.assertEqual(res, exp)
