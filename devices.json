@@ -737,6 +737,120 @@
             ]
         },
         {
+            "name": "Oizom",
+            "properties": {
+                "timestamp_column": "t",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 6,
+                "base_url": "https://production.oizom.com",
+                "average_seconds": 60
+            },
+            "fields": [
+                {
+                    "id": "CO2",
+                    "webid": "g1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "CO",
+                    "webid": "g2",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "g3",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NH3",
+                    "webid": "g4",       
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "g5",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "H2S",
+                    "webid": "g6",           
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "g7",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "SO2",
+                    "webid": "g8",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O2",
+                    "webid": "g9",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "p1",          
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "p2",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "p3",             
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temp",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "hum",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pr",       
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "OZ1",
+                    "webid": "YO01P0001S",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "OZ2",
+                    "webid": "YO01P0002S",  
+                    "location": "Manchester"
+                }
+            ]
+        },                  
+        {                    
             "name": "Kunak",
             "properties": {
                 "timestamp_column": "ts",
@@ -853,6 +967,7 @@
                     "include_analysis": true
                 },
                 {
+
                     "id": "PM10",
                     "webid": "PM10",
                     "scale": 1,
@@ -919,6 +1034,7 @@
                     "include_analysis": true
                 },
                 {
+
                     "id": "PM10",
                     "webid": "pm10ConcMass",
                     "scale": 1,
@@ -1027,6 +1143,7 @@
                     "include_analysis": true
                 },
                 {
+
                     "id": "PM10",
                     "webid": "pm10",
                     "scale": 1,
@@ -1053,6 +1170,7 @@
             ],
             "devices": [
                 {
+
                     "id": "SCS533",
                     "webid": "2",
                     "location": "Manchester"

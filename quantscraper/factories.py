@@ -9,6 +9,7 @@ import logging
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.SouthCoastScience import SouthCoastScience
 from quantscraper.manufacturers.AQMesh import AQMesh
+from quantscraper.manufacturers.Oizom import Oizom
 from quantscraper.manufacturers.Kunak import Kunak
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.Vortex import Vortex
@@ -38,6 +39,7 @@ def manufacturer_factory(config):
         "Clarity": Clarity,
         "Zephyr": Zephyr,
         "QuantAQ": MyQuantAQ,
+        "Oizom": Oizom,
         "Modulair": Modulair,
         "PurpleAir": PurpleAir,
         "Kunak": Kunak,
