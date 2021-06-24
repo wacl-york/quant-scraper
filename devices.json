@@ -660,6 +660,115 @@
                     "location": "York"
                 }
             ]
+        },
+        {
+            "name": "SouthCoastScience",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%SZ",
+                "recording_frequency_per_hour": 60,
+                "base_url": "https://aws.southcoastscience.com/topicMessages",
+                "topic_prefix": "south-coast-science-test/york/loc",
+                "averaging_checkpoint": "**:/1:00"
+            },
+            "fields": [
+                {
+                    "id": "AirPressure",
+                    "webid": "bar_pA",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "tmp",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "hmd",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "CO2",
+                    "webid": "CO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Ox",
+                    "webid": "Ox_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2_exg",
+                    "webid": "exg_vB20_NO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_exg",
+                    "webid": "exg_rn20_pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1_exg",
+                    "webid": "exg_rn20_pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5_exg",
+                    "webid": "exg_rn20_pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "SCS532",
+                    "webid": "1",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "SCS533",
+                    "webid": "2",
+                    "location": "Manchester"
+                }
+            ]
         }
     ]
 }

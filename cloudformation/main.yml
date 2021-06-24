@@ -485,7 +485,7 @@
               ],
               "Description" : "Credentials for web portal",
               "Name" : "QUANTCredentials",
-              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_API_ID": "foo","AQMESH_API_TOKEN": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo"}'
+              "SecretString" : '{"AEROQUAL_USER": "foo","AEROQUAL_PW": "foo","AQMESH_API_ID": "foo","AQMESH_API_TOKEN": "foo","ZEPHYR_USER": "foo","ZEPHYR_PW": "foo","QUANTAQ_API_TOKEN": "foo", "SCS_API_KEY": "foo"}'
                 
             }
     },
