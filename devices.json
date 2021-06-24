@@ -662,6 +662,72 @@
             ]
         },
         {
+            "name": "Clarity",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 23,
+                "base_url": "https://clarity-data-api.clarity.io/v1",
+                "limit": 20000,
+                "skip": 0
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "no2Conc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2_5ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temperature",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "relHumid",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "CLADB",
+                    "webid": "ADBJW6TG",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CLA50",
+                    "webid": "A50LXXPZ",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CLACG",
+                    "webid": "ACG0QLMP",
+                    "id": "SCS532",
+                    "webid": "1",
+                    "location": "Manchester"
+                }
+            ]
             "name": "SouthCoastScience",
             "properties": {
                 "timestamp_column": "timestamp",
@@ -758,11 +824,6 @@
                 }
             ],
             "devices": [
-                {
-                    "id": "SCS532",
-                    "webid": "1",
-                    "location": "Manchester"
-                },
                 {
                     "id": "SCS533",
                     "webid": "2",
