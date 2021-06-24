@@ -14,6 +14,7 @@ from quantscraper.manufacturers.Kunak import Kunak
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.Vortex import Vortex
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.Bosch import Bosch
 from quantscraper.manufacturers.Modulair import Modulair
 from quantscraper.manufacturers.PurpleAir import PurpleAir
 from quantscraper.manufacturers.Clarity import Clarity
@@ -39,6 +40,7 @@ def manufacturer_factory(config):
         "Clarity": Clarity,
         "Zephyr": Zephyr,
         "QuantAQ": MyQuantAQ,
+        "Bosch": Bosch,
         "Oizom": Oizom,
         "Modulair": Modulair,
         "PurpleAir": PurpleAir,

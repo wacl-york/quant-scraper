@@ -737,6 +737,73 @@
             ]
         },
         {
+            "name": "Bosch",
+            "properties": {
+                "timestamp_column": "UTC",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 60,
+                "base_url": "https://bosch-iot-insights.com/mongodb-query-service/v2",
+                "project_id": "pda3808",
+                "query_id_3.1": "60c3108cd6bb1c5b94a18aef",
+                "query_id_3.5": "60c3108cd6bb1c5b94a18af3"
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "NO2_1_CORR",
+                    "scale":  0.5228758,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3_0_CORR",
+                    "scale": 0.5010773,    
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PS_0_PM2P5_CORR",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PS_0_PM10_CORR",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "ESP_0_RH_AVG",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "ESP_0_TEMP_AVG",          
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "ES_0_PRESS",
+                    "scale": 1,
+                }
+            ],
+            "devices": [
+                {
+                    "id": "B1",
+                    "webid": "359072065634236",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "B2",
+                    "webid": "359072065634871",                    
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
             "name": "Oizom",
             "properties": {
                 "timestamp_column": "t",
