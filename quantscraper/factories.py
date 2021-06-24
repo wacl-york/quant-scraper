@@ -9,6 +9,7 @@ import logging
 from quantscraper.manufacturers.Aeroqual import Aeroqual
 from quantscraper.manufacturers.SouthCoastScience import SouthCoastScience
 from quantscraper.manufacturers.AQMesh import AQMesh
+from quantscraper.manufacturers.EnvironmentalInstruments import EnvironmentalInstruments
 from quantscraper.manufacturers.Respirer import Respirer
 from quantscraper.manufacturers.Oizom import Oizom
 from quantscraper.manufacturers.Kunak import Kunak
@@ -40,6 +41,7 @@ def manufacturer_factory(config):
         "AQMesh": AQMesh,
         "Clarity": Clarity,
         "Zephyr": Zephyr,
+        "EnvironmentalInstruments": EnvironmentalInstruments,
         "QuantAQ": MyQuantAQ,
         "Respirer": Respirer,
         "Bosch": Bosch,
