@@ -509,6 +509,81 @@
             ]
         },
         {
+            "name": "Modulair",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S",
+                "recording_frequency_per_hour": 60
+            },
+            "fields": [
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm25",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pressure",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "rh",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temp",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lat",
+                    "webid": "lat",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lon",
+                    "webid": "lon",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "MOD81",
+                    "webid": "MOD-PM-00081",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "MOD82",
+                    "webid": "MOD-PM-00082",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "MOD85",
+                    "webid": "MOD-PM-00085",
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
             "name": "AURN",
             "properties": {
                 "recording_frequency_per_hour": 1,

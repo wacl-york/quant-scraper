@@ -12,6 +12,7 @@ from quantscraper.manufacturers.AQMesh import AQMesh
 from quantscraper.manufacturers.Zephyr import Zephyr
 from quantscraper.manufacturers.Vortex import Vortex
 from quantscraper.manufacturers.MyQuantAQ import MyQuantAQ
+from quantscraper.manufacturers.Modulair import Modulair
 from quantscraper.manufacturers.PurpleAir import PurpleAir
 from quantscraper.manufacturers.Clarity import Clarity
 from quantscraper.manufacturers.AURN import AURN
@@ -36,6 +37,7 @@ def manufacturer_factory(config):
         "Clarity": Clarity,
         "Zephyr": Zephyr,
         "QuantAQ": MyQuantAQ,
+        "Modulair": Modulair,
         "PurpleAir": PurpleAir,
         "Vortex": Vortex,
         "SouthCoastScience": SouthCoastScience,
