@@ -15,7 +15,13 @@ import os
 import requests as re
 import quantaq
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError, DataParseError
+from quantscraper.utils import (
+    LoginError,
+    DataDownloadError,
+    DataParseError,
+    flatten_2d_dict,
+)
+import pandas as pd
 
 
 class MyQuantAQ(Manufacturer):
@@ -194,29 +200,17 @@ class MyQuantAQ(Manufacturer):
         if nrows < 1:
             raise DataParseError("No data found.")
 
-        # Don't need url + sn and will handle geo separately
-        measurands = list(raw_data[0].keys())
-        if "geo" in measurands:
-            measurands.remove("geo")
-        if "url" in measurands:
-            measurands.remove("url")
-        if "sn" in measurands:
-            measurands.remove("sn")
+        flattened = [flatten_2d_dict(record) for record in raw_data]
 
-        clean_data = []
-        for i in range(nrows):
-            row = []
-            for measurand in measurands:
-                try:
-                    value = raw_data[i][measurand]
-                except KeyError:
-                    value = "NaN"
-                row.append(value)
-            row.append(raw_data[i]["geo"]["lat"])
-            row.append(raw_data[i]["geo"]["lon"])
-            clean_data.append(row)
-
-        # Add headers
-        clean_data.insert(0, measurands + ["lat", "lon"])
+        df = pd.DataFrame(flattened)
+        # I'm only dropping url as I've observed for our devices we have
+        # duplicated measurements with different urls. It's not a problem if url
+        # field isn't present
+        try:
+            df.drop(columns="url", inplace=True)
+        except KeyError:
+            pass
+        df = df.drop_duplicates()
+        clean_data = [df.columns.tolist()] + df.values.tolist()
 
         return clean_data

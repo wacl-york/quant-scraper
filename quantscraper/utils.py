@@ -592,3 +592,31 @@ def parse_env_vars(*args):
             os.environ[k] = v
 
     return True
+
+
+def flatten_2d_dict(input):
+    """
+    Flattens a hierarchical dict with no more than 2 levels.
+
+    I.e. turns {'a': 5, 'b': {'c': 8, 'd': 9}, 'e': 10} into
+    {'a': 5, 'c': 8, 'd': 9, 'e': 10}.
+    It therefore also requires that the inner keys aren't also present in the
+    top level dict.
+
+    This could be generalised to multiple levels of hierarchy using a recursive
+    function, but the data used in these APIs only has 2 nested levels.
+
+    Args:
+        - input (dict): A dictionary potentially containing nested dicts.
+
+    Returns:
+        A dictionary with a single level of hierarchy.
+    """
+    out = {}
+    for k, v in input.items():
+        if isinstance(v, dict):
+            for k2, v2 in v.items():
+                out[k2] = v2
+        else:
+            out[k] = v
+    return out
