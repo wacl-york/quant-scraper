@@ -26,4 +26,4 @@ class EnvironmentalInstruments(AQMesh):
     these 2 copmanies use the same AirMonitors API.
     """
 
-    name = "EnvironmentalInstruments"
+    name = "EI"

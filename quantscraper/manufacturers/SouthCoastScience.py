@@ -25,7 +25,7 @@ class SouthCoastScience(Manufacturer):
         - parse_to_csv()
     """
 
-    name = "SouthCoastScience"
+    name = "SCS"
 
     def __init__(self, cfg, fields):
         """

@@ -24,7 +24,7 @@ class Respirer(Manufacturer):
         - parse_to_csv()
     """
 
-    name = "Respirer"
+    name = "RLS"
 
     def __init__(self, cfg, fields):
         """

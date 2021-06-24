@@ -20,4 +20,4 @@ class Modulair(MyQuantAQ):
     Inherits attributes and methods from MyQuantAQ.
     """
 
-    name = "Modulair"
+    name = "QuantAQ"

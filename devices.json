@@ -555,17 +555,17 @@
             ],
             "devices": [
                 {
-                    "id": "MOD81",
+                    "id": "Mod1",
                     "webid": "MOD-PM-00081",
                     "location": "Manchester"
                 },
                 {
-                    "id": "MOD82",
+                    "id": "Mod2",
                     "webid": "MOD-PM-00082",
                     "location": "Manchester"
                 },
                 {
-                    "id": "MOD85",
+                    "id": "Mod3",
                     "webid": "MOD-PM-00085",
                     "location": "Manchester"
                 }
@@ -725,7 +725,7 @@
             ]
         },
         {
-            "name": "EnvironmentalInstruments",
+            "name": "EI",
             "properties": {
                 "timestamp_column": "Timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%S+00:00",
@@ -810,24 +810,24 @@
             ],
             "devices": [
                 {
-                    "id": "EI621",
+                    "id": "AQM1",
                     "webid": "621245",
                     "location": "Manchester"
                 },
                 {
-                    "id": "EI622",
+                    "id": "AQM2",
                     "webid": "622245",
                     "location": "Manchester"
                 },
                 {
-                    "id": "EI623",
+                    "id": "AQM3",
                     "webid": "623245",     
                     "location": "Manchester"
                 }
             ]
         },
         {  
-            "name": "Respirer",
+            "name": "RLS",
             "properties": {
                 "timestamp_column": "dt_time",
                 "timestamp_format": "%Y-%m-%d %H:%M:%S",
@@ -883,12 +883,12 @@
             ],
             "devices": [
                 {
-                    "id": "RESP1",
+                    "id": "Atm1",
                     "webid": "E098060E73E3",
                     "location": "Manchester"
                 },
                 {
-                    "id": "RESP2",
+                    "id": "Atm2",
                     "webid": "E098060F044A",                  
                     "location": "Manchester"
                 }
@@ -951,12 +951,12 @@
             ],
             "devices": [
                 {
-                    "id": "B1",
+                    "id": "IMB1",
                     "webid": "359072065634236",
                     "location": "Manchester"
                 },
                 {
-                    "id": "B2",
+                    "id": "IMB2",
                     "webid": "359072065634871",                    
                     "location": "Manchester"
                 }
@@ -1065,12 +1065,12 @@
             ],
             "devices": [
                 {
-                    "id": "OZ1",
+                    "id": "Poll1",
                     "webid": "YO01P0001S",
                     "location": "Manchester"
                 },
                 {
-                    "id": "OZ2",
+                    "id": "Poll2",
                     "webid": "YO01P0002S",  
                     "location": "Manchester"
                 }
@@ -1159,17 +1159,17 @@
             ],
             "devices": [
                 {
-                    "id": "KA1",
+                    "id": "AP1",
                     "webid": "0321180036",
                     "location": "Manchester"
                 },
                 {
-                    "id": "KA2",
+                    "id": "AP2",
                     "webid": "0321180037",
                     "location": "Manchester"
                 },
                 {
-                    "id": "KA3",
+                    "id": "AP3",
                     "webid": "0321140000",    
                     "location": "Manchester"
                 }
@@ -1213,17 +1213,17 @@
             ],
             "devices": [
                 {
-                    "id": "VO2",
+                    "id": "SA1",
                     "webid": "MAN_AQM_02",
                     "location": "Manchester"
                 },
                 {
-                    "id": "VO3",
+                    "id": "SA2",
                     "webid": "MAN_AQM_03",
                     "location": "Manchester"
                 },
                 {
-                    "id": "VO4",
+                    "id": "SA3",
                     "webid": "MAN_AQM_04",         
                     "location": "Manchester"
                 }
@@ -1259,7 +1259,6 @@
                     "include_analysis": true
                 },
                 {
-
                     "id": "PM10",
                     "webid": "pm10ConcMass",
                     "scale": 1,
@@ -1280,24 +1279,24 @@
             ],
             "devices": [
                 {
-                    "id": "CLADB",
-                    "webid": "ADBJW6TG",
-                    "location": "Manchester"
-                },
-                {
-                    "id": "CLA50",
+                    "id": "NS1",
                     "webid": "A50LXXPZ",
                     "location": "Manchester"
                 },
                 {
-                    "id": "CLACG",
+                    "id": "NS2",
+                    "webid": "ADBJW6TG",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "NS3",
                     "webid": "ACG0QLMP",
                     "location": "Manchester"
                 }
             ]
         },
         {
-            "name": "SouthCoastScience",
+            "name": "SCS",
             "properties": {
                 "timestamp_column": "timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%SZ",
@@ -1368,7 +1367,6 @@
                     "include_analysis": true
                 },
                 {
-
                     "id": "PM10",
                     "webid": "pm10",
                     "scale": 1,
@@ -1396,13 +1394,13 @@
             "devices": [
                 {
 
-                    "id": "SCS532",
+                    "id": "Prax1",
                     "webid": "1",
                     "location": "Manchester"
                 },
                 {
 
-                    "id": "SCS533",
+                    "id": "Prax2",
                     "webid": "2",
                     "location": "Manchester"
                 }
