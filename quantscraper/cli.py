@@ -67,19 +67,18 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--upload-raw", action="store_true", help="Uploads raw data to Google Drive.",
+        "--gdrive-raw-id",
+        help="Google Drive raw data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-clean",
-        action="store_true",
-        help="Uploads clean data to Google Drive.",
+        "--gdrive-clean-id",
+        help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-availability",
-        action="store_true",
-        help="Uploads availability CSV data to Google Drive.",
+        "--gdrive-availability-id",
+        help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
     )
 
     parser.add_argument(
@@ -87,6 +86,12 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to.",
+    )
+
+    parser.add_argument(
+        "--subject",
+        default="QUANT scraping summary",
+        help="The subject line to use with the email. The date is always appended in the form '<subject> - <date>'",
     )
 
     args = parser.parse_args()
@@ -698,13 +703,14 @@ def save_availability(tables, folder_id, local_folder, date):
     Saves availability data to CSV file and uploads it to GoogleDrive.
 
     Args:
-        - service (googleapiclient.discovery.Resource): Handle to GoogleAPI.
         - tables (dict): Each entry corresponds to a 2D list indexed by
             manufacturer name. The 2D list represents tabular data for the
             corresponding manufacturer, where the outer-most dimension is a row
             and the inner-most is a column.
         - folder_id (str): Google Drive ID of folder to upload to.
-        - date (str): The data corresponding to the availability data, used in
+        - local_folder (str): Folder name where the availability data lives
+            locally.
+        - date (str): The date corresponding to the availability data, used in
             the filename.
 
     Returns:
@@ -855,33 +861,15 @@ def main():
         else:
             clean_fns = None
 
-        if args.upload_raw:
+        if args.gdrive_raw_id is not None:
             logging.info("Uploading raw data to Google Drive:")
-            try:
-                folder_id = os.environ["GDRIVE_RAW_ID"]
-            except KeyError:
-                logging.error(
-                    "GDRIVE_RAW_ID env var not found. Please set it with the ID of the Google Drive folder to upload the raw data to."
-                )
-                folder_id = None
+            upload_data_googledrive(raw_fns, args.gdrive_raw_id, "text/json")
 
-            if folder_id is not None:
-                upload_data_googledrive(raw_fns, folder_id, "text/json")
-
-        if args.upload_clean:
+        if args.gdrive_clean_id is not None:
             logging.info("Uploading clean CSV data to Google Drive:")
-            try:
-                folder_id = os.environ["GDRIVE_CLEAN_ID"]
-            except KeyError:
-                logging.error(
-                    "GDRIVE_CLEAN_ID env var not found. Please set it with the ID of the Google Drive folder to upload the clean data to."
-                )
-                folder_id = None
-
-            if folder_id is not None:
-                upload_data_googledrive(
-                    clean_fns, folder_id, "text/csv",
-                )
+            upload_data_googledrive(
+                clean_fns, args.gdrive_clean_id, "text/csv",
+            )
 
     # Summarise number of clean measurands into tabular format
     summary_tables = tabular_summary(summaries, start_time, end_time)
@@ -895,22 +883,13 @@ def main():
         print(line)
 
     # Upload availability CSV
-    if args.upload_availability:
-        try:
-            folder_id = os.environ["GDRIVE_AVAILABILITY_ID"]
-        except KeyError:
-            logging.error(
-                "GDRIVE_AVAILABILITY_ID env var not found. Please set it with the ID of the Google Drive folder to upload the availability data to."
-            )
-            folder_id = None
-
-        if folder_id is not None:
-            save_availability(
-                summary_tables,
-                folder_id,
-                cfg.get("Main", "local_folder_availability"),
-                start_fmt,
-            )
+    if args.gdrive_availability_id is not None:
+        save_availability(
+            summary_tables,
+            args.gdrive_availability_id,
+            cfg.get("Main", "local_folder_availability"),
+            start_fmt,
+        )
 
     # Email HTML summary if requested
     if args.recipients is not None:
@@ -932,7 +911,7 @@ def main():
             try:
                 logging.info("Attemping to send email...")
                 utils.send_email_ses(
-                    f"QUANT scraping summary - {start_fmt}",
+                    f"{args.subject} - {start_fmt}",
                     email_html,
                     f"Unable to render HTML. Please open the following content in a web browser\r\n{email_html}",
                     sender,

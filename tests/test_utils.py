@@ -852,5 +852,31 @@ class TestParseEnvVars(unittest.TestCase):
             self.assertEqual(res, False)
 
 
+class TestFlatten2DDict(unittest.TestCase):
+    def test_success(self):
+        input = {"foo": 8, "nested": {"bar": 9, "car": 12}, "dar": 98}
+        exp_output = {"foo": 8, "bar": 9, "car": 12, "dar": 98}
+
+        res = utils.flatten_2d_dict(input)
+        self.assertEqual(res, exp_output)
+
+    def test_no_inner_dict(self):
+        input = {"foo": 8, "bar": 9, "car": 12, "dar": 98}
+        exp_output = {"foo": 8, "bar": 9, "car": 12, "dar": 98}
+
+        res = utils.flatten_2d_dict(input)
+        self.assertEqual(res, exp_output)
+
+    def test_duplicate_keys(self):
+        # Have an outer and inner key named the same
+        # This will overwrite the outer level key!
+        # This is unlikely to ever be the case however
+        input = {"foo": 8, "nested": {"foo": 9, "car": 12}, "dar": 98}
+        exp_output = {"foo": 9, "car": 12, "dar": 98}
+
+        res = utils.flatten_2d_dict(input)
+        self.assertEqual(res, exp_output)
+
+
 if __name__ == "__main__":
     unittest.main()

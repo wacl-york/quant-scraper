@@ -509,6 +509,81 @@
             ]
         },
         {
+            "name": "Modulair",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S",
+                "recording_frequency_per_hour": 60
+            },
+            "fields": [
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm25",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pressure",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "rh",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temp",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lat",
+                    "webid": "lat",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Lon",
+                    "webid": "lon",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "MOD81",
+                    "webid": "MOD-PM-00081",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "MOD82",
+                    "webid": "MOD-PM-00082",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "MOD85",
+                    "webid": "MOD-PM-00085",
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
             "name": "AURN",
             "properties": {
                 "recording_frequency_per_hour": 1,
@@ -686,7 +761,7 @@
                 },
                 {
                     "id": "CO2",
-                    "webid": "CO2",
+                    "webid": "CO2",               
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -698,7 +773,7 @@
                 },
                 {
                     "id": "NO",
-                    "webid": "NO",
+                    "webid": "NO",         
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -712,12 +787,12 @@
                     "id": "O3",
                     "webid": "O3",
                     "scale": 1,
-                    "include_analysis": true
+                    "include_analysis": true    
                 },
                 {
                     "id": "PM1",
                     "webid": "PM1",
-                    "scale": 1,
+                    "scale": 1,   
                     "include_analysis": true
                 },
                 {
@@ -728,7 +803,7 @@
                 },
                 {
                     "id": "PM2.5",
-                    "webid": "PM2.5",
+                    "webid": "PM2.5",    
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -740,7 +815,7 @@
                 },
                 {
                     "id": "Temperature",
-                    "webid": "TEMP",
+                    "webid": "TEMP",     
                     "scale": 1,
                     "include_analysis": false
                 }
@@ -758,7 +833,582 @@
                 },
                 {
                     "id": "EI623",
-                    "webid": "623245",
+                    "webid": "623245",     
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {  
+            "name": "Respirer",
+            "properties": {
+                "timestamp_column": "dt_time",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 60,
+                "base_url": "http://atmos.urbansciences.in/",
+                "averaging_period": "mm",
+                "averaging_diff": "1",
+                "time_zone": "UTC+00:00"
+            },
+            "fields": [
+                {
+                    "id": "Temperature",
+                    "webid": "temp",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "rh",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pres", 
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1cnc",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2.5cnc",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10cnc",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "AQI",
+                    "webid": "aqi",
+                    "scale": 1,
+                    "include_analysis": true    
+                }
+            ],
+            "devices": [
+                {
+                    "id": "RESP1",
+                    "webid": "E098060E73E3",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "RESP2",
+                    "webid": "E098060F044A",                  
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
+            "name": "Bosch",
+            "properties": {
+                "timestamp_column": "UTC",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 60,
+                "base_url": "https://bosch-iot-insights.com/mongodb-query-service/v2",
+                "project_id": "pda3808",
+                "query_id_3.1": "60c3108cd6bb1c5b94a18aef",
+                "query_id_3.5": "60c3108cd6bb1c5b94a18af3"
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "NO2_1_CORR",
+                    "scale":  0.5228758,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3_0_CORR",
+                    "scale": 0.5010773,    
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PS_0_PM2P5_CORR",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PS_0_PM10_CORR",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "ESP_0_RH_AVG",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "ESP_0_TEMP_AVG",          
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "ES_0_PRESS",
+                    "scale": 1,
+                }
+            ],
+            "devices": [
+                {
+                    "id": "B1",
+                    "webid": "359072065634236",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "B2",
+                    "webid": "359072065634871",                    
+                    "location": "Manchester"
+                }
+            ]
+        },
+        {
+            "name": "Oizom",
+            "properties": {
+                "timestamp_column": "t",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 6,
+                "base_url": "https://production.oizom.com",
+                "average_seconds": 60
+            },
+            "fields": [
+                {
+                    "id": "CO2",
+                    "webid": "g1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "CO",
+                    "webid": "g2",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "g3",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NH3",
+                    "webid": "g4",       
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "g5",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "H2S",
+                    "webid": "g6",           
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "g7",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "SO2",
+                    "webid": "g8",    
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O2",
+                    "webid": "g9",  
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "p1",          
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "p2",      
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "p3",             
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temp",     
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "hum",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "pr",       
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "OZ1",
+                    "webid": "YO01P0001S",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "OZ2",
+                    "webid": "YO01P0002S",  
+                    "location": "Manchester"
+                }
+            ]
+        },                  
+        {                    
+            "name": "Kunak",
+            "properties": {
+                "timestamp_column": "ts",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 12
+            },
+            "fields": [
+                {
+                    "id": "CO",
+                    "webid": "CO GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "DewPoint",
+                    "webid": "Dew Point",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",       
+                    "webid": "Humidity ext",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO GCc",     
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2 GCc",      
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "NOx",
+                    "webid": "NOx GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3 GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM1",
+                    "webid": "PM1",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "Pressure",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "Temp ext",
+                    "scale": 1,
+                    "include_analysis": false   
+                }
+            ],
+            "devices": [
+                {
+                    "id": "KA1",
+                    "webid": "0321180036",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "KA2",
+                    "webid": "0321180037",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "KA3",
+                    "webid": "0321140000",    
+                    "location": "Manchester"
+                }
+            ]
+          },
+          {
+            "name": "Vortex",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%d %H:%M:%S",
+                "recording_frequency_per_hour": 11,
+                "deployment_id": "31",
+                "base_url": "https://silaxair.vortexiot.com",
+                "api_url": "http://silaxair.vortexiot.com/api"
+            },
+            "fields": [
+                {
+                    "id": "PM2.5",
+                    "webid": "PM2.5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "PM10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "O3",
+                    "webid": "O3",
+                    "scale": 0.5010773,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2",
+                    "scale": 0.5228758,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+                    "id": "VO2",
+                    "webid": "MAN_AQM_02",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "VO3",
+                    "webid": "MAN_AQM_03",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "VO4",
+                    "webid": "MAN_AQM_04",         
+                    "location": "Manchester"
+                }
+            ]
+        },                  
+        {
+            "name": "Clarity",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 23,
+                "base_url": "https://clarity-data-api.clarity.io/v1",
+                "limit": 20000,
+                "skip": 0
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "no2Conc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2_5ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+
+                    "id": "PM10",
+                    "webid": "pm10ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temperature",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "relHumid",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "CLADB",
+                    "webid": "ADBJW6TG",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CLA50",
+                    "webid": "A50LXXPZ",
+                    "location": "Manchester"
+                },
+                {
+                    "id": "CLACG",
+                    "webid": "ACG0QLMP",
+                    "id": "SCS532",
+                    "webid": "1",
+                    "location": "Manchester"
+                }
+            ]
+            "name": "SouthCoastScience",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%SZ",
+                "recording_frequency_per_hour": 60,
+                "base_url": "https://aws.southcoastscience.com/topicMessages",
+                "topic_prefix": "south-coast-science-test/york/loc",
+                "averaging_checkpoint": "**:/1:00"
+            },
+            "fields": [
+                {
+                    "id": "AirPressure",
+                    "webid": "bar_pA",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "tmp",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "hmd",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "CO2",
+                    "webid": "CO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2",
+                    "webid": "NO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Ox",
+                    "webid": "Ox_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO",
+                    "webid": "NO_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "NO2_exg",
+                    "webid": "exg_vB20_NO2_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+
+                    "id": "PM10",
+                    "webid": "pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_exg",
+                    "webid": "exg_rn20_pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1_exg",
+                    "webid": "exg_rn20_pm1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5_exg",
+                    "webid": "exg_rn20_pm2p5",
+                    "scale": 1,
+                    "include_analysis": true
+                }
+            ],
+            "devices": [
+                {
+
+                    "id": "SCS533",
+                    "webid": "2",
                     "location": "Manchester"
                 }
             ]
