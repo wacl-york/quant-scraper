@@ -73,19 +73,16 @@ class TestParseArgs(unittest.TestCase):
                     help="Saves clean data to local file storage. Required in order to later upload to GoogleDrive.",
                 ),
                 call(
-                    "--upload-raw",
-                    action="store_true",
-                    help="Uploads raw data to Google Drive.",
+                    "--gdrive-raw-id",
+                    help="Google Drive raw data folder to upload to. If not provided then files aren't uploaded.",
                 ),
                 call(
-                    "--upload-clean",
-                    action="store_true",
-                    help="Uploads clean data to Google Drive.",
+                    "--gdrive-clean-id",
+                    help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
                 ),
                 call(
-                    "--upload-availability",
-                    action="store_true",
-                    help="Uploads availability CSV data to Google Drive.",
+                    "--gdrive-availability-id",
+                    help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
                 ),
                 call(
                     "--recipients",

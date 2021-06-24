@@ -1,7 +1,7 @@
 {
     "ScheduledScrapeStatus": "ENABLED",
-    "ScheduledScrapeArgs": "--upload-raw,--upload-clean,--upload-preprocess,--upload-availability,--scrape-devices,AQY872,AQY873A,AQY874,AQY875A2,AQM388,AQM389,AQM390,AQM391,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,AURNYorkFishergate,--preprocess-devices,AQY872,AQY873A,AQY874,AQY875A2,AQM388,AQM389,AQM390,AQM391,AQM173,AQM801,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,--recipients,quant-group@york.ac.uk",
+    "ScheduledScrapeArgs": "--gdrive-raw-id,1Dd8KWC99WQkV4qBvzWV3ZOUcgs4ATxEJ,--gdrive-clean-id,1a3HpQ5NadN__eirtYda17SgqNezpwuW2,--gdrive-analysis-id,1WnfB1syirMegN-Z-o0Pnbyk7PC7M6aK0,--gdrive-availability-id,16AFGdYoefEQTMm_MKGYL_OkMFyAZr_wH,--scrape-devices,AQY872,AQY873A,AQY874,AQY875A2,AQM388,AQM389,AQM390,AQM391,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,AURNYorkFishergate,--preprocess-devices,AQY872,AQY873A,AQY874,AQY875A2,AQM388,AQM389,AQM390,AQM391,AQM173,AQM801,Zep188,Zep309,Zep344,Zep716,Ari063,Ari078,Ari086,Ari093,--recipients,quant-group@york.ac.uk,--subject,QUANT scraping summary",
     "PurpleAirArgs": "--recipients,quant-group@york.ac.uk",
     "WiderParticipationScrapeStatus": "ENABLED",
-    "WiderParticipationScrapeArgs": "--upload-raw,--upload-clean,--upload-preprocess,--upload-availability,--scrape-devices,<TODO>,<...>,--preprocess-devices,<TODO>,<...>,--recipients,quant-group@york.ac.uk,--subject,QUANT Wider Participation Study"
+    "WiderParticipationScrapeArgs": "--gdrive-raw-id,1FJSxwrn7pDlofn9pJJbi3nNWNUWlqnEh,--gdrive-clean-id,1GgUFDq9KfgAMy83RhR4oLKU5WWqeiKoc,--gdrive-availability-id,1xFEhwRovPFNxeeBrGDr1zZGpHWM5TAMf,--scrape-devices,<TODO>,--preprocess-devices,<TODO>,--recipients,quant-group@york.ac.uk,--subject,QUANT Wider Participation Study"
 }
