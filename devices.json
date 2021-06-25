@@ -1349,6 +1349,12 @@
                     "include_analysis": true
                 },
                 {
+                    "id": "VOC",
+                    "webid": "VOC_cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "NO2_exg",
                     "webid": "exg_vB20_NO2_cnc",
                     "scale": 1,
