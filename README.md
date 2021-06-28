@@ -36,7 +36,10 @@ Finally, save the access token and its id somewhere safe.
                 "ecr:UploadLayerPart",
                 "ecr:CompleteLayerUpload"
             ],
-            "Resource": "arn:aws:ecr:eu-west-1:<awsaccountid>:repository/wacl/quantscraper"
+            "Resource": [
+                            "arn:aws:ecr:eu-west-1:<awsaccountid>:repository/wacl/quantscraper",
+                            "arn:aws:ecr:eu-west-1:<awsaccountid>:repository/wacl/purpleair-conversion"
+                        ]
         },
         {
             "Sid": "GetAuthToken",

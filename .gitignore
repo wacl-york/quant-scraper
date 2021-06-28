@@ -1,5 +1,6 @@
 # Sensitive information
 *.env
+*.secrets
 googleapi_credentials.json
 
 data/*
