@@ -1343,7 +1343,7 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "NO2",
+                    "id": "NO2_raw",
                     "webid": "NO2_cnc",
                     "scale": 1,
                     "include_analysis": true
@@ -1367,43 +1367,43 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "NO2_exg",
+                    "id": "NO2",
                     "webid": "exg_vB20_NO2_cnc",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM1",
+                    "id": "PM1_raw",
                     "webid": "pm1",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM2.5",
+                    "id": "PM2.5_raw",
                     "webid": "pm2p5",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM10",
+                    "id": "PM10_raw",
                     "webid": "pm10",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM10_exg",
+                    "id": "PM10",
                     "webid": "exg_rn20_pm10",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM1_exg",
+                    "id": "PM1",
                     "webid": "exg_rn20_pm1",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM2.5_exg",
+                    "id": "PM2.5",
                     "webid": "exg_rn20_pm2p5",
                     "scale": 1,
                     "include_analysis": true
