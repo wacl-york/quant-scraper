@@ -15,6 +15,7 @@
 
 import subprocess
 import glob
+import argparse
 import sys
 import os
 import logging
@@ -29,7 +30,7 @@ def main():
 
     Args:
         None
-    
+
     Returns:
         None
     """
@@ -40,6 +41,8 @@ def main():
         print(traceback.format_exc())
         sys.exit()
 
+    # Read inputs from CLI and env vars
+    args = parse_args()
     # This sets up environment variables if they are explicitly provided in a .env
     # file. If system env variables are present (as they will be in production),
     # then it doesn't overwrite them
@@ -48,15 +51,6 @@ def main():
             "Error when initiating environment variables, terminating execution."
         )
         logging.error(traceback.format_exc())
-        sys.exit()
-
-    try:
-        analysis_drive_id = os.environ["GDRIVE_ANALYSIS_ID"]
-        toplevel_drive_id = os.environ["GDRIVE_QUANTSHARED_ID"]
-    except KeyError:
-        logging.error(
-            "Ensure the env vars 'GDRIVE_ANALYSIS_ID' and 'GDRIVE_QUANTSHARED_ID' are set prior to running this program."
-        )
         sys.exit()
 
     try:
@@ -89,7 +83,7 @@ def main():
         "Looking for dates with locally available Clean data but no uploaded Analysis data..."
     )
     uploaded_dates = get_uploaded_analysis_dates(
-        service, toplevel_drive_id, analysis_drive_id
+        service, args.gdrive_quant_shared_id, args.gdrive_analysis_id
     )
     clean_dates = get_available_clean_dates(cfg.get("Main", "local_folder_clean_data"))
     dates_to_upload = sorted(
@@ -105,7 +99,8 @@ def main():
     pa_device_ids = get_pa_device_ids(device_config)
     preprocess_call = [
         "quant_preprocess",
-        "--upload",
+        "--gdrive-analysis-id",
+        args.gdrive_analysis_id,
         "--devices",
         *pa_device_ids,
     ]
@@ -213,6 +208,34 @@ def get_pa_device_ids(device_config):
     ]
     pa_device_ids = [device["id"] for device in pa_config["devices"]]
     return pa_device_ids
+
+
+def parse_args():
+    """
+    Parses CLI arguments to the script.
+
+    Args:
+        - None.
+
+    Returns:
+        An argparse.Namespace object.
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate analysis files from PurpleAir data"
+    )
+
+    parser.add_argument(
+        "--gdrive-analysis-id",
+        help="Google Drive analysis data folder to upload to. If not provided then analysis files aren't uploaded.",
+        required=True,
+    )
+
+    parser.add_argument(
+        "--gdrive-quant-shared-id", help="Id of QUANT Shared Drive.", required=True
+    )
+
+    args = parser.parse_args()
+    return args
 
 
 if __name__ == "__main__":

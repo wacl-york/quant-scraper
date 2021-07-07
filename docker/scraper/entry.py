@@ -37,23 +37,26 @@ def main():
     if args.scrape_devices is not None:
         scrape_call.extend(["--devices", *args.scrape_devices])
 
-    if args.upload_raw:
-        scrape_call.append("--upload-raw")
+    if args.gdrive_raw_id is not None:
+        scrape_call.extend(["--gdrive-raw-id", args.gdrive_raw_id])
 
-    if args.upload_clean:
-        scrape_call.append("--upload-clean")
+    if args.gdrive_clean_id is not None:
+        scrape_call.extend(["--gdrive-clean-id", args.gdrive_clean_id])
 
-    if args.upload_availability:
-        scrape_call.append("--upload-availability")
+    if args.gdrive_availability_id is not None:
+        scrape_call.extend(["--gdrive-availability-id", args.gdrive_availability_id])
 
     if args.recipients is not None:
         scrape_call.extend(["--recipients", *args.recipients])
 
+    if args.subject is not None:
+        scrape_call.extend(["--subject", args.subject])
+
     if args.preprocess_devices is not None:
         preprocess_call.extend(["--devices", *args.preprocess_devices])
 
-    if args.upload_preprocess:
-        preprocess_call.append("--upload")
+    if args.gdrive_analysis_id is not None:
+        preprocess_call.extend(["--gdrive-analysis-id", args.gdrive_analysis_id])
 
     print("Calling quant_scrape with call: {}".format(scrape_call))
     subprocess.run(scrape_call)
@@ -93,25 +96,23 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--upload-raw", action="store_true", help="Uploads raw data to Google Drive.",
+        "--gdrive-raw-id",
+        help="Google Drive raw data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-clean",
-        action="store_true",
-        help="Uploads clean data to Google Drive.",
+        "--gdrive-clean-id",
+        help="Google Drive clean data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-availability",
-        action="store_true",
-        help="Uploads availability data to Google Drive.",
+        "--gdrive-availability-id",
+        help="Google Drive availability data folder to upload to. If not provided then availability logs aren't uploaded.",
     )
 
     parser.add_argument(
-        "--upload-preprocess",
-        action="store_true",
-        help="Uploads pre-processed data to Google Drive.",
+        "--gdrive-analysis-id",
+        help="Google Drive analysis data folder to upload to. If not provided then files aren't uploaded.",
     )
 
     parser.add_argument(
@@ -119,6 +120,12 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to. If not provided, then no email is sent.",
+    )
+
+    parser.add_argument(
+        "--subject",
+        default="QUANT scraping summary",
+        help="The subject line to use with the email. The date is always appended in the form '<subject> - <date>'",
     )
 
     args = parser.parse_args()

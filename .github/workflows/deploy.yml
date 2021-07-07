@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+    - name: Installs Docker
+      run: |
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        chmod +x get-docker.sh
+        sh get-docker.sh
     - name: Deploy CloudFormation Stack
       uses: university-of-york/aws-cfn-deploy-action@v1.1
       env:

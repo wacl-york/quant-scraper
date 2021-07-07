@@ -1,5 +1,7 @@
 {
     "ScheduledScrapeStatus": "DISABLED",
     "ScheduledScrapeArgs": "",
-    "PurpleAirEmailRecipient": ""
+    "PurpleAirEmailRecipient": "",
+    "WiderParticipationScrapeStatus": "ENABLED",
+    "WiderParticipationScrapeArgs": "--gdrive-raw-id,1Av7yS84-KJz3Uj8GLStzbIi4XVhiIq7L,--gdrive-clean-id,1pe56B-VTn0azqnQvBnU-V2l1id8-wS3-,--gdrive-availability-id,1gMSyBCsvzW2-qCxpDhYgTWQHdqbqCwda,--scrape-devices,Mod1,Mod2,Mod3,AQM1,AQM2,AQM3,Atm1,Atm2,IMB1,IMB2,Poll1,Poll2,AP1,AP2,AP3,SA1,SA2,SA3,NS1,NS2,NS3,Prax1,Prax2,--recipients,stuart.lacy@york.ac.uk,--subject,QUANT Wider Participation Study"
 }
