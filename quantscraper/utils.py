@@ -520,9 +520,9 @@ def send_email_ses(
             ReturnPathArn=identity_arn,
         )
     except ClientError as e:
-        raise EmailSendingError
+        raise EmailSendingError from e
     except NoCredentialsError as e:
-        raise EmailSendingError
+        raise EmailSendingError from e
 
 
 def setup_loggers(logfn=None):
