@@ -736,12 +736,6 @@
             },
             "fields": [
                 {
-                    "id": "AirPressure",
-                    "webid": "AIRPRES",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
                     "id": "CO",
                     "webid": "CO",
                     "scale": 1,
@@ -752,12 +746,6 @@
                     "webid": "CO2",               
                     "scale": 1,
                     "include_analysis": true
-                },
-                {
-                    "id": "RelHumidity",
-                    "webid": "HUM",
-                    "scale": 1,
-                    "include_analysis": false
                 },
                 {
                     "id": "NO",
@@ -784,26 +772,32 @@
                     "include_analysis": true
                 },
                 {
+                    "id": "PM2.5",
+                    "webid": "PM2.5",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "PM10",
                     "webid": "PM10",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM2.5",
-                    "webid": "PM2.5",    
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM4",
-                    "webid": "PM4",
+                    "id": "Temperature",
+                    "webid": "TEMP",
                     "scale": 1,
                     "include_analysis": false
                 },
                 {
-                    "id": "Temperature",
-                    "webid": "TEMP",     
+                    "id": "RelHumidity",
+                    "webid": "HUM",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "AIRPRES",
                     "scale": 1,
                     "include_analysis": false
                 }
@@ -839,6 +833,24 @@
             },
             "fields": [
                 {
+                    "id": "PM1",
+                    "webid": "pm1cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2.5cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10cnc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
                     "id": "Temperature",
                     "webid": "temp",
                     "scale": 1,
@@ -846,39 +858,15 @@
                 },
                 {
                     "id": "RelHumidity",
-                    "webid": "rh",      
+                    "webid": "rh",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "Pressure",
-                    "webid": "pres", 
+                    "webid": "pres",
                     "scale": 1,
                     "include_analysis": true
-                },
-                {
-                    "id": "PM1",
-                    "webid": "pm1cnc",  
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM2.5",
-                    "webid": "pm2.5cnc",  
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM10",
-                    "webid": "pm10cnc",      
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "AQI",
-                    "webid": "aqi",
-                    "scale": 1,
-                    "include_analysis": true    
                 }
             ],
             "devices": [
@@ -1003,20 +991,8 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "NH3",
-                    "webid": "g4",       
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
                     "id": "O3",
                     "webid": "g5",      
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "H2S",
-                    "webid": "g6",           
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -1033,12 +1009,6 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "O2",
-                    "webid": "g9",  
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
                     "id": "PM2.5",
                     "webid": "p1",          
                     "scale": 1,
@@ -1051,12 +1021,6 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "PM1",
-                    "webid": "p3",             
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
                     "id": "Temperature",
                     "webid": "temp",     
                     "scale": 1,
@@ -1065,12 +1029,6 @@
                 {
                     "id": "RelHumidity",
                     "webid": "hum",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "Pressure",
-                    "webid": "pr",       
                     "scale": 1,
                     "include_analysis": true
                 }
@@ -1103,18 +1061,6 @@
                     "include_analysis": false
                 },
                 {
-                    "id": "DewPoint",
-                    "webid": "Dew Point",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "RelHumidity",       
-                    "webid": "Humidity ext",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
                     "id": "NO",
                     "webid": "NO GCc",     
                     "scale": 1,
@@ -1123,12 +1069,6 @@
                 {
                     "id": "NO2",
                     "webid": "NO2 GCc",      
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "NOx",
-                    "webid": "NOx GCc",
                     "scale": 1,
                     "include_analysis": false
                 },
@@ -1167,6 +1107,18 @@
                     "webid": "Temp ext",
                     "scale": 1,
                     "include_analysis": false   
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "Humidity ext",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "DewPoint",
+                    "webid": "Dew Point",
+                    "scale": 1,
+                    "include_analysis": false
                 }
             ],
             "devices": [
@@ -1319,24 +1271,6 @@
             },
             "fields": [
                 {
-                    "id": "AirPressure",
-                    "webid": "bar_pA",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "Temperature",
-                    "webid": "tmp",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
-                    "id": "RelHumidity",
-                    "webid": "hmd",
-                    "scale": 1,
-                    "include_analysis": false
-                },
-                {
                     "id": "CO2",
                     "webid": "CO2_cnc",
                     "scale": 1,
@@ -1361,38 +1295,8 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "VOC",
-                    "webid": "VOC_cnc",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
                     "id": "NO2",
                     "webid": "exg_vB20_NO2_cnc",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM1_raw",
-                    "webid": "pm1",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM2.5_raw",
-                    "webid": "pm2p5",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM10_raw",
-                    "webid": "pm10",
-                    "scale": 1,
-                    "include_analysis": true
-                },
-                {
-                    "id": "PM10",
-                    "webid": "exg_rn20_pm10",
                     "scale": 1,
                     "include_analysis": true
                 },
@@ -1407,6 +1311,30 @@
                     "webid": "exg_rn20_pm2p5",
                     "scale": 1,
                     "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "exg_rn20_pm10",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Pressure",
+                    "webid": "bar_pA",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "tmp",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "hmd",
+                    "scale": 1,
+                    "include_analysis": false
                 }
             ],
             "devices": [
