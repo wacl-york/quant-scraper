@@ -103,7 +103,6 @@ def parse_args():
         metavar="EMAIL@DOMAIN",
         nargs="+",
         help="The recipients to send the email to. If not provided, then no email is sent.",
-        required=True,
     )
 
     parser.add_argument(
@@ -119,12 +118,9 @@ def parse_args():
     parser.add_argument(
         "--gdrive-pa-id",
         help="Google Drive staging folder where PurpleAir files are manually uploaded to.",
-        required=True,
     )
 
-    parser.add_argument(
-        "--gdrive-quant-shared-id", help="Id of QUANT Shared Drive.", required=True
-    )
+    parser.add_argument("--gdrive-quant-shared-id", help="Id of QUANT Shared Drive.")
 
     parser.add_argument(
         "--gdrive-analysis-id",
