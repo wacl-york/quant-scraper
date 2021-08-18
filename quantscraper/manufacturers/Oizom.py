@@ -9,10 +9,11 @@
 from datetime import datetime, time, timezone
 import json
 import os
+from time import sleep
 import requests as re
 import pandas as pd
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError, DataParseError
+from quantscraper.utils import LoginError, DataDownloadError
 
 
 class Oizom(Manufacturer):
@@ -137,6 +138,9 @@ class Oizom(Manufacturer):
 
         params1.update(params2)
 
+        # Oizom rate limits to 4 calls a second
+        sleep(1)
+
         return params1
 
     def scrape_device(self, device_id, start, end):
@@ -184,6 +188,9 @@ class Oizom(Manufacturer):
         except (json.decoder.JSONDecodeError, TypeError):
             raise DataDownloadError("No 'Data' attribute in downloaded json.") from None
 
+        # Oizom rate limits to 4 calls a second
+        sleep(1)
+
         return data
 
     def parse_to_csv(self, raw_data):
@@ -194,9 +201,9 @@ class Oizom(Manufacturer):
         read it into Pandas, rather than do this manually in base Python.
 
         Args:
-            - raw_data (dict): The data is stored as a list of dicts, 
+            - raw_data (dict): The data is stored as a list of dicts,
             corresponding to each time-sample. Each object contains a 'payload'
-            object which has a single object 'd' which is what contains the 
+            object which has a single object 'd' which is what contains the
             measurements in key-value pairs.
 
         Returns:
