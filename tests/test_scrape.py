@@ -95,6 +95,7 @@ class TestAQMesh(unittest.TestCase):
     # AQMesh just runs a single GET request to get the data,
     # which is returned in the 'Data' attribute of the resultant JSON
     cfg = defaultdict(str)
+    cfg["base_url"] = "aqmesh.com"
     cfg["time_convention"] = "reverse"
     cfg["averaging_window"] = "-5"
     os.environ["AQMESH_API_ID"] = "myid"
@@ -115,7 +116,7 @@ class TestAQMesh(unittest.TestCase):
         res = self.aqmesh.scrape_device("123", mock_start, mock_end)
         self.assertEqual(res, {"Data": [1, 2, 3]})
         mock_get.assert_called_once_with(
-            "https://api.airmonitors.net/3.5/GET/myid/mytoken/stationdata/reverse/AVG-5/2020-04-03T00:00:00/2020-05-03T23:59:59/123"
+            "aqmesh.com/myid/mytoken/devicedata/reverse/AVG-5/2020-04-03T00:00:00/2020-05-03T23:59:59/123"
         )
 
     # Test that custom DataDownloadError is raised under a variety of failure

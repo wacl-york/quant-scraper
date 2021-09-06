@@ -28,15 +28,10 @@ class TestAeroqual(unittest.TestCase):
 
 
 class TestAQMesh(unittest.TestCase):
-    # This method isn't currently implemented for AQMesh, so test it returns
-    # an empty dict
+    # Will add tests back in once can reimplement this method
     cfg = defaultdict(str)
     fields = []
     aqmesh = AQMesh.AQMesh(cfg, fields)
-
-    def test_success(self):
-        res = self.aqmesh.log_device_status("123")
-        self.assertEqual(res, {})
 
 
 class TestZephyr(unittest.TestCase):
