@@ -42,14 +42,18 @@ class AQMesh(Manufacturer):
         self.session = None
 
         # Authentication
-        self.base_url = "https://api.airmonitors.net/3.5/GET/{account}/{licence}".format(
-            account=os.environ["AQMESH_API_ID"], licence=os.environ["AQMESH_API_TOKEN"]
-        )
+        api_id = os.environ["AQMESH_API_ID"]
+        licence = os.environ["AQMESH_API_TOKEN"]
+        self.base_url = f"{cfg['base_url']}/{api_id}/{licence}"
 
         # Set general API settings
-        self.data_url = "{base}/stationdata/{time}/AVG{avg}".format(
+        self.data_url = "{base}/devicedata/{time}/AVG{avg}".format(
             base=self.base_url, time=cfg["time_convention"], avg=cfg["averaging_window"]
         )
+
+        # Will cache all device operating conditions as when request them can
+        # only obtain all devices at once, can't filter to a single device
+        self.all_device_params = None
 
         super().__init__(cfg, fields)
 
@@ -75,16 +79,16 @@ class AQMesh(Manufacturer):
             result.raise_for_status()
         except re.exceptions.HTTPError as ex:
             raise LoginError(
-                "Cannot test authentication.\n{}".format(str(ex))
+                "HTTP error when verifying authentication.\n{}".format(str(ex))
             ) from None
         except re.exceptions.ConnectionError as ex:
-            raise DataDownloadError(
-                "Connection error when testing authentication.\n{}".format(str(ex))
+            raise LoginError(
+                "Connection error when verifying authentication.\n{}".format(str(ex))
             ) from None
 
         if result.text == "AUTHENTICATION FAILED":
             self.session.close()
-            raise LoginError("Login failed")
+            raise LoginError("Login failed, check credentials.")
 
     def log_device_status(self, device_id):
         """
@@ -100,8 +104,35 @@ class AQMesh(Manufacturer):
         Returns:
             A dict of keyword-value parameters.
         """
-        params = {}
-        return params
+        if self.all_device_params is None:
+            url_to_call = f"{self.base_url}/devices"
+            try:
+                result = self.session.get(url_to_call)
+                result.raise_for_status()
+            except re.exceptions.HTTPError as ex:
+                raise DataDownloadError(
+                    "HTTP error when retrieving device status.\n{}".format(str(ex))
+                ) from None
+            except re.exceptions.ConnectionError as ex:
+                raise DataDownloadError(
+                    "Connection error when retrieving device status.\n{}".format(
+                        str(ex)
+                    )
+                ) from None
+
+            self.all_device_params = result.json()
+
+        device_params = [
+            x for x in self.all_device_params if str(x["UniqueId"]) == device_id
+        ]
+        if len(device_params) == 0:
+            device_params = {}
+        elif len(device_params) > 1:
+            device_params = {}
+        else:
+            device_params = device_params[0]
+
+        return device_params
 
     def scrape_device(self, device_id, start, end):
         """
@@ -131,9 +162,7 @@ class AQMesh(Manufacturer):
         start_fmt = start_dt.strftime("%Y-%m-%dT%H:%M:%S")
         end_fmt = end_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
-        url_to_call = "{url}/{start}/{end}/{device}".format(
-            url=self.data_url, start=start_fmt, end=end_fmt, device=device_id
-        )
+        url_to_call = f"{self.data_url}/{start_fmt}/{end_fmt}/{device_id}"
         try:
             result = self.session.get(url_to_call)
             result.raise_for_status()
@@ -173,15 +202,15 @@ class AQMesh(Manufacturer):
             measurand.
         """
         clean_data = []
-        for timepoint in raw_data:
+        for timepoint in raw_data.values():
             try:
                 for channel in timepoint["Channels"]:
                     try:
                         clean_data.append(
                             {
-                                "Timestamp": timepoint["TBTimestamp"],
+                                "Timestamp": timepoint["Timestamp"]["Timestamp"],
                                 "measurand": channel["SensorLabel"],
-                                "value": channel["Scaled"],
+                                "value": channel["Scaled"]["Reading"],
                             }
                         )
                     except KeyError:

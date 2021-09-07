@@ -102,6 +102,7 @@ class TestAeroqual(unittest.TestCase):
 
 class TestAQMesh(unittest.TestCase):
     cfg = defaultdict(str)
+    cfg["base_url"] = "aqmesh.com"
     fields = []
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
@@ -113,9 +114,7 @@ class TestAQMesh(unittest.TestCase):
             mock_session.return_value = Mock(get=get_mock)
 
             self.aqmesh.connect()
-            get_mock.assert_called_once_with(
-                "https://api.airmonitors.net/3.5/GET/myid/mytoken/stations"
-            )
+            get_mock.assert_called_once_with("aqmesh.com/myid/mytoken/stations")
 
     # Should definitely be able to DRY these HTTP errors once have more
     # familiarity with mock library.

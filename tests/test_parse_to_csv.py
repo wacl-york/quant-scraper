@@ -145,32 +145,41 @@ class TestAQMesh(unittest.TestCase):
     aqmesh = AQMesh.AQMesh(cfg, fields)
 
     def test_success(self):
-        raw_data = [
-            {
-                "TBTimestamp": "2020-03-04 12:32",
+        raw_data = {
+            "1": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:32",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 2},
-                    {"SensorLabel": "NO2", "Scaled": 1},
-                    {"SensorLabel": "O3", "Scaled": 3},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 2}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 1}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 3}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"SensorLabel": "NO2", "Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 8},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 8}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],
@@ -185,31 +194,37 @@ class TestAQMesh(unittest.TestCase):
     def test_missing_timestamp(self):
         # The first timestamp object isn't present.
         # Should still retrieve data from the others entries.
-        raw_data = [
-            {
+        raw_data = {
+            "1": {
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 2},
-                    {"SensorLabel": "NO2", "Scaled": 1},
-                    {"SensorLabel": "O3", "Scaled": 3},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 2}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 1}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 3}},
                 ]
             },
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"SensorLabel": "NO2", "Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 8},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 8}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],
@@ -222,25 +237,36 @@ class TestAQMesh(unittest.TestCase):
     def test_missing_channels(self):
         # If don't have Channels attribute then shouldn't get data from that
         # timepoint. Have removed Channels from first object.
-        raw_data = [
-            {"TBTimestamp": "2020-03-04 12:32",},
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+        raw_data = {
+            "1": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:32",
+                    "Convention": "Beginning",
+                }
+            },
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"SensorLabel": "NO2", "Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 8},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 8}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],
@@ -255,25 +281,36 @@ class TestAQMesh(unittest.TestCase):
         # If have Channels object but it's empty then should also not return
         # data from that timepoint. Have removed first time-point's Channels
         # entries.
-        raw_data = [
-            {"TBTimestamp": "2020-03-04 12:32", "Channels": []},
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+        raw_data = {
+            "1": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:32",
+                    "Convention": "Beginning",
+                },
+            },
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"SensorLabel": "NO2", "Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 8},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 8}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],
@@ -287,32 +324,41 @@ class TestAQMesh(unittest.TestCase):
     def test_missing_sensor_label(self):
         # If missing a sensor label attribute, then should simply not have data
         # for that observation. Have removed NO2's second sensor label
-        raw_data = [
-            {
-                "TBTimestamp": "2020-03-04 12:32",
+        raw_data = {
+            "1": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:32",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 2},
-                    {"SensorLabel": "NO2", "Scaled": 1},
-                    {"SensorLabel": "O3", "Scaled": 3},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 2}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 1}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 3}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 8},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 8}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],
@@ -328,32 +374,41 @@ class TestAQMesh(unittest.TestCase):
         # Likewise, if missing the Scaled attribute then should simply have
         # empty value for this observation.
         # Have removed it from CO2's third observation
-        raw_data = [
-            {
-                "TBTimestamp": "2020-03-04 12:32",
+        raw_data = {
+            "1": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:32",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 2},
-                    {"SensorLabel": "NO2", "Scaled": 1},
-                    {"SensorLabel": "O3", "Scaled": 3},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 2}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 1}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 3}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:33",
+            "2": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:33",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
-                    {"SensorLabel": "CO2", "Scaled": 5},
-                    {"SensorLabel": "NO2", "Scaled": 4},
-                    {"SensorLabel": "O3", "Scaled": 6},
+                    {"SensorLabel": "CO2", "Scaled": {"Reading": 5}},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 4}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 6}},
                 ],
             },
-            {
-                "TBTimestamp": "2020-03-04 12:34",
+            "3": {
+                "Timestamp": {
+                    "Timestamp": "2020-03-04 12:34",
+                    "Convention": "Beginning",
+                },
                 "Channels": [
                     {"SensorLabel": "CO2",},
-                    {"SensorLabel": "NO2", "Scaled": 7},
-                    {"SensorLabel": "O3", "Scaled": 9},
+                    {"SensorLabel": "NO2", "Scaled": {"Reading": 7}},
+                    {"SensorLabel": "O3", "Scaled": {"Reading": 9}},
                 ],
             },
-        ]
+        }
 
         exp = [
             ["Timestamp", "CO2", "NO2", "O3"],

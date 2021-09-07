@@ -118,6 +118,7 @@
         {
             "name": "AQMesh",
             "properties": {
+                "base_url": "https://api.airmonitors.net/4.0/GET",
                 "timestamp_column": "Timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%S+00:00",
                 "recording_frequency_per_hour": 60,
@@ -727,6 +728,7 @@
         {
             "name": "EI",
             "properties": {
+                "base_url": "https://api.airmonitors.net/4.0/GET",
                 "timestamp_column": "Timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%S+00:00",
                 "recording_frequency_per_hour": 4,
