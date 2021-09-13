@@ -1063,6 +1063,12 @@
                     "include_analysis": false
                 },
                 {
+                    "id": "CO2",
+                    "webid": "CO2 GCc",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
                     "id": "NO",
                     "webid": "NO GCc",     
                     "scale": 1,
