@@ -106,7 +106,11 @@ class PurpleAir(Manufacturer):
         raw_data = raw_data.rstrip()
         raw_lines = raw_data.split("\r\n")
         reader = csv.reader(raw_lines, delimiter=",")
-        data = [row for row in reader]
+
+        try:
+            data = list(reader)
+        except csv.Error as ex:
+            raise DataParseError(f"Error when parsing the file: {ex}") from None
 
         if len(data[0]) == 0:
             raise DataParseError("Have no rows of data available.")
