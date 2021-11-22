@@ -471,6 +471,7 @@ def list_files_googledrive(service, drive_id, query=None, include_deleted=False)
                 driveId=drive_id,
                 includeItemsFromAllDrives=True,
                 supportsAllDrives=True,
+                pageToken=page_token,
                 q=query,
                 pageSize=1000,
                 fields="nextPageToken, files(id, name)",

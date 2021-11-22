@@ -597,6 +597,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             driveId="fooId",
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
+            pageToken=None,
             q="foo=bar and trashed=false",
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
@@ -630,6 +631,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             supportsAllDrives=True,
             q="foo=bar and trashed=false",
             pageSize=1000,
+            pageToken=None,
             fields="nextPageToken, files(id, name)",
         )
 
@@ -660,6 +662,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             supportsAllDrives=True,
             q="foo=bar and trashed=true",
             pageSize=1000,
+            pageToken=None,
             fields="nextPageToken, files(id, name)",
         )
 
@@ -686,6 +689,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             q="trashed=false",
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
+            pageToken=None,
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
         )
@@ -711,6 +715,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             corpora="drive",
             driveId="fooId",
             q="trashed=false",
+            pageToken=None,
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
             pageSize=1000,
@@ -740,6 +745,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             q="trashed=true",
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
+            pageToken=None,
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
         )
@@ -767,6 +773,7 @@ class TestListFilesGoogleDrive(unittest.TestCase):
             includeItemsFromAllDrives=True,
             supportsAllDrives=True,
             q="foo=bar and trashed=false",
+            pageToken=None,
             pageSize=1000,
             fields="nextPageToken, files(id, name)",
         )
