@@ -8,6 +8,7 @@
 
 from datetime import datetime, time
 import json
+import logging
 import os
 import requests as re
 import pandas as pd
@@ -257,11 +258,19 @@ class Vortex(Manufacturer):
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        df_gas = pd.DataFrame(raw_data["GAS"])
-        df_pm = pd.DataFrame(raw_data["PM"])
-        df_comb = df_gas.merge(
-            df_pm, how="outer", on=["timestamp", "sensorEuid", "sensorId", "coords"]
-        )
+        key_cols = ["timestamp", "sensorEuid", "sensorId", "coords"]
+        try:
+            df_gas = pd.DataFrame(raw_data["GAS"])
+        except KeyError:
+            logging.warning("Missing gas data")
+            df_gas = pd.DataFrame(columns=key_cols)
+        try:
+            df_pm = pd.DataFrame(raw_data["PM"])
+        except KeyError:
+            logging.warning("Missing PM data")
+            df_pm = pd.DataFrame(columns=key_cols)
+
+        df_comb = df_gas.merge(df_pm, how="outer", on=key_cols)
         df_comb["timestamp"] = pd.to_datetime(df_comb["timestamp"], unit="ms")
         df_comb["timestamp"] = df_comb["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
