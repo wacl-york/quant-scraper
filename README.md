@@ -1,7 +1,7 @@
-![Python application](https://github.com/wacl-york/QUANTscraper/workflows/Python%20application/badge.svg?branch=main)
+![Python application](https://github.com/wacl-york/quant-scraper/workflows/Python%20application/badge.svg?branch=main)
 ![Test coverage](https://webfiles.york.ac.uk/WACL/QUANT/QUANTscraper/resources/coverage.svg)
 
-# QUANTscraper
+# quant-scraper
 
 Scrapes data from the websites of air quality instrumentation system manufacturers for the QUANT project.
 
@@ -128,7 +128,7 @@ Finally, download the `run_scrape.py` script from this repository and install `b
 `run_scrape.py` provides an interface to the Docker image with the same command line arguments and uses `boto` to launch the task.
 See `python run_scrape.py --help` for all the available options.
 
-# Running QUANTscraper locally
+# Running the scraper locally
 
 The scraping can also be run locally rather than from AWS.
 This requires installing the `quantscraper` Python package in a local environment and interfacing with it using command line arguments and configuration files.
@@ -149,9 +149,9 @@ And can be used through
 
 `conda activate <ENVNAME>`
 
-The latest stable version of `quantscraper` can then be installed from GitHub by using the following command.
+The latest stable version of the Python package `quantscraper` can then be installed from GitHub by using the following command.
 
-`pip install git+https://github.com/wacl-york/QUANTscraper.git@main`
+`pip install git+https://github.com/wacl-york/quant-scraper.git@main`
 
 ## Running the scraper 
 
@@ -172,9 +172,9 @@ The program is run using the `quant_preprocess` command; see `quant_preprocess -
 
 # Contributing to development
 
-To contribute to the development of `quantscraper`, firstly clone this repository:
+To contribute to the development, firstly clone this repository:
 
-`git clone https://github.com/wacl-york/QUANTscraper.git`
+`git clone https://github.com/wacl-york/quant-scraper.git`
 
 ## conda setup
 
@@ -182,12 +182,12 @@ The development environment can be replicated by creating a new `conda` environm
 
 `conda env create -f environment.yml`
 
-This will create a `conda` environment called `QUANTscraper` and install all the dependencies.
-If it fails to install all dependencies then it should create an empty environment called `QUANTscraper`, which can be activated as below with the remaining dependencies installed as per the `Manual` instructions below.
+This will create a `conda` environment called `quant-scraper` and install all the dependencies.
+If it fails to install all dependencies then the environment will still be created but without all the required libraries, which can be installed as per the `Manual` instructions below.
 
 Use this environment by entering
 
-`conda activate QUANTscraper`
+`conda activate quant-scraper`
 
 ## Manual setup
 

@@ -11,7 +11,7 @@ setup(
     version="0.8.0",
     description="Scrapes data for the QUANT project.",
     long_description=readme(),  # NB: Only used if upload to PyPi
-    url="https://github.com/wacl-york/QUANTscraper",
+    url="https://github.com/wacl-york/quant-scraper",
     author="Stuart Lacy",
     author_email="stuart.lacy@york.ac.uk",
     entry_points={

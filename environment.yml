@@ -1,4 +1,4 @@
-name: QUANTscraper
+name: quant-scraper
 channels:
   - defaults
 dependencies:
@@ -66,5 +66,5 @@ dependencies:
     - uritemplate==3.0.1
     - urllib3==1.25.8
     - wrapt==1.11.2
-prefix: /home/stuart/miniconda3/envs/QUANTscraper
+prefix: /home/stuart/miniconda3/envs/quant-scraper
 
