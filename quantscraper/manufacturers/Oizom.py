@@ -13,7 +13,7 @@ from time import sleep
 import requests as re
 import pandas as pd
 from quantscraper.manufacturers.Manufacturer import Manufacturer
-from quantscraper.utils import LoginError, DataDownloadError
+from quantscraper.utils import LoginError, DataDownloadError, DataParseError
 
 
 class Oizom(Manufacturer):
@@ -211,10 +211,20 @@ class Oizom(Manufacturer):
             row corresponds to a unique time-point and each column holds a
             measurand.
         """
-        measurements = [x["payload"]["d"] for x in raw_data]
+        try:
+            measurements = [x["payload"]["d"] for x in raw_data]
+        except KeyError:
+            raise DataParseError(
+                "Expected fields 'payload' and 'd' not present in raw data."
+            )
+
         df = pd.DataFrame(measurements)
         # timestamp is in POSIX format
-        df["t"] = pd.to_datetime(df["t"], unit="s")
+        try:
+            df["t"] = pd.to_datetime(df["t"], unit="s")
+        except KeyError:
+            raise DataParseError("Field 't' not present in measurements data.")
+
         df["t"] = df["t"].dt.strftime("%Y-%m-%d %H:%M:%S")
         df_list = [df.columns.tolist()] + df.values.tolist()
 
