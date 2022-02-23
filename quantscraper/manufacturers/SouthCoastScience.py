@@ -161,8 +161,11 @@ class SouthCoastScience(Manufacturer):
         df_gas = self.gas_json_to_dataframe(raw_data["gas"])
         df_pm = self.pm_json_to_dataframe(raw_data["pm"])
         df_met = self.met_json_to_dataframe(raw_data["met"])
-        df_comb = pd.merge(df_gas, df_pm, on="timestamp", how="outer")
-        df_comb = pd.merge(df_comb, df_met, on="timestamp", how="outer")
+        try:
+            df_comb = pd.merge(df_gas, df_pm, on="timestamp", how="outer")
+            df_comb = pd.merge(df_comb, df_met, on="timestamp", how="outer")
+        except KeyError:
+            raise DataParseError("No 'timestamp' field in data to join on.")
 
         df_list = [df_comb.columns.tolist()] + df_comb.values.tolist()
         return df_list
