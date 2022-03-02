@@ -27,11 +27,9 @@ def main():
 
     # Base calls
     scrape_call = ["quant_scrape", "--save-raw", "--save-clean"]
-    preprocess_call = ["quant_preprocess"]
 
     # Always pass in date
     scrape_call.extend(["--start", parse_date, "--end", parse_date])
-    preprocess_call.extend(["--date", parse_date])
 
     # Add arguments if passed in
     if args.scrape_devices is not None:
@@ -52,16 +50,8 @@ def main():
     if args.subject is not None:
         scrape_call.extend(["--subject", args.subject])
 
-    if args.preprocess_devices is not None:
-        preprocess_call.extend(["--devices", *args.preprocess_devices])
-
-    if args.gdrive_analysis_id is not None:
-        preprocess_call.extend(["--gdrive-analysis-id", args.gdrive_analysis_id])
-
     print("Calling quant_scrape with call: {}".format(scrape_call))
     subprocess.run(scrape_call)
-    print("Calling quant_preprocess with call: {}".format(preprocess_call))
-    subprocess.run(preprocess_call)
 
 
 def parse_args():
