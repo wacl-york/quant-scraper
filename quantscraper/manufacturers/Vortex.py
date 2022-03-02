@@ -160,8 +160,12 @@ class Vortex(Manufacturer):
         try:
             raw_data = self.raw_data_cache[date_key][device_id]
         except KeyError:
+            # Data isn't available in the cache for this device
             self.download_data_to_cache(start_fmt, end_fmt, date_key)
-            raw_data = self.raw_data_cache[date_key][device_id]
+            try:
+                raw_data = self.raw_data_cache[date_key][device_id]
+            except KeyError:
+                raise DataDownloadError("Cannot retrieve data from cache")
 
         return raw_data
 
