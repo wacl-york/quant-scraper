@@ -8,6 +8,7 @@ data/*
 
 # Compiled python modules.
 *.pyc
+src/
 
 # Cache
 __pycache__/*
