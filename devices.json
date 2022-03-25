@@ -1206,7 +1206,7 @@
             "properties": {
                 "timestamp_column": "timestamp",
                 "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
-                "recording_frequency_per_hour": 23,
+                "recording_frequency_per_hour": 30,
                 "base_url": "https://clarity-data-api.clarity.io/v1",
                 "limit": 20000,
                 "skip": 0
