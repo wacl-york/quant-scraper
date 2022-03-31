@@ -1268,6 +1268,82 @@
             ]
         },
         {
+            "name": "ClarityGCRF",
+            "properties": {
+                "timestamp_column": "timestamp",
+                "timestamp_format": "%Y-%m-%dT%H:%M:%S.%fZ",
+                "recording_frequency_per_hour": 3.455,
+                "base_url": "https://clarity-data-api.clarity.io/v1",
+                "limit": 20000,
+                "skip": 0
+            },
+            "fields": [
+                {
+                    "id": "NO2",
+                    "webid": "no2Conc",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5",
+                    "webid": "pm2_5ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1",
+                    "webid": "pm1ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10",
+                    "webid": "pm10ConcMass",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "Temperature",
+                    "webid": "temperature",
+                    "scale": 1,
+                    "include_analysis": false
+                },
+                {
+                    "id": "RelHumidity",
+                    "webid": "relHumid",
+                    "scale": 1,
+                    "include_analysis": false
+                }
+            ],
+            "devices": [
+                {
+                    "id": "Clar1",
+                    "webid": "A81YTSPH",
+                    "location": "York"
+                },
+                {
+                    "id": "Clar2",
+                    "webid": "AQH7B7KR",
+                    "location": "York"
+                },
+                {
+                    "id": "Clar3",
+                    "webid": "A56GC5DT",
+                    "location": "York"
+                },
+                {
+                    "id": "Clar4",
+                    "webid": "ARYWM2LW",
+                    "location": "York"
+                },
+                {
+                    "id": "Clar5",
+                    "webid": "A894WD0F",
+                    "location": "York"
+                }
+            ]
+        },
+        {
             "name": "SCS",
             "properties": {
                 "timestamp_column": "timestamp",
