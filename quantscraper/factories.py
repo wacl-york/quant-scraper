@@ -20,6 +20,7 @@ from quantscraper.manufacturers.Bosch import Bosch
 from quantscraper.manufacturers.Modulair import Modulair
 from quantscraper.manufacturers.PurpleAir import PurpleAir
 from quantscraper.manufacturers.Clarity import Clarity
+from quantscraper.manufacturers.ClarityGCRF import ClarityGCRF
 from quantscraper.manufacturers.AURN import AURN
 from quantscraper.manufacturers.Manufacturer import Device
 
@@ -40,6 +41,7 @@ def manufacturer_factory(config):
         "Aeroqual": Aeroqual,
         "AQMesh": AQMesh,
         "Clarity": Clarity,
+        "ClarityGCRF": ClarityGCRF,
         "Zephyr": Zephyr,
         "EI": EnvironmentalInstruments,
         "QuantAQ": MyQuantAQ,
