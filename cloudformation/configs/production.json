@@ -5,5 +5,5 @@
     "WiderParticipationScrapeStatus": "ENABLED",
     "WiderParticipationScrapeArgs": "--gdrive-raw-id,1FJSxwrn7pDlofn9pJJbi3nNWNUWlqnEh,--gdrive-clean-id,1GgUFDq9KfgAMy83RhR4oLKU5WWqeiKoc,--gdrive-availability-id,1xFEhwRovPFNxeeBrGDr1zZGpHWM5TAMf,--scrape-devices,Mod1,Mod2,Mod3,AQM1,AQM2,AQM3,IMB2,Poll1,Poll2,AP1,AP2,AP3,SA1,SA2,SA3,NS1,NS2,NS3,Prax1,Prax2,--recipients,quant-group@york.ac.uk,--subject,QUANT Wider Participation Study",
     "GCRFClarityScrapeStatus": "ENABLED",
-    "GCRFClarityScrapeArgs": "--gdrive-raw-id,1EFIF9fyLTThX3OQ9kGDs1UoEOdONSBA_,--gdrive-clean-id,1b1BIaccslze1Eu6TrLAGLP9MTks3TwOX,--gdrive-availability-id,1Az_UOG3c6ujjC4Iy3m9JqIEaCpiFLvzT,--scrape-devices,Clar1,Clar2,Clar3,Clar4,Clar5,--recipients,quant-group@york.ac.uk,--subject,Clarity GCRF Devices Scrape"
+    "GCRFClarityScrapeArgs": "--gdrive-raw-id,1EFIF9fyLTThX3OQ9kGDs1UoEOdONSBA_,--gdrive-clean-id,1b1BIaccslze1Eu6TrLAGLP9MTks3TwOX,--gdrive-availability-id,1Az_UOG3c6ujjC4Iy3m9JqIEaCpiFLvzT,--scrape-devices,Clar1,Clar2,Clar3,Clar4,Clar6,--recipients,quant-group@york.ac.uk,--subject,Clarity GCRF Devices Scrape"
 }
