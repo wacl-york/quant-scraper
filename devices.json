@@ -96,12 +96,12 @@
                 {
                     "id": "AQY874",
                     "webid": "AQY BB-874A",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "AQY875A2",
                     "webid": "AQY BB-875A",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "AQY878",
@@ -210,7 +210,7 @@
                 {
                     "id": "AQM389",
                     "webid": "389245",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "AQM390",
@@ -220,7 +220,7 @@
                 {
                     "id": "AQM391",
                     "webid": "391245",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "AQM173",
@@ -335,7 +335,7 @@
                 {
                     "id": "Zep309",
                     "webid": "584",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "Zep344",
@@ -345,7 +345,7 @@
                 {
                     "id": "Zep530",
                     "webid": "530",
-                    "location": "London"
+                    "location": "Manchester"
                 }
             ]
         },
@@ -470,12 +470,12 @@
                 {
                     "id": "Ari086",
                     "webid": "SN000-086",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "Ari093",
                     "webid": "SN000-093",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "Ari063",
@@ -681,7 +681,7 @@
                 {
                     "id": "PA2",
                     "webid": "PA2",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "PA3",
@@ -696,7 +696,7 @@
                 {
                     "id": "PA5",
                     "webid": "PA5",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "PA6",
@@ -706,22 +706,22 @@
                 {
                     "id": "PA7",
                     "webid": "PA7",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "PA8",
                     "webid": "PA8",
-                    "location": "York"
+                    "location": "Manchester"
                 },
                 {
                     "id": "PA9",
                     "webid": "PA9",
-                    "location": "London"
+                    "location": "Manchester"
                 },
                 {
                     "id": "PA10",
                     "webid": "PA10",
-                    "location": "York"
+                    "location": "Manchester"
                 }
             ]
         },
