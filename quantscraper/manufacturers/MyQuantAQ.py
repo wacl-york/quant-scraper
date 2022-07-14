@@ -157,7 +157,6 @@ class MyQuantAQ(Manufacturer):
             raise DataDownloadError("No available data in the downloaded file.")
 
         data = {"raw": raw, "final": final}
-
         return data
 
     def parse_to_csv(self, raw_data):
@@ -211,13 +210,8 @@ class MyQuantAQ(Manufacturer):
         # 12th July and caused the scraper to stop working. They are parameters
         # related to the calibration model and so don't need to be included in
         # the clean data
-        try:
-            df.drop(columns="url", inplace=True)
-            df.drop(columns="gas", inplace=True)
-            df.drop(columns="pm", inplace=True)
-        except KeyError:
-            pass
-        df = df.drop_duplicates()
+        df.drop(columns=["url", "gas", "pm"], inplace=True, errors="ignore")
+
         clean_data = [df.columns.tolist()] + df.values.tolist()
 
         return clean_data
