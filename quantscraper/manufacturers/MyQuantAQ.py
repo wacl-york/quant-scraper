@@ -157,6 +157,7 @@ class MyQuantAQ(Manufacturer):
             raise DataDownloadError("No available data in the downloaded file.")
 
         data = {"raw": raw, "final": final}
+
         return data
 
     def parse_to_csv(self, raw_data):
@@ -206,8 +207,14 @@ class MyQuantAQ(Manufacturer):
         # I'm only dropping url as I've observed for our devices we have
         # duplicated measurements with different urls. It's not a problem if url
         # field isn't present
+        # Edit 2022-07-14: The Gas and PM fields have been added around the
+        # 12th July and caused the scraper to stop working. They are parameters
+        # related to the calibration model and so don't need to be included in
+        # the clean data
         try:
             df.drop(columns="url", inplace=True)
+            df.drop(columns="gas", inplace=True)
+            df.drop(columns="pm", inplace=True)
         except KeyError:
             pass
         df = df.drop_duplicates()
