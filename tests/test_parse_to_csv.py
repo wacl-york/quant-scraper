@@ -876,6 +876,7 @@ class TestPurpleAir(unittest.TestCase):
     cfg = defaultdict(str)
     fields = []
     pa = PurpleAir.PurpleAir(cfg, fields)
+    pa.header = ["NO2", "CO2", "O3"]
 
     def test_success(self):
         raw_data = "NO2,CO2,O3\r\n1,2,3\r\n4,5,6\r\n7,8,9"
