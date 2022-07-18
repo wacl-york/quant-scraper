@@ -103,8 +103,7 @@ class PurpleAir(Manufacturer):
             measurand.
         """
         # Parse into csv using inbuilt csv module
-        raw_data = raw_data.rstrip()
-        raw_lines = raw_data.split("\r\n")
+        raw_lines = raw_data.rstrip().split("\n")
         reader = csv.reader(raw_lines, delimiter=",")
 
         try:
@@ -112,7 +111,10 @@ class PurpleAir(Manufacturer):
         except csv.Error as ex:
             raise DataParseError(f"Error when parsing the file: {ex}") from None
 
-        if len(data[0]) == 0:
+        # Remove empty lines
+        data = [row for row in data if len(row) > 0]
+
+        if len(data) == 0:
             raise DataParseError("Have no rows of data available.")
 
         # Remove 'gas' from the header as this field isn't used
