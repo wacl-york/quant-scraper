@@ -41,6 +41,49 @@ class PurpleAir(Manufacturer):
             None
         """
         super().__init__(cfg, fields)
+        self.header = [
+            "UTCDateTime",
+            "mac_address",
+            "firmware_ver",
+            "hardware",
+            "current_temp_f",
+            "current_humidity",
+            "current_dewpoint_f",
+            "pressure",
+            "adc",
+            "mem",
+            "rssi",
+            "uptime",
+            "pm1_0_cf_1",
+            "pm2_5_cf_1",
+            "pm10_0_cf_1",
+            "pm1_0_atm",
+            "pm2_5_atm",
+            "pm10_0_atm",
+            "pm2.5_aqi_cf_1",
+            "pm2.5_aqi_atm",
+            "p_0_3_um",
+            "p_0_5_um",
+            "p_1_0_um",
+            "p_2_5_um",
+            "p_5_0_um",
+            "p_10_0_um",
+            "pm1_0_cf_1_b",
+            "pm2_5_cf_1_b",
+            "pm10_0_cf_1_b",
+            "pm1_0_atm_b",
+            "pm2_5_atm_b",
+            "pm10_0_atm_b",
+            "pm2.5_aqi_cf_1_b",
+            "pm2.5_aqi_atm_b",
+            "p_0_3_um_b",
+            "p_0_5_um_b",
+            "p_1_0_um_b",
+            "p_2_5_um_b",
+            "p_5_0_um_b",
+            "p_10_0_um_b",
+            "gas",
+        ]
 
     def connect(self):
         """
@@ -103,8 +146,7 @@ class PurpleAir(Manufacturer):
             measurand.
         """
         # Parse into csv using inbuilt csv module
-        raw_data = raw_data.rstrip()
-        raw_lines = raw_data.split("\r\n")
+        raw_lines = raw_data.rstrip().split("\n")
         reader = csv.reader(raw_lines, delimiter=",")
 
         try:
@@ -112,8 +154,14 @@ class PurpleAir(Manufacturer):
         except csv.Error as ex:
             raise DataParseError(f"Error when parsing the file: {ex}") from None
 
-        if len(data[0]) == 0:
+        # Remove empty lines
+        data = [row for row in data if len(row) > 0]
+        if len(data) == 0:
             raise DataParseError("Have no rows of data available.")
+
+        # Add header if missing
+        if data[0][0] != self.header[0]:
+            data.insert(0, self.header)
 
         # Remove 'gas' from the header as this field isn't used
         if data[0][-1] == "gas":

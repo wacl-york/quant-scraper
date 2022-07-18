@@ -140,9 +140,16 @@ def main():
             fh = utils.download_file(service, file[1])
             raw_data = fh.getvalue().decode("utf-8")
 
+            # For some reason it's been observed that "append <filename>" has
+            # been written to every line in the raw files
+            # It's not clear at what point in the pipeline this has occurred
+            # so it's removed here downstream
+            raw_data_cleaned = raw_data.replace(f"append {file[0]}", "")
+            raw_data_cleaned = raw_data_cleaned.replace("\r", "")
+
             # Parse to CSV and validate
             try:
-                csv_data = PA_manufacturer.parse_to_csv(raw_data)
+                csv_data = PA_manufacturer.parse_to_csv(raw_data_cleaned)
             except utils.DataParseError as ex:
                 logging.error("Unable to parse {} into CSV: {}".format(file[0], ex))
                 continue
@@ -159,6 +166,7 @@ def main():
                 )
             except utils.ValidateDataError as ex:
                 logging.error("Data validation error for {}: {}".format(file[0], ex))
+                continue
 
             logging.info("Successfully cleaned. Uploading to Google Drive.")
 
