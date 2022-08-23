@@ -1373,31 +1373,31 @@
                 },
                 {
                     "id": "NO",
-                    "webid": "NO_cnc",
+                    "webid": "exg_val_NO_cnc",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "NO2",
-                    "webid": "exg_vB20_NO2_cnc",
+                    "webid": "exg_val_NO2_cnc",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "PM1",
-                    "webid": "exg_rn20_pm1",
+                    "webid": "exg_val_pm1",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "PM2.5",
-                    "webid": "exg_rn20_pm2p5",
+                    "webid": "exg_val_pm2p5",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
                     "id": "PM10",
-                    "webid": "exg_rn20_pm10",
+                    "webid": "exg_val_pm10",
                     "scale": 1,
                     "include_analysis": true
                 },

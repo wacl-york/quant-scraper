@@ -241,13 +241,20 @@ class SouthCoastScience(Manufacturer):
 
             # Add exogeneses (aka calibrated) fields
             # NB: these are nested 3 objects deep, whereas PM are 2 deep
-            exg_dict = {
-                f"exg_{key1}_{key2}_{key3}": item["exg"][key1][key2][key3]
-                for key1 in item["exg"].keys()
-                for key2 in item["exg"][key1].keys()
-                for key3 in item["exg"][key1][key2].keys()
-            }
-            raw_dict.update(exg_dict)
+            if "exg" in item.keys():
+                try:
+                    exg_dict = {
+                        f"exg_{key1}_{key2}_{key3}": item["exg"][key1][key2][key3]
+                        for key1 in item["exg"].keys()
+                        if key1 != "src"
+                        for key2 in item["exg"][key1].keys()
+                        for key3 in item["exg"][key1][key2].keys()
+                    }
+                    raw_dict.update(exg_dict)
+                except KeyError:
+                    pass
+                except AttributeError:
+                    pass
 
             # Add timestamp
             raw_dict["timestamp"] = item["rec"]
@@ -278,12 +285,19 @@ class SouthCoastScience(Manufacturer):
                 raw_dict[f"bin_{idx+1}"] = measurement
 
             # Add exogeneses (aka calibrated) fields
-            exg_dict = {
-                f"exg_{key1}_{key2}": item["exg"][key1][key2]
-                for key1 in item["exg"].keys()
-                for key2 in item["exg"][key1].keys()
-            }
-            raw_dict.update(exg_dict)
+            if "exg" in item.keys():
+                try:
+                    exg_dict = {
+                        f"exg_{key1}_{key2}": item["exg"][key1][key2]
+                        for key1 in item["exg"].keys()
+                        if key1 != "src"
+                        for key2 in item["exg"][key1].keys()
+                    }
+                    raw_dict.update(exg_dict)
+                except KeyError:
+                    pass
+                except AttributeError:
+                    pass
 
             # Add timestamp
             raw_dict["timestamp"] = item["rec"]
@@ -308,8 +322,11 @@ class SouthCoastScience(Manufacturer):
             raw_dict = {
                 key: item["val"][key] for key in item["val"] if key not in ("bar")
             }
-            # Add pressure
-            raw_dict["bar_pA"] = item["val"]["bar"]["pA"]
+            # Add pressure if available
+            try:
+                raw_dict["bar_pA"] = item["val"]["bar"]["pA"]
+            except KeyError:
+                pass
 
             # Add timestamp
             raw_dict["timestamp"] = item["rec"]
