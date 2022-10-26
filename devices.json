@@ -636,38 +636,74 @@
                     "include_analysis": true
                 },
                 {
-                    "id": "PM1",
+                    "id": "PM1_atm",
                     "webid": "pm1_0_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM2.5",
+                    "id": "PM2.5_atm",
                     "webid": "pm2_5_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM10",
+                    "id": "PM10_atm",
                     "webid": "pm10_0_atm",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM1_b",
+                    "id": "PM1_atm_b",
                     "webid": "pm1_0_atm_b",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM2.5_b",
+                    "id": "PM2.5_atm_b",
                     "webid": "pm2_5_atm_b",
                     "scale": 1,
                     "include_analysis": true
                 },
                 {
-                    "id": "PM10_b",
+                    "id": "PM10_atm_b",
                     "webid": "pm10_0_atm_b",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1_cf",
+                    "webid": "pm1_0_cf_1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5_cf",
+                    "webid": "pm2_5_cf_1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_cf",
+                    "webid": "pm10_0_cf_1",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM1_cf_b",
+                    "webid": "pm1_0_cf_1_b",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM2.5_cf_b",
+                    "webid": "pm2_5_cf_1_b",
+                    "scale": 1,
+                    "include_analysis": true
+                },
+                {
+                    "id": "PM10_cf_b",
+                    "webid": "pm10_0_cf_1_b",
                     "scale": 1,
                     "include_analysis": true
                 }
