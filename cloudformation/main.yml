@@ -14,7 +14,7 @@
     },
     "ScheduledScrapeStatus": {
         "Type": "String",
-        "Default": "ENABLED",
+        "Default": "DISABLED",
         "Description": "Whether the daily scheduled scrape should be run."
     },
     "WiderParticipationScrapeArgs": {
@@ -29,7 +29,7 @@
     },
     "WiderParticipationScrapeStatus": {
         "Type": "String",
-        "Default": "ENABLED",
+        "Default": "DISABLED",
         "Description": "Whether the daily wider participation study scrape should be run."
     },
     "GCRFClarityScrapeArgs": {
